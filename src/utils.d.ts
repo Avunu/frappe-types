@@ -82,7 +82,7 @@ import type { JQueryRegion } from "./globals";
 // reciprocal `DataTableTranslations` import in `datatable.d.ts:56`. The two
 // files import types from each other; `import type` cycles between ambient
 // declaration files are resolved by the checker and emit nothing.
-import type { DataTableTotalCell } from "./datatable";
+import type { DataTableColumnTotalCell, DataTableTotalCell } from "./datatable";
 
 // ===========================================================================
 // SECTION 0 — shared helper shapes
@@ -316,6 +316,16 @@ export interface FrappeHelpDropdownItem {
  *
  * This name survives as an ALIAS rather than being deleted, so any consumer
  * that already imports it keeps compiling and lands on the single owning type.
+ *
+ * SINCE THEN the parameter has moved once more, to
+ * `DataTableColumnTotalCell` — the cell shape BOTH datatable implementations
+ * actually pass. `DataTableTotalCell` (which adds `isTotalRow: 1`) is what
+ * stock's `body-renderer.js:97-108` builds; carbon_frappe's `renderTotalCell`
+ * passes `{ column, colIndex }` and nothing else, and `report_column_total`
+ * reads only `column.column`, so requiring the stock-only member here would
+ * have made `hooks: { columnTotal: frappe.utils.report_column_total }` a type
+ * error against a live carbon_frappe bench. This alias still points at the
+ * stock shape, which is the shape it always named.
  *
  * @deprecated Import {@link DataTableTotalCell} from `frappe-types` instead.
  * This alias is kept only for source compatibility.
@@ -647,7 +657,7 @@ export interface FrappeUtils {
 	 */
 	report_column_total(
 		values: readonly unknown[],
-		column: DataTableTotalCell,
+		column: DataTableColumnTotalCell,
 		type?: "mean"
 	): number | "" | null;
 
