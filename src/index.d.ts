@@ -412,6 +412,7 @@ export type {
 	DataTableColumn,
 	DataTableColumnClass,
 	DataTableColumnInput,
+	DataTableColumnTotalCell,
 	DataTableCompareValue,
 	DataTableComponentOverrides,
 	DataTableConstructor,

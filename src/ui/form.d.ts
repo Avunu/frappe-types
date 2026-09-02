@@ -635,6 +635,17 @@ export declare class ControlInput extends BaseControl {
  * ```
  */
 export declare class ControlTable extends BaseControl {
+	/**
+	 * NARROWER than `BaseControl#df`, and true of this control specifically:
+	 * `ControlTable` is the Table-fieldtype control, and `controls/table.js:10`
+	 * hands `this.df` STRAIGHT to `new Grid({ df: this.df, … })`, whose
+	 * `GridOptions#df` is a {@link GridDocField}. Without the narrowing the
+	 * patch shown in this class's doc comment — the documented, and only,
+	 * way to swap the grid — does not type-check, because `GridDocField`
+	 * re-declares `data` more tightly than `DocField` does.
+	 */
+	override df: GridDocField;
+
 	/** controls/table.js:8. Reassignable — this is the swap point. */
 	grid: Grid;
 

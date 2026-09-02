@@ -1,51 +1,228 @@
 name: publish
 
-# Publishing is tag-driven so the npm version and the git history cannot drift.
-# Tag `v16.1.0` -> publishes 16.1.0. The package major mirrors the FRAPPE major,
-# so a v15 release is cut from the `version-15` branch and published under the
-# `v15` dist-tag rather than `latest`.
+# Publishes frappe-types to npm with OIDC trusted publishing and provenance. There is
+# no NPM_TOKEN and no NODE_AUTH_TOKEN anywhere in this repository: npm (>= 11.5.1)
+# exchanges the workflow's short-lived OIDC id-token for a publish credential, which is
+# why `permissions: id-token: write` below is load-bearing and `npm install -g npm@latest`
+# is not cosmetic — ubuntu-latest's bundled npm has repeatedly been older than the
+# minimum that knows how to do the exchange.
+#
+# This is a reusable workflow rather than `on: push: tags`. release-please creates the
+# release tag with GITHUB_TOKEN, and GitHub suppresses the events its own token raises,
+# so a tag-triggered workflow would never run at all. release-please.yml calls it.
+#
+# THE TRUSTED PUBLISHER ON npmjs.com MUST NAME `release-please.yml`, NOT THIS FILE.
+# npm's docs, verbatim: "Some GitHub Actions workflows use `workflow_call` to invoke other
+# workflows that run `npm publish` ... validation checks the calling workflow's name
+# instead of the workflow that actually contains the publish command, which can cause
+# configuration mismatches." Since release-please.yml is the entry point, the OIDC claim
+# npm validates names release-please.yml, and `GITHUB_WORKFLOW_REF` — which is also what
+# the provenance predicate records as the publishing workflow — says the same. Get this
+# wrong and the failure is opaque rather than obvious: npm's `lib/utils/oidc.js` is
+# documented "intended to never throw", returns undefined on a rejected exchange and logs
+# the reason only at `log.verbose`, so the run dies with a bare E401/E404 that never
+# mentions trusted publishing (npm/cli#9088). There is exactly one trusted publisher per
+# package, so this file deliberately has NO `workflow_dispatch` of its own — the backfill
+# entry point lives in release-please.yml so that every route to `npm publish` presents
+# the claim npm is expecting.
 
 on:
-  push:
-    tags: ["v*"]
+  workflow_call:
+    inputs:
+      sha:
+        description: Release commit to publish from (the release tag points here).
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write # the OIDC token npm trades for a publish credential
+
+# Two publishes of the same commit must not overlap. The `npm view` idempotence probe
+# below is a check-then-act, so two concurrent runs — a release-triggered publish and a
+# dispatched backfill of the same tag, say — can both observe "not published" before
+# either writes, and the loser then dies on a 403 that looks like a real failure. Queued
+# rather than cancelled: a publish is not a thing to interrupt half way through.
+concurrency:
+  group: publish-${{ inputs.sha || github.sha }}
+  cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write # npm provenance
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
         with:
-          node-version: 22
+          ref: ${{ inputs.sha || github.sha }}
+
+      # No `registry-url:`. It would only write an `_authToken=${NODE_AUTH_TOKEN}`
+      # placeholder into .npmrc for a variable this repository deliberately never sets,
+      # and @npmcli/config's env-replace leaves `${NODE_AUTH_TOKEN}` as a LITERAL when the
+      # variable is unset (only the `${VAR?}` form falls back to empty). npm therefore sees
+      # a truthy credential, `noCreds` is false, and publish.js skips the clean
+      # `ENEEDAUTH: This command requires you to be logged in` message — which is the exact
+      # string npm's own troubleshooting page tells you to read as "the workflow filename
+      # does not match" — in favour of a raw 401. npm defaults to registry.npmjs.org
+      # anyway, nothing here uses a scoped registry, and `cache: npm` does not need it.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
           cache: npm
-          registry-url: https://registry.npmjs.org
 
-      - run: npm ci
-      - run: npm run check
+      # Trusted publishing landed in npm 11.5.1; node 24 ships an 11.x that may predate it.
+      # This tracks npm majors unpinned by design — 12.0.2 was checked rather than assumed:
+      # `lib/utils/oidc.js` and publish.js's call ordering are behaviourally identical to
+      # 11.x, and its `engines` (^22.22.2 || ^24.15.0 || >=26) is satisfied by node 24.
+      - run: npm install -g npm@latest
 
-      - name: Refuse to publish if the tag and package.json disagree
+      # Before anything expensive, and before anything irreversible. npm's unpublish
+      # window is 72 hours and a wrong major on a package whose major IS the frappe
+      # version is not something you fix with a patch release. This is the LAST of the
+      # three places the check runs — release-please.yml's `guard-major` job is the one
+      # that catches it while it is still free to fix; this one runs when nobody is
+      # watching. It needs no node_modules.
+      - name: The package major must be the frappe major
+        run: npm run check:major
+
+      # One `npm view` decides both questions, so the whole install+typecheck is skipped
+      # on a re-run of an already-published version.
+      - name: Work out what to publish, and under which dist-tag
+        id: target
         run: |
-          tag="${GITHUB_REF_NAME#v}"
-          pkg="$(node -p "require('./package.json').version")"
-          if [ "$tag" != "$pkg" ]; then
-            echo "tag $tag != package.json $pkg"
-            exit 1
+          set -euo pipefail
+          name="$(node -p "require('./package.json').name")"
+          ver="$(node -p "require('./package.json').version")"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+
+          # Idempotence. Re-running a release must be safe: a workflow_dispatch backfill,
+          # a re-run of a partially failed release job, and a genuine first publish all
+          # take this same path, and only the last of them should reach the registry.
+          # A failed registry read here reads as "not published" and the job goes on to
+          # attempt a publish npm will refuse — which is the harmless direction, and the
+          # publish step below recognises that refusal and exits green.
+          if npm view "$name@$ver" version >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$name@$ver is already on the registry; nothing to publish."
+            exit 0
           fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
 
-      - name: Pick the dist-tag from the major
-        id: tag
-        run: |
-          major="$(node -p "require('./package.json').version.split('.')[0]")"
-          latest_major="$(node -p "require('./package.json').frappe.major")"
-          if [ "$major" = "$latest_major" ]; then
-            echo "dist=latest" >> "$GITHUB_OUTPUT"
+          # The dist-tag, derived from package.json and the registry rather than
+          # hardcoded — because getting it wrong is silent and expensive.
+          #
+          # The major mirrors the FRAPPE major, so `latest` does not mean "newest
+          # release", it means "the line for the current frappe major". A 16.0.5 cut
+          # from `version-16` after 17.x exists must go to `v16`, or every `npm i -D
+          # frappe-types` on a v17 site quietly downgrades to the v16 typeset. README's
+          # version table is the contract: v16 -> latest, v15 -> v15, prerelease ->
+          # its own identifier.
+          #
+          # The previous implementation compared version.major against
+          # package.json's frappe.major, which are equal BY CONSTRUCTION on every
+          # branch (scripts/check-frappe-major.mjs now enforces exactly that), so it
+          # resolved to `latest` unconditionally — including for a v15 maintenance
+          # release. The comparison has to be against something outside this checkout,
+          # and the registry's current `latest` is the only thing that knows which
+          # frappe major is current.
+          major="${ver%%.*}"
+          pre=""
+          case "$ver" in *-*) pre="${ver#*-}"; pre="${pre%%.*}" ;; esac
+
+          if [ -n "$pre" ]; then
+            # 17.0.0-develop.3 -> `develop`, matching `npm i -D frappe-types@develop`.
+            # A prerelease never takes `latest`, whatever its major.
+            dist="$pre"
           else
-            echo "dist=v$major" >> "$GITHUB_OUTPUT"
-          fi
+            # This query is the ONLY input that distinguishes a current-line release from
+            # a maintenance release, and the value it defaults to on failure — `latest` —
+            # is the destructive one. So it fails CLOSED. The earlier `2>/dev/null || true`
+            # swallowed every non-zero exit and mapped a registry 5xx, a rate limit or a
+            # DNS blip onto the same branch as "there is no latest yet": a 15.2.1
+            # maintenance release cut during a registry hiccup would have moved `latest`
+            # to the v15 typeset, silently, with a green run and a `-> dist-tag latest`
+            # notice that looked entirely normal.
+            #
+            # The two cases are distinguishable: a missing package or an unknown dist-tag
+            # exits 1 with `npm error code E404`, a server-side failure does not. Only
+            # E404 is treated as "there is no latest yet" — and for an already-published
+            # package that is close to impossible anyway, so failing closed costs nothing.
+            err="$(mktemp)"
+            if latest_ver="$(npm view "$name@latest" version 2>"$err")"; then
+              case "$latest_ver" in
+                [0-9]*) ;;
+                *)
+                  echo "::error::the registry answered with something that is not a version for $name@latest: '$latest_ver'"
+                  exit 1
+                  ;;
+              esac
+            elif grep -q 'E404' "$err"; then
+              latest_ver=""   # genuinely no `latest` yet; this release is it
+            else
+              echo "::error::could not read the current dist-tag \`latest\` from the registry; refusing to guess a dist-tag"
+              tail -n 20 "$err" >&2
+              exit 1
+            fi
 
-      - run: npm publish --provenance --tag ${{ steps.tag.outputs.dist }}
+            latest_major="${latest_ver%%.*}"
+            if [ -z "$latest_major" ]; then
+              dist="latest"                     # nothing holds `latest`; this release does
+            elif [ "$major" -ge "$latest_major" ]; then
+              dist="latest"                     # this line is current, or is taking over
+            else
+              dist="v$major"                    # maintenance on a superseded frappe major
+            fi
+          fi
+          echo "dist_tag=$dist" >> "$GITHUB_OUTPUT"
+          echo "::notice::$name@$ver -> dist-tag $dist"
+
+      - if: steps.target.outputs.skip != 'true'
+        run: npm ci
+
+      # The premise of this package is that it type-checks with `skipLibCheck: false`.
+      # Shipping an unchecked tree is worse than not shipping: a consumer who trusts
+      # these declarations has no cheaper way to find out they are broken than their own
+      # build failing. check.yml gates the merge; this gates the artifact.
+      - if: steps.target.outputs.skip != 'true'
+        run: npm run check
+
+      # `--provenance` attaches a signed, verifiable statement linking the tarball to
+      # this workflow run and this commit. It is NOT redundant with trusted publishing's
+      # automatic provenance: oidc.js only auto-enables it when `config.isDefault
+      # ('provenance')`, so the explicit flag is what makes provenance MANDATORY — drop
+      # `id-token: write` from either this file or the calling job and the automatic path
+      # would quietly publish an unattested tarball, while the flag fails the run.
+      #
+      # One known imprecision: libnpmpublish builds the predicate from `GITHUB_SHA` and
+      # `GITHUB_REF`, not from the ref this job checked out. On the release path they are
+      # the same commit. On a backfill dispatch of an older tag they are not, and the
+      # attestation names the branch head rather than the tag whose tree is in the
+      # tarball. There is no supported override; the backfill is rare and manual.
+      #
+      # Interpolating the dist-tag through `env:` rather than `${{ }}` inside the script
+      # keeps a value that ultimately derives from a registry response out of the shell's
+      # parse.
+      - name: Publish to npm (OIDC trusted publishing, with provenance)
+        if: steps.target.outputs.skip != 'true'
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          DIST_TAG: ${{ steps.target.outputs.dist_tag }}
+          NAME: ${{ steps.target.outputs.name }}
+          VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          log="$(mktemp)"
+          if npm publish --provenance --tag "$DIST_TAG" 2>&1 | tee "$log"; then
+            exit 0
+          fi
+          # The one refusal that means the release is FINE. The `npm view` probe above is
+          # a check-then-act, and the registry makes an accepted publish readable up to
+          # ~3 minutes after it succeeds, so a re-run inside that window sees "not
+          # published" and gets here. Treating it as a failure turns a healthy release
+          # into a red X and an investigation. Matched on npm's own wording rather than
+          # on the bare 403, which also covers genuine permission problems.
+          if grep -qi 'cannot publish over the previously published version' "$log"; then
+            echo "::notice::$NAME@$VERSION was already on the registry; treating as published."
+            exit 0
+          fi
+          exit 1

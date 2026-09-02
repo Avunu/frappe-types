@@ -1,0 +1,242 @@
+name: release
+
+# release-please owns the version number, the changelog and the tag. Nothing else
+# writes them: the hand bump that put 16.0.1 in package.json and left
+# package-lock.json on 16.0.0 is exactly the class of drift this removes.
+#
+# Conventional-commit subjects on this branch accumulate into a release pull request;
+# merging that pull request is the release. See scripts/check-frappe-major.mjs for the
+# one rule this repo adds on top of conventional commits — the major is the FRAPPE
+# major, so release-please is never allowed to bump it. `guard-major` below is the job
+# that enforces it while the release is still free to fix.
+#
+# This workflow is also the one npm authorizes. Trusted publishing validates the
+# CALLING workflow's filename, not the file that contains `npm publish`, so the trusted
+# publisher registered on npmjs.com must name `release-please.yml`. publish.yml's header
+# has the citation and the consequences.
+
+on:
+  push:
+    # One branch per frappe major (`version-16`, `version-15`), mirroring frappe's own
+    # branching. `target-branch` below is set from the pushed ref rather than left at
+    # its default (the repository's default branch), so a push to `version-15` cuts a
+    # 15.x release from the 15 line instead of silently re-running against version-16.
+    # Each branch carries its own manifest, so the two lines never see each other's
+    # versions.
+    branches: ["version-*"]
+
+  # Belt and braces. Today every merge to a release branch is a human clicking merge,
+  # which raises a `push` event, so this cron normally has nothing to do. It is here
+  # because the failure it prevents is silent and the cost of running it is a job that
+  # exits in twenty seconds:
+  #
+  #   * GitHub suppresses events raised by its own GITHUB_TOKEN. The moment this repo
+  #     grows the dependency-autopilot setup the owner runs elsewhere (dependabot with
+  #     auto-merge), those merges stop producing `push` events and the release pull
+  #     request quietly stops picking up commits. There is no error to notice.
+  #   * A transient GitHub 5xx inside the release-please job otherwise waits for the
+  #     next push to retry, which on a low-traffic typeset can be weeks.
+  #
+  # Weekly rather than daily to sit alongside check.yml's existing Monday cadence; this
+  # package releases on the order of once a fortnight, not once an hour. Scheduled runs
+  # only ever fire on the default branch, so `version-15` gets no cron nudge — it gets
+  # `push` and `workflow_dispatch`, which is enough for a maintenance line.
+  #
+  # Everything is idempotent: with nothing to release, release-please refreshes (or
+  # declines to open) its pull request and `publish` stays gated behind
+  # `releases_created`.
+  schedule:
+    - cron: "0 5 * * 1"
+
+  # Two manual entry points in one, distinguished by whether `publish_sha` is set.
+  #
+  # Empty: nudge release-please on the selected branch (the ordinary "why hasn't the
+  # release PR updated" button).
+  #
+  # Set: backfill a publish that release-please released but never pushed to npm — a run
+  # that died between tagging and publishing, or one where `releases_created` came back
+  # false on a re-run because the release pull request was already labelled
+  # `autorelease: tagged`. Point it at the release TAG (e.g. `v16.0.1`) so package.json
+  # carries the released version; `release-please` is skipped and `publish` runs alone.
+  #
+  # This lives here rather than on publish.yml — which is where it used to be — because
+  # npm's trusted publisher validates the workflow that INITIATES the run. A dispatch of
+  # publish.yml presents a claim naming `publish.yml`, the registered publisher names
+  # `release-please.yml`, and a package may only have one trusted publisher at a time, so
+  # the two entry points were mutually exclusive and the dead one was the recovery path.
+  # Both routes to `npm publish` now start here, so both authenticate.
+  workflow_dispatch:
+    inputs:
+      publish_sha:
+        description: "Backfill a publish: commit or tag to publish from, e.g. v16.0.1. Leave empty to just run release-please."
+        required: false
+        type: string
+        default: ""
+
+# `contents: write` creates the release commit, tag and GitHub release; `pull-requests:
+# write` opens and updates the release pull request. Deliberately NOT `id-token: write`:
+# job-level `permissions` replace the workflow default rather than being capped by it, so
+# the `publish` job's own block below is what propagates OIDC into the reusable workflow.
+# Granting it here would additionally hand the ability to mint repository OIDC tokens to
+# the `release-please` job, which runs a third-party action at a mutable major tag. In a
+# repository whose entire premise is that no publishing credential exists outside the
+# publish job, `grep -n 'id-token' .github/workflows/` should only ever hit the publish
+# job and publish.yml.
+permissions:
+  contents: write
+  pull-requests: write
+
+# The Monday cron and a Monday-morning merge can otherwise put two runs against the same
+# branch in flight at once, racing each other's release-PR update and tag write. Queued,
+# not cancelled: cancelling a run mid-way through `createReleases()` is how you get a tag
+# with no GitHub release. Keyed by ref so `version-15` and `version-16` never queue behind
+# each other.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    # `target-branch` is set from the pushed ref, and `workflow_dispatch` lets a
+    # maintainer select ANY ref — a tag, a feature branch. Running release-please with
+    # `defaultBranch` pointed at something that is not a release line is not a thing that
+    # should be one click away.
+    if: ${{ inputs.publish_sha == '' && startsWith(github.ref_name, 'version-') }}
+    runs-on: ubuntu-latest
+    outputs:
+      releases_created: ${{ steps.rp.outputs.releases_created }}
+      # The commit the release tag points at — the merge of the release pull request.
+      # publish.yml checks this out rather than the branch head, so a commit landing
+      # between the merge and the publish cannot end up inside the published tarball.
+      sha: ${{ steps.rp.outputs.sha }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          # Single root package, so its outputs come back unprefixed (`sha`, not
+          # `.--sha`) — path prefixing applies only to non-root components.
+          target-branch: ${{ github.ref_name }}
+
+  # THE gate on the frappe major, and the reason it is a job here rather than only a
+  # `pull_request` check in check.yml.
+  #
+  # release-please-action defaults `token:` to `${{ github.token }}`, so the release pull
+  # request is authored by GITHUB_TOKEN. GitHub does not raise workflow-triggering events
+  # for its own token, with one narrow exception: `pull_request` opened/synchronize/
+  # reopened runs ARE created, but in `action_required` — queued behind an "Approve
+  # workflows to run" banner until a human with write access clicks it. A merely *pending*
+  # check does not block the merge button. So check.yml's `frappe-major` job on the release
+  # PR is not a gate; it is a job that silently never ran. Left at that, the first `feat!:`
+  # on this branch would open `chore(version-16): release 17.0.0` with no red anything, get
+  # merged, and only then be caught by publish.yml — after the `v17.0.0` tag, the GitHub
+  # release and a 17.0.0 manifest commit had all landed on `version-16` and needed
+  # unpicking by hand. npm would be protected; git would not.
+  #
+  # This job runs in the same invocation that opens or updates that pull request, on a
+  # `push` event raised by a HUMAN's merge, so nothing suppresses it. It checks the
+  # package.json release-please wrote onto its own release branch — the file that carries
+  # the proposed version — and posts the verdict back as a commit status so the answer is
+  # visible on the pull request itself and not only in this run's log.
+  #
+  # It does not gate `publish`: by the time `publish` runs the release has already been
+  # cut, and publish.yml re-runs the same check against the released tree anyway.
+  guard-major:
+    needs: release-please
+    # Deliberately NOT gated on the action's `prs_created` output. `createPullRequests()`
+    # returns nothing at all for a run where the existing release pull request was already
+    # up to date (`maybeUpdateExistingPullRequest` short-circuits on an unchanged body) —
+    # and "up to date" includes "still proposing 17.0.0, same as last week". Gating on that
+    # output would check the wrong major exactly once and then go quiet. Running on every
+    # successful release-please run and rediscovering the pull request by label instead
+    # means the verdict is re-asserted, and re-posted to the PR, every time.
+    if: ${{ always() && needs.release-please.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: write # the commit status that surfaces this on the release PR
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: The version release-please proposes must be the frappe major
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          BASE: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          # `autorelease: pending` is release-please's own label for an open release pull
+          # request (manifest.js: DEFAULT_LABELS). Finding it by label rather than by
+          # reconstructing `release-please--branches--<base>` means this keeps working if
+          # the branch-naming scheme ever changes under us.
+          pr="$(gh pr list --state open --base "$BASE" --label 'autorelease: pending' \
+                  --json number,headRefName,headRefOid,title --limit 1 --jq '.[0] // empty')"
+          if [ -z "$pr" ]; then
+            echo "No open release pull request against $BASE; nothing to guard."
+            exit 0
+          fi
+          num="$(jq -r .number <<<"$pr")"
+          head="$(jq -r .headRefName <<<"$pr")"
+          oid="$(jq -r .headRefOid <<<"$pr")"
+          echo "Release pull request #$num ($head @ ${oid:0:7}): $(jq -r .title <<<"$pr")"
+
+          # The proposed version lives on the release BRANCH, not in this checkout —
+          # version-16's own package.json still says 16.0.1 while the release branch says
+          # 17.0.0. Fetch the one that will actually be published.
+          gh api "repos/${GH_REPO}/contents/package.json?ref=${head}" \
+            -H 'Accept: application/vnd.github.raw' > proposed-package.json
+
+          status=success
+          if ! node scripts/check-frappe-major.mjs proposed-package.json; then
+            status=failure
+          fi
+
+          # Report onto the release PR's head commit. A red X in this run's log is easy to
+          # miss when the thing you are looking at is the pull request; this puts the
+          # verdict in the pull request's own checks list. Best effort — the guard's
+          # authority is its exit code below, not the API call.
+          gh api "repos/${GH_REPO}/statuses/${oid}" \
+            -f state="$status" \
+            -f context="frappe-major (release PR)" \
+            -f target_url="$RUN_URL" \
+            -f description="The package major must equal package.json's frappe.major" \
+            >/dev/null || echo "::warning::could not post the commit status to #$num"
+
+          if [ "$status" = failure ]; then
+            echo "::error::release pull request #$num proposes a version whose major is not the frappe major. Do not merge it; see scripts/check-frappe-major.mjs."
+            exit 1
+          fi
+
+  # release-please creates the tag with GITHUB_TOKEN, and GitHub does not raise
+  # workflow-triggering events for its own token. `on: push: tags` and `on: release`
+  # would therefore NEVER fire — which is why the old tag-driven publish.yml is gone and
+  # this calls the (now reusable) workflow directly.
+  #
+  # `always()` because the `release-please` job is deliberately skipped on the backfill
+  # dispatch; without it a skipped dependency would skip this too.
+  #
+  # No `secrets: inherit`, and there is nothing to inherit: publishing authenticates via
+  # OIDC trusted publishing against npmjs.com. The absence of a token here is the point,
+  # not an oversight. Neither name is referenced as a secret or an env var anywhere in
+  # this repository; the only occurrences of those strings are comments like this one,
+  # explaining why they are absent.
+  publish:
+    needs: release-please
+    if: >-
+      ${{ always()
+      && (inputs.publish_sha != ''
+      || (needs.release-please.result == 'success'
+      && needs.release-please.outputs.releases_created == 'true')) }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish.yml
+    with:
+      sha: ${{ inputs.publish_sha || needs.release-please.outputs.sha }}

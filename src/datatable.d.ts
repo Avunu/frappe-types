@@ -136,13 +136,23 @@ export type DataTableCellValue = string | number | boolean | null | undefined;
  * `data` is the ORIGINAL row from `options.data` (`datamanager.js:603` `getData`),
  * NOT the prepared cell array.
  *
+ * `row` and `column` are `| undefined` because the two expressions
+ * `cellmanager.js:886` passes for them ARE optional: `row` is
+ * `datamanager.getRow(cell.rowIndex)`, declared `DataTableRow | undefined` on
+ * {@link DataManager} right here, and `column` is `cell.column`, declared `?` on
+ * {@link DataTableCell} right here — a data row longer than the column list
+ * leaves it unset. carbon_frappe reproduces both lookups verbatim
+ * (`tables/datatable/datatable.ts` `cellHTML`). A formatter that only ever runs
+ * on prepared cells may ignore the `undefined` arm; it may not be pretended
+ * away.
+ *
  * @remarks `query_report.js:1433-1447` declares its own `format` with the same
  * five parameters and forwards them to `report_settings.formatter`.
  */
 export type DataTableCellFormatter = (
 	value: DataTableCellValue,
-	row: DataTableRow | DataTableDataRow,
-	column: DataTableColumn,
+	row: DataTableRow | DataTableDataRow | undefined,
+	column: DataTableColumn | undefined,
 	data: DataTableDataRow | undefined,
 	filter?: DataTableGuessedFilter
 ) => string;
@@ -224,8 +234,17 @@ export interface DataTableCellBase {
 	/**
 	 * Memoised formatter output (`cellmanager.js:892` `cell.html = contentHTML`).
 	 * Also read back by `filterRows.js:48` for string comparisons.
+	 *
+	 * WIDER THAN `string`, because both implementations store more than one:
+	 * carbon_frappe memoises the RAW `content` here when the column has no
+	 * formatter, and writes `null` to invalidate the memo
+	 * (`tables/datatable/datatable.ts` `cellHTML` / `refreshRow` / `updateCell`);
+	 * stock's `updateCell` merges a caller's cell over the stored one
+	 * (`datamanager.js:400-422`), which carries whatever it was handed. The
+	 * memo is only ever READ back through the same `String()` the formatter path
+	 * ends in, so the wider type costs a consumer nothing.
 	 */
-	html?: string;
+	html?: DataTableCellValue;
 
 	/** Per-cell formatter; takes precedence over the column's (`cellmanager.js:971`). */
 	format?: DataTableCellFormatter;
@@ -511,30 +530,68 @@ export type DataTableGetEditor = (
 // ---------------------------------------------------------------------------
 
 /**
- * A total-row cell handed to `hooks.columnTotal`.
- * Built by `body-renderer.js:97-108`; `column` is the real column, which is what
- * `frappe.utils.report_column_total` reads (`utils.js:970` `column.column.disable_total`).
+ * A total-row cell without stock's `isTotalRow` marker.
+ *
+ * `colIndex` and `column` are the two members `frappe.utils.report_column_total`
+ * actually reads (`utils.js:970-975` `column.column.disable_total` /
+ * `.fieldtype`), so this is the minimum a `columnTotal` hook needs.
+ *
+ * @remarks This type was introduced to record a real divergence: carbon_frappe's
+ * `renderTotalCell` used to build only `{ column, colIndex }` where stock builds
+ * `{ content, isTotalRow: 1, colIndex, column }` (`body-renderer.js:97-108`).
+ * That divergence is FIXED — carbon_frappe now passes the full stock cell, and
+ * {@link DataTableHooks.columnTotal} is typed {@link DataTableTotalCell}
+ * accordingly. The type is kept because it is the honest minimum for anyone
+ * writing a hook that must tolerate an older carbon_frappe.
  */
-export interface DataTableTotalCell extends DataTableCell {
-	isTotalRow: 1;
+export interface DataTableColumnTotalCell extends DataTableCell {
 	colIndex: DataTableColIndex;
 	column: DataTableColumn;
 }
 
 /**
+ * A total-row cell as STOCK builds it (`body-renderer.js:97-108`), and as
+ * {@link BodyRenderer.getTotalRow} hands it back.
+ *
+ * `isTotalRow` is load-bearing, not a tag: `getCellHTML` keys the
+ * `data-is-total-row` attribute off it (`cellmanager.js:809-823`).
+ * carbon_frappe's `getTotalRow` and `renderTotalCell` both produce this shape.
+ */
+export interface DataTableTotalCell extends DataTableColumnTotalCell {
+	isTotalRow: 1;
+}
+
+/**
  * `options.hooks` (`defaults.js:63-65`).
  *
- * @remarks `columnTotal` is invoked with `this` bound to the DataTable instance
- * (`body-renderer.js:115` `.call(this.instance, columnValues, cell)`) and only
- * two arguments; the third parameter exists because
+ * @remarks `columnTotal` is invoked with the live datatable as its receiver
+ * (`body-renderer.js:115` `.call(this.instance, columnValues, cell)`, and
+ * `hook.call(this, values, cell)` in carbon_frappe's `renderTotalCell`) and with
+ * only two arguments; the third parameter exists because
  * `frappe.utils.report_column_total` declares it (`utils.js:969`) for its other
  * callers. Returning `null`/`undefined` falls through to the built-in numeric
  * sum (`body-renderer.js:116-129`).
+ *
+ * Declared WITHOUT a `this` parameter, for the same reason
+ * `frappe.utils.report_column_total` is (`utils.d.ts`): the two implementations
+ * bind two different receivers — stock's {@link DataTable} and carbon_frappe's
+ * `CarbonDataTable` — and those are not mutually assignable. carbon_frappe's
+ * goes ONE way, to {@link DataTable}: that is the whole point of
+ * {@link DataTableConstructor}, and what `window.DataTable = CarbonDataTable`
+ * (`tables/datatable/install.ts:28`) needs. The reverse is impossible — stock
+ * has nothing to answer {@link DataTableEngine} with — and the shims still
+ * diverge inside the shapes declared here, which is why so many members below
+ * are unions: `DataManager.getChildren` hands back prepared ROWS where stock
+ * hands back row INDICES, `DataManager.updateCell` implements only the
+ * three-argument form, `DataManager.updateRow` returns nothing, and
+ * `BodyRenderer.getTotalRow` omits `isTotalRow`. Naming stock's receiver would
+ * promise a hook members carbon_frappe genuinely does not supply, and naming a
+ * union would promise it a receiver it cannot use, so the receiver is
+ * documented rather than declared.
  */
 export interface DataTableHooks {
 	columnTotal?:
 		| ((
-				this: DataTable,
 				values: DataTableCellValue[],
 				cell: DataTableTotalCell,
 				type?: "mean"
@@ -647,8 +704,15 @@ export interface DataTableOptions {
 	/** Default `[]` (`defaults.js:7`). Falsy skips the initial render (`datatable.js:41`). */
 	data?: DataTableData;
 
-	/** Raw HTML for the dropdown toggle; default is a feather chevron (`defaults.js:8`, `icons.js:6`). */
-	dropdownButton?: string;
+	/**
+	 * Raw HTML for the dropdown toggle; default is a feather chevron
+	 * (`defaults.js:8`, `icons.js:6`).
+	 *
+	 * `| null` because carbon_frappe's own defaults hold `null` here
+	 * (`tables/datatable/datatable.ts` `defaults()`): it renders column menus
+	 * through Carbon's overflow menu and never reads this.
+	 */
+	dropdownButton?: string | null;
 
 	/**
 	 * EXTRA dropdown items. Concatenated after the six built-ins
@@ -666,8 +730,14 @@ export interface DataTableOptions {
 
 	overrideComponents?: DataTableComponentOverrides;
 
-	/** Default `filterRows` from `filterRows.js` (`defaults.js:87`). */
-	filterRows?: DataTableFilterRows;
+	/**
+	 * Default `filterRows` from `filterRows.js` (`defaults.js:87`).
+	 *
+	 * `| null` because carbon_frappe's own defaults hold `null` here
+	 * (`tables/datatable/datatable.ts` `defaults()`): row filtering is TanStack's
+	 * `columnFilters` state, and `filterRows.js` is never loaded.
+	 */
+	filterRows?: DataTableFilterRows | null;
 
 	/** Text inside the `.dt-freeze` overlay (`defaults.js:88`, `datatable.js:120-122`). */
 	freezeMessage?: string;
@@ -888,8 +958,20 @@ export declare class DataManager {
 	/**
 	 * `0`, `1` or `2` depending on `checkboxColumn` / `serialNoColumn`
 	 * (`datamanager.js:498-508`). Report View gets 2.
+	 *
+	 * Declared `number` rather than the `0 | 1 | 2` stock literally returns,
+	 * because this type has to admit BOTH implementations: carbon_frappe's shim
+	 * forwards `host.standardColumnCount`
+	 * (`tables/datatable/managers.ts:386-388`), which is the length of an array
+	 * the host pushes the auto-injected columns onto
+	 * (`tables/datatable/datatable.ts:159`) and so is a plain count no narrowing
+	 * can recover. Naming the literal union here would make
+	 * `window.DataTable = CarbonDataTable` (`tables/datatable/install.ts:28`) —
+	 * the very assignment {@link DataTableConstructor} exists to allow — a type
+	 * error. Every caller uses the result as a count anyway
+	 * (`columns.slice(this.getStandardColumnCount())`, `datamanager.js:490`).
 	 */
-	getStandardColumnCount(): 0 | 1 | 2;
+	getStandardColumnCount(): number;
 
 	getColumnCount(skipStandardColumns?: boolean): number;
 
@@ -901,27 +983,64 @@ export declare class DataManager {
 
 	getAllRowIndices(): DataTableRowIndex[];
 
-	/** All descendants of a tree node (`datamanager.js:546-565`). */
-	getChildren(parentRowIndex: DataTableRowIndex): DataTableRowIndex[];
+	/**
+	 * All descendants of a tree node (`datamanager.js:546-565`).
+	 *
+	 * The union is not hedging. Stock returns row INDICES; carbon_frappe's shim
+	 * returns the prepared ROWS themselves, by delegating to its host's
+	 * `getDescendants` (`tables/datatable/managers.ts:411-413`). Which one a
+	 * call site gets depends on which library is installed, so a caller has to
+	 * narrow — `typeof first === "number"` separates them, since a
+	 * {@link DataTableRow} is an array. Naming only stock's shape would make
+	 * `window.DataTable = CarbonDataTable` (`tables/datatable/install.ts:28`) a
+	 * type error.
+	 */
+	getChildren(parentRowIndex: DataTableRowIndex): DataTableRowIndex[] | DataTableRow[];
 
-	/** Direct children only (`datamanager.js:567-587`). */
-	getImmediateChildren(parentRowIndex: DataTableRowIndex): DataTableRowIndex[];
+	/**
+	 * Direct children only (`datamanager.js:567-587`). Same INDICES-vs-ROWS
+	 * split as {@link DataManager.getChildren}; carbon_frappe's shim is
+	 * `tables/datatable/managers.ts:414-416`.
+	 */
+	getImmediateChildren(
+		parentRowIndex: DataTableRowIndex
+	): DataTableRowIndex[] | DataTableRow[];
 
 	get(): { columns: DataTableColumn[]; rows: DataTableRow[] };
 
-	updateRow(row: DataTableCellInput[], rowIndex: DataTableRowIndex): DataTableRow;
+	/**
+	 * Stock replaces the prepared row and returns it (`datamanager.js:393-397`).
+	 * carbon_frappe's shim forwards to its host and returns nothing — the host
+	 * ends in `return this`, which is neither what stock returns nor anything a
+	 * caller could use, so the shim declares `void` deliberately
+	 * (`tables/datatable/managers.ts:215-219`, `:421-423`). Hence the `| void`:
+	 * the returned row is only there on stock.
+	 */
+	updateRow(row: DataTableCellInput[], rowIndex: DataTableRowIndex): DataTableRow | void;
 
 	/**
 	 * Mutates the cell in place and returns it (`datamanager.js:400-422`).
 	 * The single-argument form takes a cell that already carries `colIndex` and
-	 * `rowIndex` and merges it over the stored one.
+	 * `rowIndex` and merges it over the stored one — stock branches on
+	 * `typeof colIndex === 'object'` (`datamanager.js:401-408`).
+	 *
+	 * One signature with a union head rather than two overloads, because
+	 * carbon_frappe's shim implements ONLY the three-argument form
+	 * (`tables/datatable/managers.ts:424-430`) and so cannot satisfy a
+	 * one-argument overload — an overload pair here would make
+	 * `window.DataTable = CarbonDataTable` (`tables/datatable/install.ts:28`)
+	 * a type error. The one-argument call is a real behavioural divergence, not
+	 * a typing artefact: it throws against a carbon_frappe table.
+	 *
+	 * `| undefined` for the same reason `getCell` has it — stock indexes the
+	 * cell unguarded and would throw, carbon_frappe returns `undefined`
+	 * (`tables/datatable/managers.ts:350-353`).
 	 */
 	updateCell(
-		colIndex: DataTableColIndex,
-		rowIndex: DataTableRowIndex,
-		options: Partial<DataTableCell>
-	): DataTableCell;
-	updateCell(cell: DataTableCell): DataTableCell;
+		colIndex: DataTableColIndex | DataTableCell,
+		rowIndex?: DataTableRowIndex,
+		options?: Partial<DataTableCell>
+	): DataTableCell | undefined;
 
 	updateColumn(colIndex: DataTableColIndex, keyValPairs: Partial<DataTableColumn>): DataTableColumn | void;
 
@@ -1279,14 +1398,31 @@ export declare class BodyRenderer {
 	 */
 	visibleRowIndices: DataTableRowIndex[];
 
-	/** The row objects behind {@link visibleRowIndices} (`body-renderer.js:16`); read by `query_report.js:1868`. */
-	visibleRows: DataTableRow[];
+	/**
+	 * The row objects behind {@link visibleRowIndices} (`body-renderer.js:16`);
+	 * read by `query_report.js:1868`.
+	 *
+	 * Stock assigns the array it was handed (`body-renderer.js:16`
+	 * `this.visibleRows = rows`), so every element is there. carbon_frappe
+	 * rebuilds it by indexing `host.rows` with the render window's row indices
+	 * (`tables/datatable/managers.ts:794-798`) and cannot prove the lookup hits,
+	 * so a hole is representable. Narrow before use.
+	 */
+	visibleRows: Array<DataTableRow | undefined>;
 
 	/**
 	 * Computed footer totals as a cell array (`body-renderer.js:95-135`).
 	 * `query_report.js:1870` and `:1900` push it into exports.
+	 *
+	 * Typed as the WEAKER {@link DataTableColumnTotalCell}, not
+	 * {@link DataTableTotalCell}: stock stamps `isTotalRow: 1` on each cell
+	 * (`body-renderer.js:104`), carbon_frappe builds
+	 * `{ content, colIndex, column }` and no more
+	 * (`tables/datatable/datatable.ts:809-818`), so only the three members both
+	 * produce can be promised. A caller that wants `isTotalRow` must narrow —
+	 * and under carbon_frappe it is genuinely absent.
 	 */
-	getTotalRow(): DataTableTotalCell[];
+	getTotalRow(): DataTableColumnTotalCell[];
 
 	render(): void;
 
@@ -1567,7 +1703,19 @@ export declare class CellEditing {
  * points at (`tables/datatable/datatable.js:433`).
  */
 export interface DataTableEngineRenderer {
-	container: HTMLElement;
+	/**
+	 * The element the renderer mounted into — `undefined` until {@link
+	 * DataTableEngine.render | mount} has run. The renderer is constructed with
+	 * only its host and learns the element later
+	 * (`tables/engine/render.ts:307-308`, assigned in `mount` at
+	 * `tables/engine/render.ts:397-401`), so the field genuinely holds
+	 * `undefined` for the span between `new TableRenderer(this)` and
+	 * `renderer.mount(container)` inside the engine's constructor
+	 * (`tables/engine/table.ts:591`, `:598`). Reached through a live
+	 * `datatable.engine` it is always set; narrow anyway, or read
+	 * {@link DataTableEngine.container}, which is not optional.
+	 */
+	container: HTMLElement | undefined;
 	toolbar: HTMLElement;
 	scroll: HTMLElement;
 	table: HTMLTableElement;
@@ -1594,14 +1742,35 @@ export interface DataTableEngineTable {
 	getVisibleLeafColumns(): Array<{ id: string }>;
 	getColumn(id: string): unknown;
 	getRow(id: string): unknown;
-	setRowSelection(selection: Record<string, boolean>): void;
+	/**
+	 * TanStack v9 stores only the SELECTED ids — the state map is
+	 * `Record<string, true>`, never a `false` entry
+	 * (`@tanstack/table-core/dist/features/row-selection/rowSelectionFeature.types.d.ts:6`)
+	 * — and every TanStack setter takes a value OR an updater function
+	 * (`Updater<T> = T | ((old: T) => T)`, `dist/types/type-utils.d.ts:2`).
+	 * Restated inline rather than imported, for the reason given above.
+	 */
+	setRowSelection(
+		selection: Record<string, true> | ((old: Record<string, true>) => Record<string, true>)
+	): void;
 	setSorting(sorting: Array<{ id: string; desc: boolean }>): void;
 	setColumnFilters(filters: Array<{ id: string; value: unknown }>): void;
 	setColumnSizing(updater: (prev: Record<string, number>) => Record<string, number>): void;
 	setExpanded(expanded: Record<string, boolean> | true): void;
 	toggleAllRowsExpanded(expanded?: boolean): void;
 	resetColumnFilters(): void;
-	setOptions(updater: (prev: unknown) => unknown): void;
+	/**
+	 * TanStack's own options setter. The parameter stays `unknown`: it is either
+	 * a whole `TableOptions` object or an updater over one
+	 * (`Updater<TableOptions<TFeatures, TData>>`,
+	 * `@tanstack/table-core/dist/core/table/coreTablesFeature.types.d.ts:214`),
+	 * and `TableOptions` is the twenty-feature generic this interface refuses to
+	 * restate (see the note above). Anything narrower here is also WRONG — it
+	 * would not admit the real method, and `window.DataTable = CarbonDataTable`
+	 * (`tables/datatable/install.ts:28`) compares this surface structurally. A
+	 * caller building an argument from scratch must import TanStack's types.
+	 */
+	setOptions(newOptions: unknown): void;
 	store: { state: DataTableEngineState; subscribe(fn: () => void): unknown };
 }
 
@@ -1639,8 +1808,23 @@ export interface DataTableEngine {
 	render(): void;
 	/** Coalesced render, with a `.cancel()` (`table.js:93`, `:342`). */
 	scheduleRender(): void;
-	setData(data: unknown[]): this;
-	setColumns(columns: unknown[]): this;
+	/**
+	 * The engine's data is the PREPARED rows, not `options.data` — carbon_frappe
+	 * hands it `this.rows` (`tables/datatable/datatable.ts:217`). Nullable
+	 * because `CarbonTable.setData` accepts `null`/`undefined` as "leave it
+	 * alone" (`tables/engine/table.ts:780`).
+	 */
+	setData(data: readonly DataTableRow[] | null | undefined): this;
+
+	/**
+	 * Takes the engine's own column SPECS (`CarbonColumnSpec`,
+	 * `tables/engine/table.ts:787`), which are carbon_frappe's, not
+	 * frappe-datatable's {@link DataTableColumn} — left `readonly unknown[]`
+	 * here for the same reason the TanStack surface is: restating a type this
+	 * package does not own is the maintenance trap {@link DataTableEngineTable}
+	 * names.
+	 */
+	setColumns(columns: readonly unknown[] | null | undefined): this;
 	setColumnSize(columnId: string, px: number): this;
 	getColumnSize(columnId: string): number | null;
 	toggleFilters(show?: boolean): boolean;
