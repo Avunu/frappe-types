@@ -1,6 +1,6 @@
 {
   "name": "frappe-types",
-  "version": "16.0.0",
+  "version": "16.0.1",
   "description": "TypeScript type definitions for the Frappe Framework desk JS API (window.frappe)",
   "keywords": [
     "frappe",

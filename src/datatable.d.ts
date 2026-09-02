@@ -530,22 +530,19 @@ export type DataTableGetEditor = (
 // ---------------------------------------------------------------------------
 
 /**
- * The cell `hooks.columnTotal` is handed.
+ * A total-row cell without stock's `isTotalRow` marker.
  *
- * DIVERGENT, and this is the type that records it. Stock builds a complete
- * total-row cell — `{ content, isTotalRow: 1, colIndex, column }`
- * (`body-renderer.js:97-108`) — and passes THAT
- * ({@link DataTableTotalCell} below). carbon_frappe's `renderTotalCell`
- * (`tables/datatable/datatable.ts`) builds only `{ column, colIndex }`: it has
- * no total-row cell to speak of, because the totals are computed off the engine's
- * row model and written straight into the footer cell's content div.
+ * `colIndex` and `column` are the two members `frappe.utils.report_column_total`
+ * actually reads (`utils.js:970-975` `column.column.disable_total` /
+ * `.fieldtype`), so this is the minimum a `columnTotal` hook needs.
  *
- * So `colIndex` and `column` are the two members a hook may rely on, and they
- * are exactly the two `frappe.utils.report_column_total` reads
- * (`utils.js:970-975` `column.column.disable_total` / `.fieldtype`). A hook that
- * wants `content` or `isTotalRow` must narrow — under carbon_frappe they are
- * genuinely absent, and adding them there would change what every third-party
- * `columnTotal` hook sees.
+ * @remarks This type was introduced to record a real divergence: carbon_frappe's
+ * `renderTotalCell` used to build only `{ column, colIndex }` where stock builds
+ * `{ content, isTotalRow: 1, colIndex, column }` (`body-renderer.js:97-108`).
+ * That divergence is FIXED — carbon_frappe now passes the full stock cell, and
+ * {@link DataTableHooks.columnTotal} is typed {@link DataTableTotalCell}
+ * accordingly. The type is kept because it is the honest minimum for anyone
+ * writing a hook that must tolerate an older carbon_frappe.
  */
 export interface DataTableColumnTotalCell extends DataTableCell {
 	colIndex: DataTableColIndex;
@@ -556,11 +553,9 @@ export interface DataTableColumnTotalCell extends DataTableCell {
  * A total-row cell as STOCK builds it (`body-renderer.js:97-108`), and as
  * {@link BodyRenderer.getTotalRow} hands it back.
  *
- * carbon_frappe's `getTotalRow` returns cells WITHOUT `isTotalRow`
- * (`tables/datatable/datatable.ts`, mirrored by `BodyRendererShim.getTotalRow`
- * in `tables/datatable/managers.ts`, which declares `DataTableCell[]`), so under
- * carbon_frappe that method's elements are the weaker
- * {@link DataTableColumnTotalCell}. See the note on that type.
+ * `isTotalRow` is load-bearing, not a tag: `getCellHTML` keys the
+ * `data-is-total-row` attribute off it (`cellmanager.js:809-823`).
+ * carbon_frappe's `getTotalRow` and `renderTotalCell` both produce this shape.
  */
 export interface DataTableTotalCell extends DataTableColumnTotalCell {
 	isTotalRow: 1;
@@ -598,7 +593,7 @@ export interface DataTableHooks {
 	columnTotal?:
 		| ((
 				values: DataTableCellValue[],
-				cell: DataTableColumnTotalCell,
+				cell: DataTableTotalCell,
 				type?: "mean"
 		  ) => string | number | null | undefined)
 		| null;
