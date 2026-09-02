@@ -38,7 +38,7 @@ import type { DocField, FrappeDoc, ListViewSettings } from "frappe-types";
 | v15 | npm i -D frappe-types@^15 | v15 |
 | develop | npm i -D frappe-types@develop | develop |
 
-So `frappe-types@16.4.2` is the 3rd revision of the v16 typeset — never "types for frappe 16.4.2". `package.json` records the exact tag each release was verified against:
+So `frappe-types@16.4.2` is the 3rd revision of the v16 typeset — never "types for frappe 16.4.2". `latest` therefore does not mean "newest release" — it means "the line for the current frappe major"; a maintenance release on a superseded line is published to `v<major>` and never moves `latest`. `package.json` records the exact tag each release was verified against:
 
 ```jsonc
 "frappe": { "major": "16", "verifiedAgainst": "v16.33.0", "branch": "version-16" }
@@ -90,11 +90,35 @@ Every line it prints is a compile error waiting to happen in an app built under 
 
 ### Upgrading to a new frappe major
 
-1.  Branch: `git checkout -b version-17 version-16`, bump the major and `frappe.*` metadata in `package.json`.
-2.  `node scripts/audit-coverage.mjs --frappe /path/to/frappe-v17` — the diff against the previous baseline is the breaking-change report.
-3.  Fix what moved, re-cite the sources, `--update-baseline`, tag `v17.0.0`.
+1.  Branch: `git checkout -b version-17 version-16`, and set `frappe.major`, `frappe.branch` and `frappe.verifiedAgainst` in `package.json` to the new major. Leave `version` alone — release-please owns it.
+2.  In the **same** push, land a commit carrying a `Release-As: 17.0.0` footer. That is the _only_ way the major moves: `npm run check:major` fails any release whose major disagrees with `frappe.major`, so a stray `feat!:` cannot do it by accident (see [Releasing](#releasing)).
+3.  `node scripts/audit-coverage.mjs --frappe /path/to/frappe-v17` — the diff against the previous baseline is the breaking-change report.
+4.  Fix what moved, re-cite the sources, `--update-baseline`.
 
-The old branch keeps receiving fixes; `v16` stays installable.
+Step 2 is second, and not later, because the new branch inherits a `.release-please-manifest.json` still reading `16.0.x`. An ordinary `fix:` landing before the `Release-As:` commit therefore makes release-please propose **16.0.x** on a tree whose `frappe.major` is already `17` — and the guard fails, because it is symmetric and catches the undershoot too. That is the check working, not breaking; land the `Release-As: 17.0.0` commit and the release pull request rewrites itself on the next run.
+
+The old branch keeps receiving fixes; `v16` stays installable, and its releases go to the `v16` dist-tag once v17 holds `latest`.
+
+## Releasing
+
+Releases are cut by [release-please](https://github.com/googleapis/release-please). Nobody edits `version` by hand, and there is no `npm publish` from a laptop.
+
+1.  Land conventional commits on the release branch (`fix:` -> patch, `feat:` -> minor). Anything else is left out of the changelog.
+2.  release-please keeps an open **release pull request** with the next version and the accumulated changelog. Merging it _is_ the release: `.github/workflows/release-please.yml` tags `v16.1.0`, cuts the GitHub release, and — in that same run — calls `publish.yml` directly. It has to be a direct call: release-please creates the tag with `GITHUB_TOKEN`, and GitHub raises no workflow-triggering events for its own token, so `on: push: tags` and `on: release` would simply never fire.
+3.  `publish.yml` re-checks the major, type-checks the tree, and runs `npm publish --provenance` under **OIDC trusted publishing** — no npm token exists in this repository, and the published tarball carries a signed provenance statement linking it to the workflow run and commit that built it. It is idempotent: a version already on the registry is skipped, so re-running a release is safe.
+
+The dist-tag is derived at publish time from the version and the registry's current `latest`, so a 16.x release cut after v17 exists lands on `v16` rather than stealing `latest`. If the registry cannot be read, the publish **fails** rather than guessing — a wrong `latest` is not re-runnable (see the last bullet under Prerequisites).
+
+**The major never moves on its own.** The major is the frappe major, so a `feat!:` subject or a `BREAKING CHANGE:` footer proposing 17.0.0 is a bug, not a release. `release-please.yml`'s `guard-major` job checks the version release-please has written onto its release branch, in the same run that opens or updates the release pull request, and fails loudly there — plus it posts a `frappe-major (release PR)` commit status so the verdict shows up in the pull request's own checks list. `publish.yml` re-runs the same check immediately before `npm publish` as a last line of defence. Note where the gate is **not**: `check.yml`'s `frappe-major` job runs on `pull_request` and covers human pull requests, but release-please's PR is authored by `GITHUB_TOKEN`, and GitHub parks `pull_request` runs from `GITHUB_TOKEN`-authored pull requests in `action_required` behind an "Approve workflows to run" banner — a check nobody approved is pending, and pending blocks nothing. Breaking type changes ship as minors on the line they belong to. `scripts/check-frappe-major.mjs` carries the full rationale and the recovery steps.
+
+### Prerequisites, and things that are not in this repository
+
+-   **GitHub: "Allow GitHub Actions to create and approve pull requests"** must be ON (Settings -> Actions -> General -> Workflow permissions). `contents: write` + `pull-requests: write` in the workflow is necessary but not sufficient; that checkbox is off by default for organization-owned repositories, and without it the very first release-please run dies at PR creation with `GitHub Actions is not permitted to create or approve pull requests` — which reads like a bug in the workflow and is not one. Re-check it on any future `version-N` fork of the repo settings.
+-   **npm: the trusted publisher must name `release-please.yml`**, not `publish.yml`. npm validates the workflow that *initiates* the run, not the file containing `npm publish`, and `publish.yml` is reached through `workflow_call`. The filename is case-sensitive, `.yml` included, and npm does not validate the configuration when you save it — a mismatch surfaces only as an opaque `ENEEDAUTH`/401 at publish time. A package may have only one trusted publisher, which is why the manual backfill button lives on `release-please.yml` (its `publish_sha` input) rather than on `publish.yml`.
+-   **Merge the adoption commit with a merge commit or a rebase, not a squash under a non-conventional title.** The manifest is seeded one version behind on purpose so the two pending `fix:` subjects produce `16.0.1` with a changelog. Squash-merging them under a title like "Adopt release-please" collapses them into one unparseable commit: release-please opens no release pull request at all, and `package.json` sits at 16.0.1 against a manifest of 16.0.0 indefinitely. If it must be a squash, make the squash title itself a `fix:` subject.
+-   **Think twice before making any `check.yml` job a *required* status check on `version-*`.** It looks like the obvious belt-and-braces and it has a sharp edge: every `pull_request` run on release-please's own pull request is parked in `action_required`, so a required check there is permanently pending and the release pull request cannot be merged until someone clicks "Approve and run" on it, every single time. That is a defensible policy — it turns "silently un-run" into "cannot merge" — but choose it deliberately, and know that it is a click per release and not a free win. It is not what guards the major: `guard-major` in `release-please.yml` does that, and it needs no approval because it runs on a push.
+-   **There is no CI route to repair a wrong dist-tag.** npm's OIDC exchange is called from exactly one place in the CLI — `npm publish` — so `npm dist-tag add` cannot use trusted publishing. With no token anywhere in this repository (which is the point), moving a dist-tag back means an interactive `npm login` as a package owner. That asymmetry is why the dist-tag logic fails closed.
+-   **Optional hardening:** npm's trusted-publisher configuration accepts an environment name. Putting the publish job in a GitHub Environment with required reviewers, and recording that environment on npmjs.com, adds a review step to the manual backfill path — which today lets anyone with write access publish an arbitrary ref — and costs nothing on the automated path.
 
 ## Contributing
 
@@ -103,6 +127,7 @@ The old branch keeps receiving fixes; `v16` stays installable.
 -   `npm run check` must pass with `skipLibCheck: false`. A typeset that needs `skipLibCheck` isn't one.
 -   Classes that consumers subclass or prototype-patch must be `declare class`, not `interface` — `extends` and `super()` need a real class declaration.
 -   Frappe uses `0 | 1` for booleans on doc fields. Model it that way where the source does.
+-   Commit subjects are [conventional commits](https://www.conventionalcommits.org/) — they are the changelog and they choose the version. Never `!` or `BREAKING CHANGE:`: see [Releasing](#releasing).
 
 ## License
 

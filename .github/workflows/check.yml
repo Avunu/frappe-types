@@ -8,24 +8,64 @@ name: check
 #      so CI clones one at the branch this package tracks and ratchets coverage
 #      against coverage-baseline.json. New declarations always pass; regressions
 #      never do.
+#
+# A third gate, `frappe-major`, guards a fact neither of those can see: which frappe
+# version this package CLAIMS to be. Note what it does and does not cover. On a HUMAN
+# pull request it runs normally and catches someone editing `frappe.major` by hand. On
+# release-please's own pull request it does NOT: that PR is authored by GITHUB_TOKEN, and
+# GitHub parks `pull_request` runs from GITHUB_TOKEN-authored pull requests in
+# `action_required`, behind an "Approve workflows to run" banner, where a merely pending
+# check blocks nothing. The pre-merge gate on the release PR is therefore
+# release-please.yml's `guard-major` job, which runs on the human's merge push and cannot
+# be suppressed. This copy is the human-PR half of the same rule.
+# See scripts/check-frappe-major.mjs.
 
 on:
   push:
-    branches: [version-16]
+    # `version-*`, matching release-please.yml's trigger. They must agree: release
+    # automation is per-branch, so a `version-15` maintenance line that got release pull
+    # requests, tags and npm publishes with no push-side typecheck and no coverage
+    # ratchet would be worse than one with no automation at all.
+    branches: ["version-*"]
   pull_request:
   schedule:
     # frappe moves under us. A weekly run turns "these types drifted" into a red
     # build on a Monday instead of a surprise in a consumer app.
     - cron: "0 6 * * 1"
 
+# None of these jobs needs a token scope beyond reading the repo. Without this block they
+# would inherit the repository default, which on a repo created before the read-only
+# default is `contents: write` plus most other scopes — handed to three jobs that only
+# ever run `tsc` and a couple of node scripts.
+permissions:
+  contents: read
+
 jobs:
+  # `frappe-types@16.x.y` means "types for Frappe v16": the major encodes the FRAPPE
+  # major, not this package's own API compatibility. Conventional commits do not know
+  # that — a single `feat!:` or `BREAKING CHANGE:` footer makes release-please propose
+  # 17.0.0, which would publish the v16 typeset as types for a frappe that does not
+  # exist here. Breaking type changes are routine in a typeset (any tightened signature
+  # breaks a consumer), so this is the default outcome, not an edge case.
+  #
+  # Cheap, no dependencies, and first in the file because everything else is downstream
+  # of the package being what it says it is.
+  frappe-major:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - run: npm run check:major
+
   typecheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: "24"
           cache: npm
       - run: npm ci
       - run: npm run check
@@ -33,27 +73,45 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           path: frappe-types
 
+      # The frappe branch is read from package.json rather than hardcoded, so a
+      # `version-15` branch ratchets against frappe's version-15 without anyone
+      # remembering to edit this file. `frappe.branch` exists for exactly this, and
+      # check-frappe-major.mjs already warns when it disagrees with `frappe.major`.
+      - id: frappe
+        working-directory: frappe-types
+        # `jq`, not `node -p`: this step runs before setup-node, and depending on
+        # whatever node the runner image happens to preinstall is how a green job
+        # becomes a `node: command not found` after an image bump.
+        run: |
+          set -euo pipefail
+          ref="$(jq -r '.frappe.branch // empty' package.json)"
+          case "$ref" in
+            version-*) ;;
+            *) echo "::error::package.json frappe.branch is '$ref', which is not a frappe release branch"; exit 1 ;;
+          esac
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
       - name: Check out the frappe branch this package tracks
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           repository: frappe/frappe
-          ref: version-16
+          ref: ${{ steps.frappe.outputs.ref }}
           path: frappe
           fetch-depth: 1
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: "24"
           cache: npm
           cache-dependency-path: frappe-types/package-lock.json
 
       - run: npm ci
         working-directory: frappe-types
 
-      - name: Ratchet coverage against frappe version-16
+      - name: Ratchet coverage against the tracked frappe branch
         run: node scripts/audit-coverage.mjs --frappe ../frappe --strict --top 25
         working-directory: frappe-types

@@ -41,6 +41,7 @@
   "files": [
     "src",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "frappe": {
@@ -57,6 +58,7 @@
   },
   "scripts": {
     "check": "tsc --noEmit",
+    "check:major": "node scripts/check-frappe-major.mjs",
     "test": "tsc --noEmit && node scripts/audit-coverage.mjs --strict",
     "coverage": "node scripts/audit-coverage.mjs",
     "consumers": "node scripts/audit-consumer.mjs",

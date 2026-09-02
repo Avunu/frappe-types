@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "cbc0dd444126a1356ab8f451da67d404cf23dc35",
+  "include-v-in-tag": true,
+  "include-component-in-tag": false,
+  "separate-pull-requests": false,
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "frappe-types",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}
