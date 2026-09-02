@@ -1,0 +1,71 @@
+{
+  "name": "frappe-types",
+  "version": "16.0.0",
+  "description": "TypeScript type definitions for the Frappe Framework desk JS API (window.frappe)",
+  "keywords": [
+    "frappe",
+    "erpnext",
+    "types",
+    "typescript",
+    "typings",
+    "desk",
+    "frappe-framework"
+  ],
+  "homepage": "https://github.com/Avunu/frappe-types#readme",
+  "bugs": {
+    "url": "https://github.com/Avunu/frappe-types/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Avunu/frappe-types.git"
+  },
+  "license": "MIT",
+  "author": "Avunu LLC",
+  "type": "module",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts"
+    },
+    "./global": {
+      "types": "./src/global.d.ts"
+    },
+    "./modules": {
+      "types": "./src/modules.d.ts"
+    },
+    "./deep-modules": {
+      "types": "./src/deep-modules.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "frappe": {
+    "major": "16",
+    "verifiedAgainst": "v16.33.0",
+    "branch": "version-16"
+  },
+  "dependencies": {
+    "@types/jquery": "^3.5.34"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "typescript": "^7.0.2"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "tsc --noEmit && node scripts/audit-coverage.mjs --strict",
+    "coverage": "node scripts/audit-coverage.mjs",
+    "consumers": "node scripts/audit-consumer.mjs",
+    "upgrade": "npx npm-check-updates -u && yarn install"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

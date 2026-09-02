@@ -1,0 +1,51 @@
+name: publish
+
+# Publishing is tag-driven so the npm version and the git history cannot drift.
+# Tag `v16.1.0` -> publishes 16.1.0. The package major mirrors the FRAPPE major,
+# so a v15 release is cut from the `version-15` branch and published under the
+# `v15` dist-tag rather than `latest`.
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+      - run: npm run check
+
+      - name: Refuse to publish if the tag and package.json disagree
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "tag $tag != package.json $pkg"
+            exit 1
+          fi
+
+      - name: Pick the dist-tag from the major
+        id: tag
+        run: |
+          major="$(node -p "require('./package.json').version.split('.')[0]")"
+          latest_major="$(node -p "require('./package.json').frappe.major")"
+          if [ "$major" = "$latest_major" ]; then
+            echo "dist=latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "dist=v$major" >> "$GITHUB_OUTPUT"
+          fi
+
+      - run: npm publish --provenance --tag ${{ steps.tag.outputs.dist }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

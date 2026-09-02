@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "moduleDetection": "force",
+    "noEmit": true,
+    "declaration": true,
+    "emitDeclarationOnly": false,
+
+    // These declarations are consumed under `strict` with no escape hatches, so
+    // they are authored under the same rules they impose.
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // A typeset must be checkable on its own terms — a `skipLibCheck: true`
+    // here would hide exactly the errors this package exists to prevent.
+    "skipLibCheck": false,
+
+    "forceConsistentCasingInFileNames": true,
+    "types": ["jquery"]
+  },
+  "include": ["src/**/*.d.ts", "test/**/*.ts"],
+  "exclude": ["node_modules"]
+}

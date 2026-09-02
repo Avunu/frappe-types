@@ -1,0 +1,59 @@
+name: check
+
+# Two gates, because a typeset can fail in two unrelated ways:
+#
+#   1. The declarations stop type-checking on their own (`tsc --noEmit` with
+#      skipLibCheck OFF — a typeset that needs skipLibCheck is not a typeset).
+#   2. The declarations stop matching frappe. That needs a real frappe checkout,
+#      so CI clones one at the branch this package tracks and ratchets coverage
+#      against coverage-baseline.json. New declarations always pass; regressions
+#      never do.
+
+on:
+  push:
+    branches: [version-16]
+  pull_request:
+  schedule:
+    # frappe moves under us. A weekly run turns "these types drifted" into a red
+    # build on a Monday instead of a surprise in a consumer app.
+    - cron: "0 6 * * 1"
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: frappe-types
+
+      - name: Check out the frappe branch this package tracks
+        uses: actions/checkout@v5
+        with:
+          repository: frappe/frappe
+          ref: version-16
+          path: frappe
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frappe-types/package-lock.json
+
+      - run: npm ci
+        working-directory: frappe-types
+
+      - name: Ratchet coverage against frappe version-16
+        run: node scripts/audit-coverage.mjs --frappe ../frappe --strict --top 25
+        working-directory: frappe-types
