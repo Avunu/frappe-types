@@ -22,10 +22,6 @@ updates:
   # typescript, @types/node, @types/jquery. `importNpmLock` reads package-lock.json
   # directly, so a bump here needs no companion Nix change — there is no vendor hash
   # to regenerate, which is what lets npm and nix both be on autopilot.
-  #
-  # @types/jquery is deliberately held back elsewhere (`npm run upgrade` rejects it):
-  # frappe ships jQuery 3.7, and @types/jquery 4.x describes jQuery 4. If dependabot
-  # proposes a 4.x here, that is the one update in this repo to close rather than merge.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -35,6 +31,8 @@ updates:
     groups:
       npm:
         patterns: ["*"]
+    ignore:
+      - dependency-name: "@types/jquery"
 
   # ── Nix flake inputs, including the frappe source itself ─────────────────────────
   #
