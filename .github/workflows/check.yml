@@ -35,7 +35,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # `determinate: false` — this flake carries no Determinate-only nixConfig
+      # (FlakeHub substituters, lazy trees), so the default `true` buys nothing
+      # here and just has `determinate-nixd` try to log into FlakeHub for a repo
+      # that isn't registered there, logging a failure annotation on every run.
       - uses: DeterminateSystems/nix-installer-action@v22
+        with:
+          determinate: false
 
       # Backs /nix/store with the GitHub Actions cache. cache.nixos.org already serves
       # the nixpkgs half of the closure; what it cannot serve is this repo's own npm
@@ -47,6 +53,9 @@ jobs:
         with:
           # Perf/diagnostic telemetry to Determinate Systems is on by default.
           diagnostic-endpoint: ""
+          # This isn't a FlakeHub flake; without this the action logs its own
+          # FlakeHub-login-failure annotation on top of determinate-nixd's.
+          use-flakehub: false
 
       - name: nix flake check
         run: nix flake check -L
