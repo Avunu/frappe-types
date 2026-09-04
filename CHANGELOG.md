@@ -1,5 +1,12 @@
 # Changelog
 
+## [16.1.1](https://github.com/Avunu/frappe-types/compare/v16.1.0...v16.1.1) (2026-09-04)
+
+
+### Bug Fixes
+
+* enable provenance on the package config ([74af69a](https://github.com/Avunu/frappe-types/commit/74af69a9f9072f5a34876726aa02d6f4df21ea0a))
+
 ## [16.1.0](https://github.com/Avunu/frappe-types/compare/v16.0.1...v16.1.0) (2026-09-04)
 
 
