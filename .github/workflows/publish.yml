@@ -177,15 +177,33 @@ jobs:
           echo "dist_tag=$dist" >> "$GITHUB_OUTPUT"
           echo "::notice::$name@$ver -> dist-tag $dist"
 
-      - if: steps.target.outputs.skip != 'true'
-        run: npm ci
+      # The premise of this package is that it type-checks with `skipLibCheck: false`,
+      # against a KNOWN frappe. Shipping an unchecked tree is worse than not shipping:
+      # a consumer who trusts these declarations has no cheaper way to find out they
+      # are broken than their own build failing. check.yml gates the merge; this gates
+      # the artifact, and it is the last gate before something irreversible (npm's
+      # unpublish window is 72 hours).
+      #
+      # `nix flake check` rather than `npm ci && npm run check`, for the same reason
+      # check.yml uses it: three of the four checks are claims about a frappe source
+      # tree, and the flake pins exactly which one. A publish gated on `npm run check`
+      # alone would verify that the declarations parse, not that they still describe
+      # the frappe this release says it was verified against — which is the actual
+      # promise on the tin.
+      #
+      # It also removes the `npm ci` this step used to need: `npm publish` packs from
+      # `files` and runs no lifecycle scripts here, so the publish path itself wants no
+      # node_modules at all.
+      - uses: DeterminateSystems/nix-installer-action@v22
+        if: steps.target.outputs.skip != 'true'
 
-      # The premise of this package is that it type-checks with `skipLibCheck: false`.
-      # Shipping an unchecked tree is worse than not shipping: a consumer who trusts
-      # these declarations has no cheaper way to find out they are broken than their own
-      # build failing. check.yml gates the merge; this gates the artifact.
+      - uses: DeterminateSystems/magic-nix-cache-action@v14
+        if: steps.target.outputs.skip != 'true'
+        with:
+          diagnostic-endpoint: ""
+
       - if: steps.target.outputs.skip != 'true'
-        run: npm run check
+        run: nix flake check -L
 
       # `--provenance` attaches a signed, verifiable statement linking the tarball to
       # this workflow run and this commit. It is NOT redundant with trusted publishing's

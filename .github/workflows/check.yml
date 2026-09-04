@@ -1,117 +1,58 @@
 name: check
 
-# Two gates, because a typeset can fail in two unrelated ways:
+# Everything this repo asserts about itself, run through the flake so that CI and a
+# laptop measure the same tree:
 #
-#   1. The declarations stop type-checking on their own (`tsc --noEmit` with
-#      skipLibCheck OFF — a typeset that needs skipLibCheck is not a typeset).
-#   2. The declarations stop matching frappe. That needs a real frappe checkout,
-#      so CI clones one at the branch this package tracks and ratchets coverage
-#      against coverage-baseline.json. New declarations always pass; regressions
-#      never do.
+#   checks.typecheck        tsc --noEmit, with skipLibCheck OFF
+#   checks.coverage         the coverage ratchet, against the PINNED frappe
+#   checks.frappe-major     the package major is the frappe major
+#   checks.verified-against package.json's frappe.verifiedAgainst matches the pin
 #
-# A third gate, `frappe-major`, guards a fact neither of those can see: which frappe
-# version this package CLAIMS to be. Note what it does and does not cover. On a HUMAN
-# pull request it runs normally and catches someone editing `frappe.major` by hand. On
-# release-please's own pull request it does NOT: that PR is authored by GITHUB_TOKEN, and
-# GitHub parks `pull_request` runs from GITHUB_TOKEN-authored pull requests in
-# `action_required`, behind an "Approve workflows to run" banner, where a merely pending
-# check blocks nothing. The pre-merge gate on the release PR is therefore
-# release-please.yml's `guard-major` job, which runs on the human's merge push and cannot
-# be suppressed. This copy is the human-PR half of the same rule.
-# See scripts/check-frappe-major.mjs.
+# WHY NIX RATHER THAN `npm ci && npm run test`. Three of those four checks are claims
+# about a frappe source tree, and until the flake existed CI had to go and find one:
+# it cloned frappe at the branch named in package.json's `frappe.branch` and hoped.
+# That is a moving target by construction — the branch advances — so the coverage
+# ratchet failed on frappe's schedule rather than on this repo's changes, and a
+# developer running the same command locally measured whatever checkout happened to
+# sit at `../frappe` (which on a machine with a `develop` clone silently produced a
+# phantom 3-path regression). `inputs.frappe` in flake.nix pins a revision, flake.lock
+# records it, and dependabot moves it in a reviewable pull request.
+#
+# There is no `schedule:` here any more, and its absence is the point. It used to
+# exist to notice frappe drifting under us; with the source pinned, nothing drifts
+# except when the lock changes, and dependabot's weekly `nix` update is what proposes
+# that — as a pull request that runs these checks, rather than as a red build on a
+# Monday with no diff attached.
 
 on:
   push:
-    # `version-*`, matching release-please.yml's trigger. They must agree: release
-    # automation is per-branch, so a `version-15` maintenance line that got release pull
-    # requests, tags and npm publishes with no push-side typecheck and no coverage
-    # ratchet would be worse than one with no automation at all.
     branches: ["version-*"]
   pull_request:
-  schedule:
-    # frappe moves under us. A weekly run turns "these types drifted" into a red
-    # build on a Monday instead of a surprise in a consumer app.
-    - cron: "0 6 * * 1"
-
-# None of these jobs needs a token scope beyond reading the repo. Without this block they
-# would inherit the repository default, which on a repo created before the read-only
-# default is `contents: write` plus most other scopes — handed to three jobs that only
-# ever run `tsc` and a couple of node scripts.
-permissions:
-  contents: read
 
 jobs:
-  # `frappe-types@16.x.y` means "types for Frappe v16": the major encodes the FRAPPE
-  # major, not this package's own API compatibility. Conventional commits do not know
-  # that — a single `feat!:` or `BREAKING CHANGE:` footer makes release-please propose
-  # 17.0.0, which would publish the v16 typeset as types for a frappe that does not
-  # exist here. Breaking type changes are routine in a typeset (any tightened signature
-  # breaks a consumer), so this is the default outcome, not an edge case.
-  #
-  # Cheap, no dependencies, and first in the file because everything else is downstream
-  # of the package being what it says it is.
-  frappe-major:
+  flake:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+
+      - uses: DeterminateSystems/nix-installer-action@v22
+
+      # Backs /nix/store with the GitHub Actions cache. cache.nixos.org already serves
+      # the nixpkgs half of the closure; what it cannot serve is this repo's own npm
+      # dependency derivations (importNpmLock turns package-lock.json into one
+      # fixed-output derivation per tarball) or the unpacked frappe source, and those
+      # are what this recovers between runs. Fork pull requests get a read-only token
+      # and degrade to pull-only on their own, so no fork guard is needed.
+      - uses: DeterminateSystems/magic-nix-cache-action@v14
         with:
-          node-version: "24"
-      - run: npm run check:major
+          # Perf/diagnostic telemetry to Determinate Systems is on by default.
+          diagnostic-endpoint: ""
 
-  typecheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-          cache: npm
-      - run: npm ci
-      - run: npm run check
+      - name: nix flake check
+        run: nix flake check -L
 
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          path: frappe-types
-
-      # The frappe branch is read from package.json rather than hardcoded, so a
-      # `version-15` branch ratchets against frappe's version-15 without anyone
-      # remembering to edit this file. `frappe.branch` exists for exactly this, and
-      # check-frappe-major.mjs already warns when it disagrees with `frappe.major`.
-      - id: frappe
-        working-directory: frappe-types
-        # `jq`, not `node -p`: this step runs before setup-node, and depending on
-        # whatever node the runner image happens to preinstall is how a green job
-        # becomes a `node: command not found` after an image bump.
-        run: |
-          set -euo pipefail
-          ref="$(jq -r '.frappe.branch // empty' package.json)"
-          case "$ref" in
-            version-*) ;;
-            *) echo "::error::package.json frappe.branch is '$ref', which is not a frappe release branch"; exit 1 ;;
-          esac
-          echo "ref=$ref" >> "$GITHUB_OUTPUT"
-
-      - name: Check out the frappe branch this package tracks
-        uses: actions/checkout@v7
-        with:
-          repository: frappe/frappe
-          ref: ${{ steps.frappe.outputs.ref }}
-          path: frappe
-          fetch-depth: 1
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: frappe-types/package-lock.json
-
-      - run: npm ci
-        working-directory: frappe-types
-
-      - name: Ratchet coverage against the tracked frappe branch
-        run: node scripts/audit-coverage.mjs --frappe ../frappe --strict --top 25
-        working-directory: frappe-types
+      # The artifact a release would publish, built from the same tree. Cheap, and it
+      # is the only thing that answers "does `files` in package.json still ship the
+      # right 16 files?" — a question no type check can reach.
+      - name: nix build
+        run: nix build .#default -L

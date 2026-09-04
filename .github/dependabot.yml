@@ -1,0 +1,70 @@
+version: 2
+
+# Dependency autopilot. Every entry here exists to be merged without a human —
+# .github/workflows/dependabot-auto-merge.yml turns on auto-merge and the `flake` check
+# on `version-*` is what actually decides. Nothing here relaxes a check.
+#
+# Bumps use the `chore` type so they never cut a release on their own: release-please
+# only bumps on `fix:`/`feat:`, so dependency updates ride along with the next real
+# release instead of forcing one.
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    commit-message:
+      prefix: "chore"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # typescript, @types/node, @types/jquery. `importNpmLock` reads package-lock.json
+  # directly, so a bump here needs no companion Nix change — there is no vendor hash
+  # to regenerate, which is what lets npm and nix both be on autopilot.
+  #
+  # @types/jquery is deliberately held back elsewhere (`npm run upgrade` rejects it):
+  # frappe ships jQuery 3.7, and @types/jquery 4.x describes jQuery 4. If dependabot
+  # proposes a 4.x here, that is the one update in this repo to close rather than merge.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    commit-message:
+      prefix: "chore"
+    groups:
+      npm:
+        patterns: ["*"]
+
+  # ── Nix flake inputs, including the frappe source itself ─────────────────────────
+  #
+  # This is the entry that matters most here, and it is not really a dependency bump —
+  # it is how this repo learns that frappe moved. `inputs.frappe` pins
+  # github:frappe/frappe/version-16, so a weekly bump is a pull request saying "v16
+  # advanced; do the types still hold?", answered by `nix flake check` on that very PR.
+  #
+  # Expect these to need a human more often than the other two, and that is correct
+  # rather than a misconfiguration. A frappe bump can legitimately fail two checks:
+  #
+  #   * `coverage` — frappe renamed or removed a path this typeset covered. The audit
+  #     cannot tell that apart from a declaration breaking (it says so, and how to
+  #     tell), so re-record with `--update-baseline` once the diff is understood.
+  #   * `verified-against` — package.json's `frappe.verifiedAgainst` is a published
+  #     claim about which frappe tag these declarations were checked against, and it
+  #     has to follow the pin. The check prints the exact value to paste.
+  #
+  # Both are one-line edits pushed onto the dependabot branch. Weekly with a cooldown
+  # rather than daily, because each one is a real review.
+  - package-ecosystem: "nix"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "chore"
+    open-pull-requests-limit: 5
+    groups:
+      flake-inputs:
+        patterns: ["*"]
+    cooldown:
+      default-days: 3

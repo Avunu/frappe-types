@@ -1,0 +1,55 @@
+name: dependabot auto-merge
+
+# Turns on auto-merge for Dependabot pull requests. GitHub then merges each one once it
+# is mergeable and the *required* status checks are green — so this is only a gate if
+# `flake` is protected on `version-*`. Without that protection this merges on red.
+#
+# Merging publishes nothing: dependency bumps carry the `chore` type (see
+# .github/dependabot.yml) and release-please only bumps on `fix:`/`feat:`, so they ride
+# along with the next real release rather than cutting one.
+#
+# Requires, one-time, in repository settings:
+#   * Settings -> General -> Pull Requests -> "Allow auto-merge"
+#   * Settings -> Branches -> protect `version-16`, require the `flake` check
+#
+# THAT SECOND ONE IS A REAL TRADE, not a formality — README's "Releasing" section has the
+# long version. Requiring `flake` is what stops this workflow merging a red dependabot
+# pull request; it ALSO parks release-please's own pull request, because GitHub queues
+# `pull_request` runs on GITHUB_TOKEN-authored pull requests in `action_required` behind
+# an "Approve workflows to run" banner, and a required check that nobody approved stays
+# pending forever. So the choice is: require it and click "Approve and run" once per
+# release, or leave it unrequired and accept that auto-merge is trusting rather than
+# gating. Dependabot pull requests are unaffected either way — `dependabot[bot]` is not
+# GITHUB_TOKEN, so their checks run normally.
+#
+# The `nix` ecosystem is the one that will not always sail through, by design: a frappe
+# bump can legitimately fail `coverage` or `verified-against` and needs a one-line
+# follow-up commit on the branch. Auto-merge simply waits — a red check never merges.
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    steps:
+      # Not strictly needed to enable auto-merge, but it is what makes the step below
+      # able to distinguish update types later without re-parsing the branch name.
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Squash: these branches are one mechanical commit and their history is noise.
+      # The squash title is Dependabot's `chore(...)` subject, which release-please
+      # parses and correctly declines to release on.
+      - name: Enable auto-merge
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

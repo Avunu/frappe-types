@@ -73,16 +73,38 @@ Two audits, both driven by the real type checker rather than by grepping the `.d
 **How much of frappe do we cover?** Recovers frappe's API surface from a checkout three ways (`frappe.provide()` calls, assignments, and every path frappe's own code reads back), then probes each one against these declarations:
 
 ```bash
-node scripts/audit-coverage.mjs --frappe ../frappe
-node scripts/audit-coverage.mjs --frappe ../frappe --strict   # CI: fail on regression
-node scripts/audit-coverage.mjs --frappe ../frappe --update-baseline
+nix flake check -L                    # everything below, against the pinned frappe
+nix develop -c npm run coverage       # the report, in a shell that exports FRAPPE_PATH
+nix develop -c npm run coverage -- --update-baseline
 ```
 
-The `--frappe` path is worth passing explicitly. Left off, the audit takes the first checkout it
-finds — and `../frappe`, a sibling clone that is very often on `develop`, is tried before the bench.
-Measuring the v16 typeset against a v17 checkout makes the surface grow and the percentage fall with
-identical declarations, which reads exactly like a regression. The audit now refuses that outright
-rather than reporting it; see `--cross-major` under _Upgrading to a new frappe major_.
+**Which frappe?** The one `flake.nix` pins — `inputs.frappe`, a non-flake input at
+`github:frappe/frappe/version-16`, with the exact revision in `flake.lock`. That pin is the single
+declaration of what this branch is types _for_, and everything the package claims about itself (the
+coverage number, `frappe.verifiedAgainst`, "verified against frappe source") is a claim about that
+tree. It moves only through a reviewable [dependabot](.github/dependabot.yml) pull request, which
+runs these same checks on the proposed revision.
+
+Before the pin, the audit went looking for a checkout: `../frappe` is tried before the bench, so on a
+machine that also has a `develop` clone it silently measured the v16 typeset against frappe
+17.0.0-dev and reported a three-path "regression" that did not exist. Outside Nix the scripts still
+resolve a checkout and still take `--frappe`/`FRAPPE_PATH`, and they now refuse a cross-major one
+outright rather than reporting it as a regression — see `--cross-major` under _Upgrading to a new
+frappe major_. Inside `nix develop`, `FRAPPE_PATH` is already the pin, so the question does not
+arise.
+
+`nix flake check` runs four checks, each its own derivation so a failure names itself:
+
+| check | asserts |
+| --- | --- |
+| `typecheck` | `tsc --noEmit` with `skipLibCheck: false` |
+| `coverage` | the ratchet against the pinned frappe |
+| `frappe-major` | the package major is the frappe major |
+| `verified-against` | `package.json`'s `frappe.verifiedAgainst` matches the pin |
+
+`nix build` produces the tarball npm would publish — the cheapest way to check that `files` still
+ships the right set and nothing else. It is not how a release is published: `publish.yml` runs
+`npm publish` so that OIDC trusted publishing and the provenance attestation apply.
 
 It prints undeclared paths ranked by how many frappe source files depend on them — which is the to-do list, in priority order.
 
@@ -96,7 +118,7 @@ Every line it prints is a compile error waiting to happen in an app built under 
 
 ### Upgrading to a new frappe major
 
-1.  Branch: `git checkout -b version-17 version-16`, and set `frappe.major`, `frappe.branch` and `frappe.verifiedAgainst` in `package.json` to the new major. Leave `version` alone — release-please owns it.
+1.  Branch: `git checkout -b version-17 version-16`. Point `inputs.frappe.url` in `flake.nix` at `github:frappe/frappe/version-17` and run `nix flake lock --update-input frappe`, then set `frappe.major`, `frappe.branch` and `frappe.verifiedAgainst` in `package.json` to match. Leave `version` alone — release-please owns it. (`checks.verified-against` fails until `verifiedAgainst` agrees with the new pin, and prints the exact value to paste.)
 2.  In the **same** push, land a commit carrying a `Release-As: 17.0.0` footer. That is the _only_ way the major moves: `npm run check:major` fails any release whose major disagrees with `frappe.major`, so a stray `feat!:` cannot do it by accident (see [Releasing](#releasing)).
 3.  `node scripts/audit-coverage.mjs --frappe /path/to/frappe-v17 --cross-major` — the diff against the previous baseline is the breaking-change report. `--cross-major` is required: without it the audit refuses to measure a v17 checkout against a typeset whose `frappe.major` is still 16, because the resulting numbers look like a coverage regression and are not one. It reports only — no ratchet, no baseline write.
 4.  Fix what moved, re-cite the sources, `--update-baseline`.
@@ -115,14 +137,14 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
 
 The dist-tag is derived at publish time from the version and the registry's current `latest`, so a 16.x release cut after v17 exists lands on `v16` rather than stealing `latest`. If the registry cannot be read, the publish **fails** rather than guessing — a wrong `latest` is not re-runnable (see the last bullet under Prerequisites).
 
-**The major never moves on its own.** The major is the frappe major, so a `feat!:` subject or a `BREAKING CHANGE:` footer proposing 17.0.0 is a bug, not a release. `release-please.yml`'s `guard-major` job checks the version release-please has written onto its release branch, in the same run that opens or updates the release pull request, and fails loudly there — plus it posts a `frappe-major (release PR)` commit status so the verdict shows up in the pull request's own checks list. `publish.yml` re-runs the same check immediately before `npm publish` as a last line of defence. Note where the gate is **not**: `check.yml`'s `frappe-major` job runs on `pull_request` and covers human pull requests, but release-please's PR is authored by `GITHUB_TOKEN`, and GitHub parks `pull_request` runs from `GITHUB_TOKEN`\-authored pull requests in `action_required` behind an "Approve workflows to run" banner — a check nobody approved is pending, and pending blocks nothing. Breaking type changes ship as minors on the line they belong to. `scripts/check-frappe-major.mjs` carries the full rationale and the recovery steps.
+**The major never moves on its own.** The major is the frappe major, so a `feat!:` subject or a `BREAKING CHANGE:` footer proposing 17.0.0 is a bug, not a release. `release-please.yml`'s `guard-major` job checks the version release-please has written onto its release branch, in the same run that opens or updates the release pull request, and fails loudly there — plus it posts a `frappe-major (release PR)` commit status so the verdict shows up in the pull request's own checks list. `publish.yml` re-runs the same check immediately before `npm publish` as a last line of defence. Note where the gate is **not**: `check.yml`'s `flake` job runs on `pull_request` and covers human pull requests, but release-please's PR is authored by `GITHUB_TOKEN`, and GitHub parks `pull_request` runs from `GITHUB_TOKEN`\-authored pull requests in `action_required` behind an "Approve workflows to run" banner — a check nobody approved is pending, and pending blocks nothing. Breaking type changes ship as minors on the line they belong to. `scripts/check-frappe-major.mjs` carries the full rationale and the recovery steps.
 
 ### Prerequisites, and things that are not in this repository
 
 -   **GitHub: "Allow GitHub Actions to create and approve pull requests"** must be ON (Settings -> Actions -> General -> Workflow permissions). `contents: write` + `pull-requests: write` in the workflow is necessary but not sufficient; that checkbox is off by default for organization-owned repositories, and without it the very first release-please run dies at PR creation with `GitHub Actions is not permitted to create or approve pull requests` — which reads like a bug in the workflow and is not one. Re-check it on any future `version-N` fork of the repo settings.
 -   **npm: the trusted publisher must name `release-please.yml`**, not `publish.yml`. npm validates the workflow that _initiates_ the run, not the file containing `npm publish`, and `publish.yml` is reached through `workflow_call`. The filename is case-sensitive, `.yml` included, and npm does not validate the configuration when you save it — a mismatch surfaces only as an opaque `ENEEDAUTH`/401 at publish time. A package may have only one trusted publisher, which is why the manual backfill button lives on `release-please.yml` (its `publish_sha` input) rather than on `publish.yml`.
 -   **Merge the adoption commit with a merge commit or a rebase, not a squash under a non-conventional title.** The manifest is seeded one version behind on purpose so the two pending `fix:` subjects produce `16.0.1` with a changelog. Squash-merging them under a title like "Adopt release-please" collapses them into one unparseable commit: release-please opens no release pull request at all, and `package.json` sits at 16.0.1 against a manifest of 16.0.0 indefinitely. If it must be a squash, make the squash title itself a `fix:` subject.
--   **Think twice before making any `check.yml` job a _required_ status check on `version-*`.** It looks like the obvious belt-and-braces and it has a sharp edge: every `pull_request` run on release-please's own pull request is parked in `action_required`, so a required check there is permanently pending and the release pull request cannot be merged until someone clicks "Approve and run" on it, every single time. That is a defensible policy — it turns "silently un-run" into "cannot merge" — but choose it deliberately, and know that it is a click per release and not a free win. It is not what guards the major: `guard-major` in `release-please.yml` does that, and it needs no approval because it runs on a push.
+-   **Think twice before making `check.yml`'s `flake` job a _required_ status check on `version-*`.** It looks like the obvious belt-and-braces and it has a sharp edge: every `pull_request` run on release-please's own pull request is parked in `action_required`, so a required check there is permanently pending and the release pull request cannot be merged until someone clicks "Approve and run" on it, every single time. That is a defensible policy — it turns "silently un-run" into "cannot merge" — but choose it deliberately, and know that it is a click per release and not a free win. It is not what guards the major: `guard-major` in `release-please.yml` does that, and it needs no approval because it runs on a push.
 -   **There is no CI route to repair a wrong dist-tag.** npm's OIDC exchange is called from exactly one place in the CLI — `npm publish` — so `npm dist-tag add` cannot use trusted publishing. With no token anywhere in this repository (which is the point), moving a dist-tag back means an interactive `npm login` as a package owner. That asymmetry is why the dist-tag logic fails closed.
 -   **Optional hardening:** npm's trusted-publisher configuration accepts an environment name. Putting the publish job in a GitHub Environment with required reviewers, and recording that environment on npmjs.com, adds a review step to the manual backfill path — which today lets anyone with write access publish an arbitrary ref — and costs nothing on the automated path.
 
