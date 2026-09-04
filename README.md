@@ -38,7 +38,7 @@ import type { DocField, FrappeDoc, ListViewSettings } from "frappe-types";
 | v15 | npm i -D frappe-types@^15 | v15 (not yet available) |
 | develop | npm i -D frappe-types@develop | develop (not yet available) |
 
-So `frappe-types@16.4.2` is the 3rd revision of the v16 typeset — never "types for frappe 16.4.2". `latest` therefore does not mean "newest release" — it means "the line for the current frappe major"; a maintenance release on a superseded line is published to `v<major>` and never moves `latest`. `package.json` records the exact tag each release was verified against:
+So `frappe-types@16.4.2` is a revision of the v16 typeset, not "types for frappe 16.4.2". `latest` therefore does not mean "newest release" — it means "the line for the current frappe major"; a maintenance release on a superseded line is published to `v<major>` and never moves `latest`. `package.json` records the exact tag each release was verified against:
 
 ```jsonc
 "frappe": { "major": "16", "verifiedAgainst": "v16.33.0", "branch": "version-16" }
@@ -78,33 +78,20 @@ nix develop -c npm run coverage       # the report, in a shell that exports FRAP
 nix develop -c npm run coverage -- --update-baseline
 ```
 
-**Which frappe?** The one `flake.nix` pins — `inputs.frappe`, a non-flake input at
-`github:frappe/frappe/version-16`, with the exact revision in `flake.lock`. That pin is the single
-declaration of what this branch is types _for_, and everything the package claims about itself (the
-coverage number, `frappe.verifiedAgainst`, "verified against frappe source") is a claim about that
-tree. It moves only through a reviewable [dependabot](.github/dependabot.yml) pull request, which
-runs these same checks on the proposed revision.
+**Which frappe?** The one `flake.nix` pins — `inputs.frappe`, a non-flake input at `github:frappe/frappe/version-16`, with the exact revision in `flake.lock`. That pin is the single declaration of what this branch is types _for_, and everything the package claims about itself (the coverage number, `frappe.verifiedAgainst`, "verified against frappe source") is a claim about that tree. It moves only through a reviewable [dependabot](.github/dependabot.yml) pull request, which runs these same checks on the proposed revision.
 
-Before the pin, the audit went looking for a checkout: `../frappe` is tried before the bench, so on a
-machine that also has a `develop` clone it silently measured the v16 typeset against frappe
-17.0.0-dev and reported a three-path "regression" that did not exist. Outside Nix the scripts still
-resolve a checkout and still take `--frappe`/`FRAPPE_PATH`, and they now refuse a cross-major one
-outright rather than reporting it as a regression — see `--cross-major` under _Upgrading to a new
-frappe major_. Inside `nix develop`, `FRAPPE_PATH` is already the pin, so the question does not
-arise.
+Before the pin, the audit went looking for a checkout: `../frappe` is tried before the bench, so on a machine that also has a `develop` clone it silently measured the v16 typeset against frappe 17.0.0-dev and reported a three-path "regression" that did not exist. Outside Nix the scripts still resolve a checkout and still take `--frappe`/`FRAPPE_PATH`, and they now refuse a cross-major one outright rather than reporting it as a regression — see `--cross-major` under _Upgrading to a new frappe major_. Inside `nix develop`, `FRAPPE_PATH` is already the pin, so the question does not arise.
 
 `nix flake check` runs four checks, each its own derivation so a failure names itself:
 
 | check | asserts |
 | --- | --- |
-| `typecheck` | `tsc --noEmit` with `skipLibCheck: false` |
-| `coverage` | the ratchet against the pinned frappe |
-| `frappe-major` | the package major is the frappe major |
-| `verified-against` | `package.json`'s `frappe.verifiedAgainst` matches the pin |
+| typecheck | tsc --noEmit with skipLibCheck: false |
+| coverage | the ratchet against the pinned frappe |
+| frappe-major | the package major is the frappe major |
+| verified-against | package.json's frappe.verifiedAgainst matches the pin |
 
-`nix build` produces the tarball npm would publish — the cheapest way to check that `files` still
-ships the right set and nothing else. It is not how a release is published: `publish.yml` runs
-`npm publish` so that OIDC trusted publishing and the provenance attestation apply.
+`nix build` produces the tarball npm would publish — the cheapest way to check that `files` still ships the right set and nothing else. It is not how a release is published: `publish.yml` runs `npm publish` so that OIDC trusted publishing and the provenance attestation apply.
 
 It prints undeclared paths ranked by how many frappe source files depend on them — which is the to-do list, in priority order.
 
