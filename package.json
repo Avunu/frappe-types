@@ -62,7 +62,7 @@
     "test": "tsc --noEmit && node scripts/audit-coverage.mjs --strict",
     "coverage": "node scripts/audit-coverage.mjs",
     "consumers": "node scripts/audit-consumer.mjs",
-    "upgrade": "npx npm-check-updates -u && yarn install"
+    "upgrade": "npx npm-check-updates -u --reject @types/jquery && npm install"
   },
   "publishConfig": {
     "access": "public"
