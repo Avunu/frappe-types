@@ -76,6 +76,48 @@ jobs:
       # 11.x, and its `engines` (^22.22.2 || ^24.15.0 || >=26) is satisfied by node 24.
       - run: npm install -g npm@latest
 
+      # Resolved NOW, before anything nix-related runs, and used by absolute path in
+      # the actual publish step below rather than trusting a bare `npm` to still mean
+      # this one by then.
+      #
+      # Observed live, backfilling v16.1.1: after `nix-installer-action` and
+      # `magic-nix-cache-action` ran (the `has-flake` branch below), a LATER `npm
+      # publish` in the SAME job resolved `node v22.23.2` / `npm v10.9.8` — a
+      # different, OLDER toolchain than the node 24 / npm 12 this step just installed
+      # a few steps earlier, with nothing in between that should touch either. Exactly
+      # how the Nix installers alter PATH for later steps isn't documented; what's
+      # verified is that they do, and that the effect only appears on runs that take
+      # the flake branch — the v16.0.1 backfill, whose pre-nix tree has no flake.nix
+      # and skips both actions entirely, published fine on the first try.
+      #
+      # The failure this produces is the worst kind: npm < 11.5.1 has no
+      # trusted-publishing code path at all, so it isn't an OIDC error — that code
+      # never runs — it's the bare `ENEEDAUTH: This command requires you to be logged
+      # in` any logged-out `npm publish` gives, which reads exactly like a credentials
+      # problem and sent two separate debugging passes chasing the registry side
+      # before this env-mismatch turned up in a plain `npm verbose node`/`npm verbose
+      # npm` line. Binding to the resolved absolute path sidesteps needing to know
+      # which of the two actions is responsible, or trusting neither ever does this
+      # again.
+      - id: npm-bin
+        run: |
+          set -euo pipefail
+          bin="$(command -v npm)"
+          ver="$(npm --version)"
+          echo "npm=$bin" >> "$GITHUB_OUTPUT"
+          echo "::notice::pinning $bin (npm $ver) for the publish step"
+          node -e '
+            const [major, minor] = process.argv[1].split(".").map(Number);
+            if (major < 11 || (major === 11 && minor < 5)) {
+              console.error(
+                `npm ${process.argv[1]} predates 11.5.1 — trusted publishing has no code path at all on it, ` +
+                "and the failure that produces (a bare ENEEDAUTH) looks exactly like a missing credential " +
+                "rather than an old npm. The upgrade step above did not take effect for whatever runs next."
+              );
+              process.exit(1);
+            }
+          ' "$ver"
+
       # Before anything expensive, and before anything irreversible. npm's unpublish
       # window is 72 hours and a wrong major on a package whose major IS the frappe
       # version is not something you fix with a patch release. This is the LAST of the
@@ -247,10 +289,14 @@ jobs:
           DIST_TAG: ${{ steps.target.outputs.dist_tag }}
           NAME: ${{ steps.target.outputs.name }}
           VERSION: ${{ steps.target.outputs.version }}
+          # The absolute path resolved in `npm-bin`, above, before anything nix-related
+          # ran. Deliberately not a bare `npm` — see that step's comment for what
+          # resolves differently by the time this one runs otherwise.
+          NPM_BIN: ${{ steps.npm-bin.outputs.npm }}
         run: |
           set -euo pipefail
           log="$(mktemp)"
-          if NPM_CONFIG_LOGLEVEL=verbose npm publish --provenance --tag "$DIST_TAG" 2>&1 | tee "$log"; then
+          if "$NPM_BIN" publish --provenance --tag "$DIST_TAG" 2>&1 | tee "$log"; then
             exit 0
           fi
           # The one refusal that means the release is FINE. The `npm view` probe above is
