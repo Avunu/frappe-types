@@ -65,7 +65,8 @@
     "upgrade": "npx npm-check-updates -u --reject @types/jquery && npm install"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "engines": {
     "node": ">=22"
