@@ -194,16 +194,36 @@ jobs:
       # It also removes the `npm ci` this step used to need: `npm publish` packs from
       # `files` and runs no lifecycle scripts here, so the publish path itself wants no
       # node_modules at all.
+      #
+      # This step gates on the CHECKED-OUT TREE having a flake, not on `always()`: a
+      # `publish_sha` backfill can point at a commit that predates the nix migration
+      # (v16.0.1 is exactly this — its tree has no flake.nix at all), and `nix flake
+      # check` on such a ref fails immediately with "is not part of a flake", not with
+      # a real finding. Discovered running the actual v16.0.1 backfill. The fallback
+      # (plain `npm ci && npm run check`) is exactly what this repo's OWN gate was
+      # before the nix migration, so a pre-nix commit is checked the way it always was.
+      - id: has-flake
+        run: |
+          if [ -f flake.nix ]; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::no flake.nix at this ref (a pre-nix-migration backfill) — falling back to npm run check"
+            echo "value=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: DeterminateSystems/nix-installer-action@v22
-        if: steps.target.outputs.skip != 'true'
+        if: steps.target.outputs.skip != 'true' && steps.has-flake.outputs.value == 'true'
 
       - uses: DeterminateSystems/magic-nix-cache-action@v14
-        if: steps.target.outputs.skip != 'true'
+        if: steps.target.outputs.skip != 'true' && steps.has-flake.outputs.value == 'true'
         with:
           diagnostic-endpoint: ""
 
-      - if: steps.target.outputs.skip != 'true'
+      - if: steps.target.outputs.skip != 'true' && steps.has-flake.outputs.value == 'true'
         run: nix flake check -L
+
+      - if: steps.target.outputs.skip != 'true' && steps.has-flake.outputs.value == 'false'
+        run: npm ci && npm run check
 
       # `--provenance` attaches a signed, verifiable statement linking the tarball to
       # this workflow run and this commit. It is NOT redundant with trusted publishing's
