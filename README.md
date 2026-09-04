@@ -78,6 +78,12 @@ node scripts/audit-coverage.mjs --frappe ../frappe --strict   # CI: fail on regr
 node scripts/audit-coverage.mjs --frappe ../frappe --update-baseline
 ```
 
+The `--frappe` path is worth passing explicitly. Left off, the audit takes the first checkout it
+finds — and `../frappe`, a sibling clone that is very often on `develop`, is tried before the bench.
+Measuring the v16 typeset against a v17 checkout makes the surface grow and the percentage fall with
+identical declarations, which reads exactly like a regression. The audit now refuses that outright
+rather than reporting it; see `--cross-major` under _Upgrading to a new frappe major_.
+
 It prints undeclared paths ranked by how many frappe source files depend on them — which is the to-do list, in priority order.
 
 **Can my app compile against this?** The question that actually matters day to day. Scans a consumer app for every `frappe.*` path and desk global it touches, and reports the ones that would fail:
@@ -92,7 +98,7 @@ Every line it prints is a compile error waiting to happen in an app built under 
 
 1.  Branch: `git checkout -b version-17 version-16`, and set `frappe.major`, `frappe.branch` and `frappe.verifiedAgainst` in `package.json` to the new major. Leave `version` alone — release-please owns it.
 2.  In the **same** push, land a commit carrying a `Release-As: 17.0.0` footer. That is the _only_ way the major moves: `npm run check:major` fails any release whose major disagrees with `frappe.major`, so a stray `feat!:` cannot do it by accident (see [Releasing](#releasing)).
-3.  `node scripts/audit-coverage.mjs --frappe /path/to/frappe-v17` — the diff against the previous baseline is the breaking-change report.
+3.  `node scripts/audit-coverage.mjs --frappe /path/to/frappe-v17 --cross-major` — the diff against the previous baseline is the breaking-change report. `--cross-major` is required: without it the audit refuses to measure a v17 checkout against a typeset whose `frappe.major` is still 16, because the resulting numbers look like a coverage regression and are not one. It reports only — no ratchet, no baseline write.
 4.  Fix what moved, re-cite the sources, `--update-baseline`.
 
 Step 2 is second, and not later, because the new branch inherits a `.release-please-manifest.json` still reading `16.0.x`. An ordinary `fix:` landing before the `Release-As:` commit therefore makes release-please propose **16.0.x** on a tree whose `frappe.major` is already `17` — and the guard fails, because it is symmetric and catches the undershoot too. That is the check working, not breaking; land the `Release-As: 17.0.0` commit and the release pull request rewrites itself on the next run.
