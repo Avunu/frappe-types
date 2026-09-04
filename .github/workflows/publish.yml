@@ -250,7 +250,7 @@ jobs:
         run: |
           set -euo pipefail
           log="$(mktemp)"
-          if npm publish --provenance --tag "$DIST_TAG" 2>&1 | tee "$log"; then
+          if NPM_CONFIG_LOGLEVEL=verbose npm publish --provenance --tag "$DIST_TAG" 2>&1 | tee "$log"; then
             exit 0
           fi
           # The one refusal that means the release is FINE. The `npm view` probe above is
