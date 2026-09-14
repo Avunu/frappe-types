@@ -76,6 +76,7 @@ import type { FrappeBaseChart } from "./charts";
  */
 import type { BaseControl } from "./ui/form";
 import type { FrappeIndicator } from "./core";
+import type { FrappeCheck } from "./model";
 import type { JQueryRegion } from "./globals";
 // Single-sourced: `report_column_total`'s cell parameter IS frappe-datatable's
 // total-row cell. See the note on `FrappeReportColumnTotalCell` below, and the
@@ -245,14 +246,36 @@ export interface FrappeGenerateRouteItem {
 }
 
 /**
- * A row of `frappe.boot.desktop_icons` as returned by
- * `get_desktop_icon_by_label` (`utils/utils.js:1486-1497`).
- * Only `label` and `app` are read by this module; the doctype carries more.
+ * A row of `frappe.boot.desktop_icons` — the shape `get_desktop_icon_by_label`
+ * (`utils/utils.js:1486-1497`) and `get_route_for_icon` (:1314-1370) read.
+ *
+ * Server shape: `frappe/desk/doctype/desktop_icon/desktop_icon.py:130-147`
+ * selects exactly these sixteen columns off `Desktop Icon` (`as_dict`), so
+ * the record is closed. Option lists are from `desktop_icon.json`; unset
+ * Data / Link / Select columns come back `null`, Checks as `0 | 1`.
  */
 export interface FrappeDesktopIconRecord {
 	label: string;
-	app?: string;
-	[field: string]: unknown;
+	/** `gray` / `blue` (json options). */
+	bg_color: "gray" | "blue" | null;
+	/** External URL — read at utils.js:1318-1319 when `link_type === "External"`. */
+	link: string | null;
+	link_type: "Workspace Sidebar" | "External" | null;
+	/** The owning app's `app_name`; matched against `frappe.current_app.app_name` (`ui/sidebar/sidebar_header.js:115-152`). */
+	app: string | null;
+	icon_type: "Link" | "Folder" | "App" | null;
+	/** Label of the folder icon this one sits in (`Link` → Desktop Icon). */
+	parent_icon: string | null;
+	icon: string | null;
+	link_to: string | null;
+	idx: number;
+	standard: FrappeCheck;
+	logo_url: string | null;
+	hidden: FrappeCheck;
+	/** The docname. */
+	name: string;
+	restrict_removal: FrappeCheck;
+	icon_image: string | null;
 }
 
 /** `utils/utils.js:1676-1702` — the argument to `build_summary_item`. */
@@ -798,8 +821,13 @@ export interface FrappeUtils {
 	/** `utils.js:1280-1313`. Leaflet defaults; a data bag, not a function. */
 	map_defaults: FrappeMapDefaults;
 
-	/** `utils.js:1314-1370`. Resolves a Desktop Icon doc to a desk route. */
-	get_route_for_icon(desktop_icon: Record<string, unknown> | null | undefined): string | undefined;
+	/**
+	 * `utils.js:1314-1370`. Resolves a Desktop Icon row to a desk route:
+	 * `link` for `External`, else the route of the first `type === "Link"` item
+	 * of the sidebar keyed by `label.toLowerCase()` (:1321-1323). `undefined`
+	 * for a folder icon or a sidebar with no Link item.
+	 */
+	get_route_for_icon(desktop_icon: FrappeDesktopIconRecord | null | undefined): string | undefined;
 
 	/** `utils.js:1372-1392`. Letter-avatar HTML for a workspace/app tile. */
 	desktop_icon(label: string, color?: string | null, size?: string): string;
@@ -2717,4 +2745,18 @@ export interface FrappeUtilsDomRouterGlobals {
 	utils: FrappeUtils;
 	dom: FrappeDom;
 	router: FrappeRouter;
+
+	// -- the router's "global functions for backward compatibility" (router.js:673-686)
+
+	/** `router.js:674` — `frappe.router.current_route`. */
+	get_route(): FrappeStandardRoute | null;
+	/** `router.js:675` — `current_route.join("/")`. Throws before the first route, when `current_route` is still `null`. */
+	get_route_str(): string;
+	/**
+	 * `router.js:676-678` — `frappe.router.set_route`, with `arguments` passed
+	 * through untouched; see {@link FrappeRouterBase.set_route} for the forms.
+	 */
+	set_route: FrappeRouterBase["set_route"];
+	/** `router.js:680-686` — the route before the current one, or `[]`. */
+	get_prev_route(): FrappeStandardRoute | [];
 }

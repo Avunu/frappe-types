@@ -23,7 +23,7 @@
  * The reference makes `@types/jquery` (a hard dependency of this package) ride
  * along, so no second `types` entry is needed.
  *
- * Verified against **frappe v16.33.0**. Every declaration cites `file.js:line`.
+ * Verified against **frappe v16.33.1**. Every declaration cites `file.js:line`.
  *
  * ## Name collisions, and who owns each name
  *
@@ -103,6 +103,7 @@ export type {
 // ---------------------------------------------------------------------------
 /** Classes and functions (runtime values as well as types). */
 export {
+	FrappeApplication,
 	FrappeThemeSwitcher,
 	FrappeToolbar,
 } from "./core";
@@ -118,6 +119,7 @@ export type {
 	FrappeAssetsJson,
 	FrappeBoot,
 	FrappeBootAppEntry,
+	FrappeBootDeskSettings,
 	FrappeBootPartial,
 	FrappeBootSysDefaults,
 	FrappeBootUser,
@@ -545,6 +547,25 @@ export type {
 	TranslationArgs,
 } from "./globals";
 
+// ---------------------------------------------------------------------------
+// ./ui/sidebar — the v16 Workspace Sidebar (`frappe.ui.Sidebar`), its header and
+// editor, and the `boot.workspace_sidebar_item` payload it renders.
+// ---------------------------------------------------------------------------
+export { FrappeSidebar, FrappeSidebarHeader } from "./ui/sidebar";
+export type {
+	FrappeSidebarEditor,
+	FrappeWorkspaceSidebar,
+	FrappeWorkspaceSidebarItem,
+	FrappeWorkspaceSidebarItemType,
+	FrappeWorkspaceSidebarLinkType,
+} from "./ui/sidebar";
+
+// ---------------------------------------------------------------------------
+// ./ui/notifications — `frappe.ui.Notifications` and its tab views.
+// ---------------------------------------------------------------------------
+export { FrappeNotifications } from "./ui/notifications";
+export type { FrappeNotificationsTab, FrappeNotificationsView } from "./ui/notifications";
+
 // ===========================================================================
 // The composites the per-namespace fragments could not declare on their own
 //
@@ -578,6 +599,8 @@ import type { FrappeChartConstructor, FrappeRealtimeChart } from "./charts";
 import type { FrappeDataTableNamespace } from "./datatable";
 import type { FrappeModelMetaGlobals } from "./model";
 import type { Dialog, FieldGroup, FrappeUiFormNamespace } from "./ui/form";
+import type { FrappeNotifications } from "./ui/notifications";
+import type { FrappeSidebar, FrappeSidebarHeader } from "./ui/sidebar";
 import type {
 	FrappeUiPageSlice,
 	FrappeUiThemeSlice,
@@ -743,8 +766,8 @@ export interface FrappeUiKeysNamespace {
  *
  * ### Deliberately NOT an open `[key: string]: unknown`
  *
- * `frappe.ui` carries ~60 further classes at v16.33.0 (`Slides`, `Tree`,
- * `FileUploader`, `FilterGroup`, `Notifications`, …), none of which this package
+ * `frappe.ui` carries ~60 further classes at v16.33.1 (`Slides`, `Tree`,
+ * `FileUploader`, `FilterGroup`, `Tags`, …), none of which this package
  * has verified. Adding an index signature would type every one of them —
  * **and every typo** — as `unknown`, which is worse than a missing member: it
  * turns `frappe.ui.Dailog` from a compile error into silent `unknown`. That is
@@ -778,6 +801,12 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	ThemeSwitcher: typeof FrappeThemeSwitcher;
 	/** ui/chart.js:6 — frappe's only in-tree `frappe.Chart` subclass. */
 	RealtimeChart: typeof FrappeRealtimeChart;
+	/** ui/sidebar/sidebar.js:3 — the v16 Workspace Sidebar; instance at `frappe.app.sidebar`. */
+	Sidebar: typeof FrappeSidebar;
+	/** ui/sidebar/sidebar_header.js:1. */
+	SidebarHeader: typeof FrappeSidebarHeader;
+	/** ui/notifications/notifications.js:3. */
+	Notifications: typeof FrappeNotifications;
 }
 
 /**
