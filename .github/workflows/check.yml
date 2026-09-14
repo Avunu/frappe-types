@@ -39,7 +39,7 @@ jobs:
       # (FlakeHub substituters, lazy trees), so the default `true` buys nothing
       # here and just has `determinate-nixd` try to log into FlakeHub for a repo
       # that isn't registered there, logging a failure annotation on every run.
-      - uses: DeterminateSystems/nix-installer-action@v22
+      - uses: DeterminateSystems/nix-installer-action@v23
         with:
           determinate: false
 
@@ -49,7 +49,7 @@ jobs:
       # fixed-output derivation per tarball) or the unpacked frappe source, and those
       # are what this recovers between runs. Fork pull requests get a read-only token
       # and degrade to pull-only on their own, so no fork guard is needed.
-      - uses: DeterminateSystems/magic-nix-cache-action@v14
+      - uses: DeterminateSystems/magic-nix-cache-action@v15
         with:
           # Perf/diagnostic telemetry to Determinate Systems is on by default.
           diagnostic-endpoint: ""
