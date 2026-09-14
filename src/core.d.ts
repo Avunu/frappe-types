@@ -26,6 +26,11 @@
 
 import type { DocField, FrappeCheck, FrappeDoc, IndicatorTuple } from "./model";
 import type { Dialog } from "./ui/form";
+// Type-only import cycles (`./ui/sidebar` and `./utils` both import from here)
+// are legal in `.d.ts` files — no emit, no runtime order. Same shape as
+// `./ui/form` ↔ `./utils` (see the SEAM note in ui/form.d.ts).
+import type { FrappeSidebar, FrappeWorkspaceSidebar } from "./ui/sidebar";
+import type { FrappeDesktopIconRecord } from "./utils";
 
 /**
  * A `frappe.ui.Dialog` instance. Owned by `ui/form.d.ts`.
@@ -978,10 +983,16 @@ export interface FrappeBoot {
 	desktop_icon_style: "Subtle" | "Solid";
 	/** boot.py:135. */
 	desktop_icon_urls: Record<string, unknown>;
-	/** boot.py:65. */
-	desktop_icons: unknown[];
-	/** boot.py:117 — the User's desk feature toggles. */
-	desk_settings: Record<string, unknown>;
+	/** boot.py:65 → `frappe/desk/doctype/desktop_icon/desktop_icon.py:122-213`, permission-filtered and sorted by `idx`. */
+	desktop_icons: FrappeDesktopIconRecord[];
+	/** boot.py:117, 326-329 — the User's desk feature toggles. */
+	desk_settings: FrappeBootDeskSettings;
+	/**
+	 * boot.py:173 → `get_sidebar_items` (boot.py:442-516): every Workspace
+	 * Sidebar the user may see, keyed by title **lowercased**. The client reads
+	 * it through `frappe.app.sidebar` (`ui/sidebar/sidebar.js:14, :31`).
+	 */
+	workspace_sidebar_item: Record<string, FrappeWorkspaceSidebar>;
 	/** boot.py:83-86. */
 	notification_settings: Record<string, unknown>;
 	notification_unread_count: number;
@@ -1035,6 +1046,24 @@ export interface FrappeBoot {
 	 * `sessions.py:169-170` (`extend_bootinfo` hooks) let any app add keys.
 	 */
 	[key: string]: unknown;
+}
+
+/**
+ * `frappe.boot.desk_settings` — `frappe/boot.py:326-329` selects exactly the
+ * `desk_properties` tuple of `frappe/core/doctype/user/user.py:44-54` off the
+ * User doc, `as_dict`. All Check fields, so `0 | 1`; `null` only for a User
+ * row that predates a column.
+ */
+export interface FrappeBootDeskSettings {
+	search_bar: FrappeCheck | null;
+	notifications: FrappeCheck | null;
+	list_sidebar: FrappeCheck | null;
+	bulk_actions: FrappeCheck | null;
+	view_switcher: FrappeCheck | null;
+	form_sidebar: FrappeCheck | null;
+	form_navigation_buttons: FrappeCheck | null;
+	timeline: FrappeCheck | null;
+	dashboard: FrappeCheck | null;
 }
 
 /**
@@ -1197,6 +1226,24 @@ export interface FrappeCore {
 	boot: FrappeBoot;
 	/** `frappe/public/js/frappe/provide.js:32` + `desk.js:332-335`. */
 	session: FrappeSession;
+	/**
+	 * `frappe/public/js/frappe/desk.js:10-12`. `frappe.provide("frappe.app")`
+	 * makes it `{}` first, and `frappe.app = new frappe.Application()` replaces
+	 * it once the constructor returns — so during `startup()` (desk.js:30-56)
+	 * `frappe.app` is still the empty object, with no `sidebar`. Optional for
+	 * that window and for non-desk pages, where it is never assigned.
+	 */
+	app?: FrappeApplication;
+	/** `frappe/public/js/frappe/desk.js:28`. */
+	Application: typeof FrappeApplication;
+	/**
+	 * `frappe/public/js/frappe/ui/sidebar/sidebar.js:53` — the `app_data` entry
+	 * that owns the current Workspace Sidebar. Never initialised, assigned only
+	 * on a match, and **never cleared**: after switching to "My Workspaces" or
+	 * a folder sidebar it still names the previous app. See the note on
+	 * {@link FrappeSidebar.header_subtitle} for the stale-safe predicate.
+	 */
+	current_app?: FrappeBootAppEntry;
 	/** `frappe/public/js/frappe/db.js:4`. */
 	db: FrappeDb;
 	/** `frappe/public/js/frappe/form/formatters.js:6`. */
@@ -1240,6 +1287,11 @@ export interface FrappeCore {
 	 * value is genuinely untyped, hence the honest open record.
 	 */
 	provide(namespace: string): Record<string, unknown>;
+
+	// -- viewport -------------------------------------------------------------
+
+	/** `frappe/public/js/frappe/utils/common.js:273-275` — `window.innerWidth < 768`. */
+	is_mobile(): boolean;
 
 	// -- translation --------------------------------------------------------
 
@@ -1492,6 +1544,36 @@ export interface FrappeCore {
  * Declared, not modelled: the class has no constructor parameters and everything
  * else on it is internal wiring.
  */
+/**
+ * `frappe.Application` — `frappe/public/js/frappe/desk.js:28`, the desk
+ * bootstrapper. The single instance is `frappe.app` (desk.js:12).
+ *
+ * `startup()` (desk.js:33-56) runs synchronously from the constructor (:30)
+ * and calls `make_nav_bar()` (:39, the `frappe.ui.toolbar.Toolbar` whose
+ * constructor decides whether to replace `<header>`) **before**
+ * `make_sidebar()` (:40). So `frappe.app.sidebar` being present proves that
+ * decision has already been made — the ordering carbon_frappe's header
+ * mount gates on.
+ *
+ * Declared, not modelled: only the members a theme reaches are listed.
+ */
+export declare class FrappeApplication {
+	/** desk.js:29-31 — calls `startup()` immediately. */
+	constructor();
+	/** desk.js:89-91 — `new frappe.ui.Sidebar({})`. */
+	sidebar: FrappeSidebar;
+	/** desk.js:302-311 — fills `frappe.modules` / `frappe.workspaces` from `boot.workspaces.pages`. */
+	setup_workspaces(): void;
+	/** desk.js:387-402 — confirm, then `logout` and {@link redirect_to_login}. */
+	logout(): void;
+	/** desk.js:389 — set by `logout()` before the confirm; absent until then. */
+	logged_out?: boolean;
+	/** desk.js:403-405. */
+	handle_session_expired(): void;
+	/** desk.js:406-410 — `/login?redirect-to=<current path>`. */
+	redirect_to_login(): void;
+}
+
 export declare class FrappeToolbar {
 	constructor();
 	/** toolbar.js:34-38 — binds events, fires the `toolbar_setup` document event. */

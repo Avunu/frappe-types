@@ -109,3 +109,64 @@ const asPlain: JQuery<HTMLElement> = g2.wrapper;
 void asPlain;
 declare const reg: JQueryRegion;
 void reg;
+
+// ---------------------------------------------------------------------------
+// UI Shell header (carbon_frappe anatomy/ui_shell.ts) — the sidebar-driven
+// header name / nav / switcher. Every read below is one the consumer makes.
+// ---------------------------------------------------------------------------
+import type { FrappeSidebar, FrappeWorkspaceSidebarItem } from "../src/ui/sidebar";
+import type { FrappeBootAppEntry } from "../src/core";
+
+// prototype patch target — the one place the sidebar DOM is rebuilt
+const make_sidebar: (this: FrappeSidebar) => void = frappe.ui.Sidebar.prototype.make_sidebar;
+frappe.ui.Sidebar.prototype.make_sidebar = function (this: FrappeSidebar): void {
+	make_sidebar.call(this);
+};
+
+// mount gate: `frappe.app` is `{}` until the Application constructor returns
+const sidebar: FrappeSidebar | undefined = frappe.app && frappe.app.sidebar;
+if (sidebar) {
+	// constructor-assigned fields are optional (setup_complete early return)
+	const wrapper: JQuery<HTMLElement> | undefined = sidebar.wrapper;
+	const hidden: boolean = wrapper ? wrapper.is(":hidden") : true;
+	void hidden;
+	const title: string | undefined = sidebar.sidebar_title;
+	const subtitle: string | undefined = sidebar.header_subtitle;
+	void subtitle;
+	// the stale-safe app predicate (sidebar.js:47-50), re-applied by the consumer
+	const owner: string | null | undefined = sidebar.sidebar_data && sidebar.sidebar_data.app;
+	const app: FrappeBootAppEntry | undefined = frappe.boot.app_data.find(
+		(a) => (!!title && a.workspaces.includes(title)) || (!!owner && a.app_name === owner)
+	);
+	const prefix: string = app ? app.app_title : subtitle || "";
+	void prefix;
+	const stale: FrappeBootAppEntry | undefined = frappe.current_app;
+	void stale;
+	sidebar.toggle_width();
+	const expanded: boolean = sidebar.sidebar_expanded === true;
+	void expanded;
+	// notification badge re-home
+	const view = sidebar.notifications?.tabs.notifications;
+	if (view) {
+		if (wrapper) view.bell_indicator = wrapper.find(".sidebar-item-icon");
+		view.update_count_badge(view.unread_count);
+	}
+	// edit mode
+	const editing: boolean = !!sidebar.editor && sidebar.editor.edit_mode;
+	void editing;
+}
+
+// boot payload shapes
+const first: FrappeWorkspaceSidebarItem | undefined = frappe.boot.workspace_sidebar_item["projects"]?.items[0];
+const kind: "Link" | "Section Break" | "Spacer" | "Sidebar Item Group" | undefined = first?.type;
+void kind;
+const nested: FrappeWorkspaceSidebarItem[] = first?.nested_items ?? [];
+void nested;
+const search_on: boolean = frappe.boot.desk_settings.search_bar === 1;
+void search_on;
+const icon_app: string | null | undefined = frappe.boot.desktop_icons[0]?.app;
+void icon_app;
+const route: string | undefined = frappe.utils.get_route_for_icon(frappe.boot.desktop_icons[0]);
+void route;
+const mobile: boolean = frappe.is_mobile();
+void mobile;
