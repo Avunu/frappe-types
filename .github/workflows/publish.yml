@@ -253,10 +253,10 @@ jobs:
             echo "value=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: DeterminateSystems/nix-installer-action@v22
+      - uses: DeterminateSystems/nix-installer-action@v23
         if: steps.target.outputs.skip != 'true' && steps.has-flake.outputs.value == 'true'
 
-      - uses: DeterminateSystems/magic-nix-cache-action@v14
+      - uses: DeterminateSystems/magic-nix-cache-action@v15
         if: steps.target.outputs.skip != 'true' && steps.has-flake.outputs.value == 'true'
         with:
           diagnostic-endpoint: ""
