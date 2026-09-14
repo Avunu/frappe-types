@@ -1,5 +1,19 @@
 # Changelog
 
+## [16.2.0](https://github.com/Avunu/frappe-types/compare/v16.1.1...v16.2.0) (2026-09-14)
+
+
+### Features
+
+* **ui:** declare frappe.ui.Sidebar, SidebarHeader, Notifications, frappe.app and frappe.current_app ([63e0f69](https://github.com/Avunu/frappe-types/commit/63e0f69209296cf7841a97dc69201600b78bc3b2))
+* **ui:** declare frappe.ui.Sidebar, SidebarHeader, Notifications, frappe.app and frappe.current_app ([1fba521](https://github.com/Avunu/frappe-types/commit/1fba521a23ba5d0deefe6687dd7c963683ee9ba9))
+
+
+### Bug Fixes
+
+* **ci:** silence FlakeHub login noise in check.yml ([28797c3](https://github.com/Avunu/frappe-types/commit/28797c3afa557449f45fcfd1c9f2ea0df324bf7b))
+* pin the publish step to the npm resolved before nix runs ([5472449](https://github.com/Avunu/frappe-types/commit/5472449e6fac32d71d3594c76e78bcbd270574a5))
+
 ## [16.1.1](https://github.com/Avunu/frappe-types/compare/v16.1.0...v16.1.1) (2026-09-04)
 
 
