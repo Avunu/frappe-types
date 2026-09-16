@@ -963,6 +963,14 @@ export interface DeskWindow extends DeskTemplateGlobals, HarnessWindowGlobals {
 	cur_page?: CurrentPageContainer;
 	/** erpnext/public/js/conf.js:4 — only present when the ERPNext bundle loaded. */
 	erpnext?: ErpNextGlobal;
+	/** utils/datatype.js:5 — `window.cstr = …`. */
+	cstr?: (s: unknown) => string;
+	/** utils/datatype.js:9 — `window.cint = …`. */
+	cint?: (v: unknown, def?: number | null) => number;
+	/** utils/number_format.js:320-336 — `Object.assign(window, { flt, … })`. */
+	flt?: (v: unknown, decimals?: number | null, number_format?: string, rounding_method?: string) => number;
+	/** utils/number_format.js:320-336. */
+	strip_number_groups?: (v: string, number_format?: string) => string;
 }
 
 /**
@@ -984,6 +992,9 @@ export interface DeskWindow extends DeskTemplateGlobals, HarnessWindowGlobals {
  *   - `cur_list` — list_factory.js:6 (as `null`).
  *   - `cur_dialog` — dialog.js:6 (as `null`).
  *   - `cur_page` — container.js:8 (as `null`).
+ *   - `cstr` / `cint` — utils/datatype.js:5-17; `flt` /
+ *     `strip_number_groups` — utils/number_format.js:320-336. All four are
+ *     imported unconditionally by the desk bundle.
  *
  * `erpnext` and `dev_server` are NOT here: `erpnext` only exists once the
  * ERPNext bundle runs `frappe.provide("erpnext")` (conf.js:4), and `dev_server`
@@ -994,6 +1005,14 @@ export interface DeskGlobals {
 	$: JQueryStatic;
 	jQuery: JQueryStatic;
 	__: TranslateFunction;
+	/** `utils/datatype.js:5-8`. */
+	cstr: (s: unknown) => string;
+	/** `utils/datatype.js:9-17`. */
+	cint: (v: unknown, def?: number | null) => number;
+	/** `utils/number_format.js:8-29`, on `window` via :320-336. */
+	flt: (v: unknown, decimals?: number | null, number_format?: string, rounding_method?: string) => number;
+	/** `utils/number_format.js:31-46`, on `window` via :320-336. */
+	strip_number_groups: (v: string, number_format?: string) => string;
 	locals: LocalsStore;
 	cur_frm: CurrentForm;
 	cur_list: CurrentListView;

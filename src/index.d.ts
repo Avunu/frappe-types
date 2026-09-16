@@ -128,6 +128,7 @@ export type {
 	FrappeClientInsertArgs,
 	FrappeCore,
 	FrappeCoreGlobalWiring,
+	FrappeDatetime,
 	FrappeDb,
 	FrappeDbGetListArgs,
 	FrappeDevServer,

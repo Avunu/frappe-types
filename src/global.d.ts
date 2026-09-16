@@ -157,6 +157,36 @@ declare global {
 	 */
 	var DataTable: DataTableConstructor;
 
+	// -- datatype.js / number_format.js casts ---------------------------------
+	// Assigned to `window` at bundle load: datatype.js:5-17 writes `cstr` and
+	// `cint` directly; number_format.js:320-336 `Object.assign(window, {...})`s
+	// the rest. Both files are imported unconditionally by the desk bundle, so
+	// none of these is optional.
+
+	/** `utils/datatype.js:5-8` — `""` for `null`/`undefined`, else `s + ""`. */
+	var cstr: (s: unknown) => string;
+	/**
+	 * `utils/datatype.js:9-17` — `true`/`false` → 1/0; otherwise strips
+	 * leading zeros and `parseInt`s the string form. On NaN returns `def`,
+	 * or `0` when `def` is `undefined` (an explicit `null` IS returned).
+	 */
+	var cint: (v: unknown, def?: number | null) => number;
+	/**
+	 * `utils/number_format.js:8-29` — `0` for `null`/`""`; a string is first
+	 * freed of a leading currency symbol (:14-18) and of the group separators
+	 * of `number_format` (default: the system format, via
+	 * {@link strip_number_groups}), then `parseFloat`ed — **NaN becomes 0**
+	 * (:24), so the return never signals a parse failure. With `decimals`,
+	 * rounded by `_round(v, decimals, rounding_method)` (:27).
+	 */
+	var flt: (v: unknown, decimals?: number | null, number_format?: string, rounding_method?: string) => number;
+	/**
+	 * `utils/number_format.js:31-46` — removes the group separator of
+	 * `number_format` (default `get_number_format()`, :32) and rewrites its
+	 * decimal separator to `"."`. Pure string → string; does not parse.
+	 */
+	var strip_number_groups: (v: string, number_format?: string) => string;
+
 	// -- provide.js:41-44 constants -----------------------------------------
 	/** `frappe/public/js/frappe/provide.js:41` — `"\n"`. */
 	var NEWLINE: string;

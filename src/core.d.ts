@@ -1199,6 +1199,45 @@ export interface FrappeListViewSettings {
 // ---------------------------------------------------------------------------
 
 /**
+ * `frappe.datetime` — `frappe/public/js/frappe/utils/datetime.js:4`
+ * (`frappe.provide("frappe.datetime")`), populated by the `$.extend` at :11.
+ * Only the format helpers a client needs to move a value between the
+ * **system** formats (`frappe.default*Format`) and the **user** formats
+ * (`frappe.sys_defaults.date_format` / `time_format`) are declared; the
+ * moment-object conveniences (`now_date`, `add_days`, …) are not.
+ *
+ * Every function here is backed by moment and the user formats read from
+ * `frappe.sys_defaults`, which the desk sets before any app bundle runs, so
+ * none of the members is optional.
+ */
+export interface FrappeDatetime {
+	/** datetime.js:133-135 — `sys_defaults.time_format`, else `"HH:mm:ss"`. */
+	get_user_time_fmt(): string;
+	/** datetime.js:137-139 — `sys_defaults.date_format`, else `"yyyy-mm-dd"` (lowercase, as stored). */
+	get_user_date_fmt(): string;
+	/**
+	 * datetime.js:157-187 — system → user format. `""` for a falsy `val`.
+	 * A full datetime is converted from the system timezone to the user's.
+	 */
+	str_to_user(val: string | null | undefined, only_time?: boolean, only_date?: boolean): string;
+	/**
+	 * datetime.js:189-207 — user → system format. With `only_time`, parses
+	 * against the user time format and returns `HH:mm:ss`; otherwise parses
+	 * against the user date format (with a two-digit-year variant, :204) — plus
+	 * the time format when `val` contains a space — and returns `YYYY-MM-DD`
+	 * or `YYYY-MM-DD HH:mm:ss`. moment renders an unparseable input as the
+	 * literal string `"Invalid date"`, which {@link validate} then rejects.
+	 */
+	user_to_str(val: string, only_time?: boolean): string;
+	/**
+	 * datetime.js:280-286 — `moment(d, [defaultDateFormat,
+	 * defaultDatetimeFormat, defaultTimeFormat], true).isValid()`: a STRICT
+	 * parse against the three system formats only. A user-format string fails.
+	 */
+	validate(d: string): boolean;
+}
+
+/**
  * The **core slice** of the `frappe` desk global.
  *
  * This is intentionally *not* the whole `Frappe` type. The package author should
@@ -1252,6 +1291,8 @@ export interface FrappeCore {
 	request: FrappeRequest;
 	/** `frappe/public/js/frappe/provide.js:37`; indexed by doctype at base_list.js:45. */
 	listview_settings: Record<string, FrappeListViewSettings | undefined>;
+	/** See {@link FrappeDatetime} — `frappe/public/js/frappe/utils/datetime.js:4, :11`. */
+	datetime: FrappeDatetime;
 
 	// -- scalars ------------------------------------------------------------
 
@@ -1275,6 +1316,18 @@ export interface FrappeCore {
 	create_routes: Record<string, string | readonly string[]>;
 	/** Cached at `frappe/public/js/frappe/translate.js:29-38`. */
 	languages?: Array<{ label: string; value: string }>;
+	/**
+	 * The SYSTEM formats every date/time value is stored and transported in —
+	 * `frappe/public/js/frappe/utils/datetime.js:6-8`, assigned at bundle load
+	 * (also `moment.defaultFormat`, :9). `"YYYY-MM-DD"`, `"HH:mm:ss"` and their
+	 * space-joined concatenation; the user-facing formats are
+	 * {@link FrappeDatetime.get_user_date_fmt} / `get_user_time_fmt`.
+	 */
+	defaultDateFormat: string;
+	/** datetime.js:7 — `"HH:mm:ss"`. */
+	defaultTimeFormat: string;
+	/** datetime.js:8 — `defaultDateFormat + " " + defaultTimeFormat`. */
+	defaultDatetimeFormat: string;
 
 	// -- namespace helper ---------------------------------------------------
 
