@@ -170,3 +170,24 @@ const route: string | undefined = frappe.utils.get_route_for_icon(frappe.boot.de
 void route;
 const mobile: boolean = frappe.is_mobile();
 void mobile;
+
+// datatype / number_format casts and the datetime format helpers — what a
+// paste-into-grid coercion needs (carbon_frappe tables/datatable/paste.ts)
+const grouped: string = strip_number_groups("1,234.5");
+void grouped;
+const asInt: number = cint("007", null);
+void asInt;
+const asFloat: number = flt("1,234.50", 2);
+void asFloat;
+const asStr: string = cstr(null);
+void asStr;
+const iso: boolean = frappe.datetime.validate("2026-09-16");
+void iso;
+const sys: string = frappe.datetime.user_to_str("16-09-2026");
+void sys;
+const user: string = frappe.datetime.str_to_user("2026-09-16 10:00:00", false, true);
+void user;
+const fmt: string = frappe.datetime.get_user_date_fmt() + frappe.datetime.get_user_time_fmt();
+void fmt;
+const defaults: string = frappe.defaultDateFormat + frappe.defaultTimeFormat + frappe.defaultDatetimeFormat;
+void defaults;
