@@ -1,5 +1,13 @@
 # Changelog
 
+## [16.3.0](https://github.com/Avunu/frappe-types/compare/v16.2.0...v16.3.0) (2026-09-16)
+
+
+### Features
+
+* **globals:** declare cint/flt/cstr/strip_number_groups and frappe.datetime ([7332fa7](https://github.com/Avunu/frappe-types/commit/7332fa71c1d215dd51bca05cc516104f9c3457bc))
+* **globals:** declare cint/flt/cstr/strip_number_groups and frappe.datetime ([42c16fe](https://github.com/Avunu/frappe-types/commit/42c16fe67260ebe98d1272d8d138f7fdee962b2f))
+
 ## [16.2.0](https://github.com/Avunu/frappe-types/compare/v16.1.1...v16.2.0) (2026-09-14)
 
 
