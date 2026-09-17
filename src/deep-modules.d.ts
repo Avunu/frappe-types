@@ -493,8 +493,21 @@ export declare class Grid {
 	header_row: GridRow;
 	/** The filter GridRow — `show_search: true` (grid.js:460-467). */
 	header_search: GridRow;
-	/** `[docfield, colspan]` pairs; the colspan is a Bootstrap 1-12 span (grid.js:1353, redistributed at 1358-1380). */
-	visible_columns: Array<[GridDocField, number]>;
+	/**
+	 * `[docfield, colspan]` pairs; the colspan is a Bootstrap 1-12 span
+	 * (grid.js:1353, redistributed at 1358-1380).
+	 *
+	 * `null` AFTER a full refresh, not just before the first one:
+	 * `FrappeForm#switch_doc` writes `grid.visible_columns = null` on every grid
+	 * (form.js:537) and immediately calls `grid_pagination.go_to_page(1, true)`
+	 * → `render_result_rows()` (form.js:539) — before `refresh()` gets to
+	 * rebuild it. Upstream survives that because its rows rebuild the columns
+	 * lazily through `GridRow#setup_columns` → `setup_visible_columns`, and a
+	 * grid with no rows never reads the field on that path. Anything that reads
+	 * it directly from `render_result_rows` must call `setup_visible_columns()`
+	 * first, which rebuilds when it is `null` or empty (grid.js:1305).
+	 */
+	visible_columns: Array<[GridDocField, number]> | null;
 	/** Column order/width from the per-user GridView setting; empty when none (grid.js:1307, 1402-1415). */
 	user_defined_columns: GridDocField[];
 	/** grid.js:545. */

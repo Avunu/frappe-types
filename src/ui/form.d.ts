@@ -1659,7 +1659,10 @@ export declare class Form {
 	setup(): void;
 	/** form.js:397-477. `docname` switches document first. Also sets `cur_frm = this` (:406). */
 	refresh(docname?: string): void;
-	/** form.js:533-546. */
+	/**
+	 * form.js:533-546. Nulls every grid's `visible_columns` and re-renders its
+	 * rows BEFORE `docname` changes (:535-540) — see `Grid#visible_columns`.
+	 */
 	switch_doc(docname: string): void;
 	/** form.js:716-727. */
 	refresh_fields(): void;
