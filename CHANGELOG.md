@@ -1,5 +1,13 @@
 # Changelog
 
+## [16.3.1](https://github.com/Avunu/frappe-types/compare/v16.3.0...v16.3.1) (2026-09-17)
+
+
+### Bug Fixes
+
+* Grid#visible_columns is null while a form switches documents ([be4a7bc](https://github.com/Avunu/frappe-types/commit/be4a7bc100fc1d15eebbe4bdaeb0abe6fdc8fb58))
+* Grid#visible_columns is null while a form switches documents ([9e2df72](https://github.com/Avunu/frappe-types/commit/9e2df72dcf0dd82e43be6b857404574a996bf5be))
+
 ## [16.3.0](https://github.com/Avunu/frappe-types/compare/v16.2.0...v16.3.0) (2026-09-16)
 
 
