@@ -19,6 +19,7 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import { byImportance, extractFrappeSurface, withAncestors } from "./lib/extract-frappe.mjs";
 import { probePaths } from "./lib/probe.mjs";
+import { resolveFrappe } from "./lib/resolve-frappe.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const BASELINE = path.join(ROOT, "coverage-baseline.json");
@@ -39,21 +40,7 @@ const { values } = parseArgs({
 	},
 });
 
-function resolveFrappe() {
-	const candidates = [
-		values.frappe,
-		process.env.FRAPPE_PATH,
-		path.resolve(ROOT, "..", "frappe"),
-		path.resolve(ROOT, "..", "frappe-carbon-dev", "apps", "frappe"),
-		path.resolve(ROOT, "..", "..", "apps", "frappe"),
-	].filter(Boolean);
-	for (const c of candidates) {
-		if (existsSync(path.join(c, "frappe", "public", "js"))) return path.resolve(c);
-	}
-	return null;
-}
-
-const frappePath = resolveFrappe();
+const frappePath = resolveFrappe(values.frappe);
 if (!frappePath) {
 	console.error(
 		"Could not find a frappe checkout. Pass --frappe <path> or set FRAPPE_PATH.\n" +

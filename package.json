@@ -42,6 +42,7 @@
     "src",
     "README.md",
     "CHANGELOG.md",
+    "DRIFT.md",
     "LICENSE"
   ],
   "frappe": {
@@ -59,8 +60,10 @@
   "scripts": {
     "check": "tsc --noEmit",
     "check:major": "node scripts/check-frappe-major.mjs",
-    "test": "tsc --noEmit && node scripts/audit-coverage.mjs --strict",
+    "test": "tsc --noEmit && npm run test:unit && node scripts/audit-coverage.mjs --strict",
+    "test:unit": "node --test \"test/*.test.mjs\"",
     "coverage": "node scripts/audit-coverage.mjs",
+    "audit:drift": "node scripts/audit-drift.mjs",
     "consumers": "node scripts/audit-consumer.mjs",
     "upgrade": "npx npm-check-updates -u --reject @types/jquery && npm install"
   },

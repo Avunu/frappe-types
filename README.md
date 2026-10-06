@@ -95,6 +95,31 @@ Before the pin, the audit went looking for a checkout: `../frappe` is tried befo
 
 It prints undeclared paths ranked by how many frappe source files depend on them — which is the to-do list, in priority order.
 
+**Has frappe moved since we verified it?** A third audit, and the only one that does not involve the type checker. `scripts/audit-drift.mjs` parses a frappe tree for the places an app depends on _structurally_ rather than through a function signature — which stylesheets each `*.bundle.scss` imports, what `hooks.py` puts in its include lists, which ids the icon sprites define (and whether the octicons and FontAwesome directories are still there), which `*.bundle.*` entry files exist, which keys `boot.py` assigns on `bootinfo` — and compares that snapshot with `drift-baseline.json`, the same snapshot taken at the tag `frappe.verifiedAgainst` names. It also scans `src/` for `frappe/<path>:<line>` citations and reports the cited files that no longer exist and, when it has git history to ask, how many cited lines now read differently and which cited files changed most.
+
+```bash
+npm run audit:drift                                       # the checkout vs drift-baseline.json; works on a plain source tree
+npm run audit:drift -- --from v16.33.1                    # vs any tag of a clone: adds line-anchor drift and per-file churn
+npm run audit:drift -- --from v16.33.1 --report md        # the same, as a DRIFT.md section
+npm run audit:drift -- --from v16.33.1 --ids              # adds which sprite ids appeared and vanished
+npm run audit:drift -- --at v16.50.0 --from v16.33.1      # compare two tags without checking either out
+node scripts/audit-drift.mjs --at v16.33.1 --update-baseline   # re-record the baseline from a tag
+```
+
+[`DRIFT.md`](DRIFT.md) is the ledger of those reports, one section per frappe span, and says what it can and cannot tell you.
+
+**`verified-against` and `audit:drift` answer different questions.** `verified-against` asks whether `package.json`'s claim names the tag the flake pins — a comparison of two strings, which holds the moment anyone makes them equal. `audit:drift` asks whether the things the declarations stand on have changed since that tag — a structural comparison of frappe's own files, which never looks at a version string. A dependabot bump can satisfy the first while the second shows drift, and a bump that moves nothing structural can fail the first while the second is clean. Neither re-verifies a declaration: a clean drift report means frappe's _structure_ did not move, not that the types are right, and a dirty one means a human should re-read the changed frappe files. When they hold, bump `frappe.verifiedAgainst` and re-record the drift baseline in the same commit — `audit:drift` prints a note when the two name different tags.
+
+Exit status is 0 unless `--strict` is given and there is drift: a surface that differs from the baseline, or a cited file that is gone. Line anchors that now read differently are reported and never fail a run — after a few hundred frappe commits most of them will, and that list is the triage queue, not a gate. Two limits are worth knowing before trusting a clean run: only citations written as a full `frappe/<path>` are checked (a relative `grid.js:412` takes its base from prose in the file's header, so it is counted as "not checked" and never guessed at), and only the `@import`s written directly in each entry file are compared, not what `./desk/index` pulls in.
+
+To make drift a CI signal rather than something to remember, add a check next to the other four in `flake.nix`, against the pinned tree. The flake's frappe input has no git history, so this compares with the baseline — which is what the baseline is for:
+
+```nix
+drift = mkCheck "drift" "node scripts/audit-drift.mjs --frappe ${frappe} --strict";
+```
+
+That is a recommendation; `flake.nix` and the workflows are unchanged in this repository. Expect it to go red whenever the pin moves past something that mattered, and to stay red until the affected frappe files have been re-read, `frappe.verifiedAgainst` bumped and the baseline re-recorded. The unit tests for the extractors (`npm run test:unit`, also part of `npm test`) need no frappe checkout; the ones that build a throwaway git repository skip themselves when `git` is not on `PATH` (the flake's checks provide only `nodejs` and the npm config hook).
+
 **Can my app compile against this?** The question that actually matters day to day. Scans a consumer app for every `frappe.*` path and desk global it touches, and reports the ones that would fail:
 
 ```bash
@@ -108,7 +133,7 @@ Every line it prints is a compile error waiting to happen in an app built under 
 1.  Branch: `git checkout -b version-17 version-16`. Point `inputs.frappe.url` in `flake.nix` at `github:frappe/frappe/version-17` and run `nix flake lock --update-input frappe`, then set `frappe.major`, `frappe.branch` and `frappe.verifiedAgainst` in `package.json` to match. Leave `version` alone — release-please owns it. (`checks.verified-against` fails until `verifiedAgainst` agrees with the new pin, and prints the exact value to paste.)
 2.  In the **same** push, land a commit carrying a `Release-As: 17.0.0` footer. That is the _only_ way the major moves: `npm run check:major` fails any release whose major disagrees with `frappe.major`, so a stray `feat!:` cannot do it by accident (see [Releasing](#releasing)).
 3.  `node scripts/audit-coverage.mjs --frappe /path/to/frappe-v17 --cross-major` — the diff against the previous baseline is the breaking-change report. `--cross-major` is required: without it the audit refuses to measure a v17 checkout against a typeset whose `frappe.major` is still 16, because the resulting numbers look like a coverage regression and are not one. It reports only — no ratchet, no baseline write.
-4.  Fix what moved, re-cite the sources, `--update-baseline`.
+4.  Fix what moved, re-cite the sources, `--update-baseline` — and re-record the drift baseline too (`node scripts/audit-drift.mjs --at <tag> --update-baseline`), after reading its report against the old one.
 
 Step 2 is second, and not later, because the new branch inherits a `.release-please-manifest.json` still reading `16.0.x`. An ordinary `fix:` landing before the `Release-As:` commit therefore makes release-please propose **16.0.x** on a tree whose `frappe.major` is already `17` — and the guard fails, because it is symmetric and catches the undershoot too. That is the check working, not breaking; land the `Release-As: 17.0.0` commit and the release pull request rewrites itself on the next run.
 
