@@ -116,6 +116,11 @@
       "bases": ["frappe/public/js/frappe/form/"],
       "basis": "full-path-evidence: the specifiers it declares are frappe/public/js/frappe/form/*"
     },
+    "src/ui/components.d.ts": {
+      "declared": "\"Citations are full-path (`frappe/public/js/frappe/ui/components/badge.js:87`)\" (header); every citation in the file is written in full",
+      "bases": ["frappe/public/js/frappe/ui/components/", "frappe/public/js/frappe/"],
+      "basis": "header"
+    },
     "src/ui/form.d.ts": {
       "declared": "\"citations are `file.js:line` relative to `frappe/public/js/frappe/`\" (header)",
       "bases": ["frappe/public/js/frappe/"],

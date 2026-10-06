@@ -114,7 +114,13 @@ void reg;
 // UI Shell header (carbon_frappe anatomy/ui_shell.ts) — the sidebar-driven
 // header name / nav / switcher. Every read below is one the consumer makes.
 // ---------------------------------------------------------------------------
-import type { FrappeSidebar, FrappeWorkspaceSidebarItem } from "../src/ui/sidebar";
+import type {
+	FrappeArrangedDockRow,
+	FrappeDockEntry,
+	FrappeModuleSidebar,
+	FrappeSidebar,
+	FrappeSidebarItem,
+} from "../src/ui/sidebar";
 import type { FrappeBootAppEntry } from "../src/core";
 
 // prototype patch target — the one place the sidebar DOM is rebuilt
@@ -130,46 +136,100 @@ if (sidebar) {
 	const wrapper: JQuery<HTMLElement> | undefined = sidebar.wrapper;
 	const hidden: boolean = wrapper ? wrapper.is(":hidden") : true;
 	void hidden;
-	const title: string | undefined = sidebar.sidebar_title;
-	const subtitle: string | undefined = sidebar.header_subtitle;
-	void subtitle;
-	// the stale-safe app predicate (sidebar.js:47-50), re-applied by the consumer
-	const owner: string | null | undefined = sidebar.sidebar_data && sidebar.sidebar_data.app;
-	const app: FrappeBootAppEntry | undefined = frappe.boot.app_data.find(
-		(a) => (!!title && a.workspaces.includes(title)) || (!!owner && a.app_name === owner)
-	);
-	const prefix: string = app ? app.app_title : subtitle || "";
+	// the shell on screen is a key of module_sidebars; the owning app is derived
+	// from it (get_sidebar_app), never stored — frappe.current_app is gone
+	const shell: string | undefined = sidebar.current_module;
+	const data: FrappeModuleSidebar | undefined = sidebar.sidebar_data;
+	const app: FrappeBootAppEntry | null | undefined = sidebar.get_sidebar_app();
+	const prefix: string = app ? app.app_title : "";
+	void shell;
+	void data;
 	void prefix;
-	const stale: FrappeBootAppEntry | undefined = frappe.current_app;
-	void stale;
+	// where the app's icon / the shell's tile / a rail entry lead
+	const app_route: string | null | undefined = sidebar.app_landing_route(app);
+	const shell_route: string | null = sidebar.module_landing_route(shell);
+	void app_route;
+	void shell_route;
+	const rail: FrappeDockEntry[] = sidebar.collect_dock_entries(app);
+	const entry: FrappeDockEntry | undefined = rail[0];
+	const entry_route: string | null | undefined = sidebar.dock_entry_route(entry);
+	const entry_active: boolean = sidebar.is_active_entry(entry);
+	void entry_route;
+	void entry_active;
 	sidebar.toggle_width();
 	const expanded: boolean = sidebar.sidebar_expanded === true;
 	void expanded;
-	// notification badge re-home
-	const view = sidebar.notifications?.tabs.notifications;
-	if (view) {
-		if (wrapper) view.bell_indicator = wrapper.find(".sidebar-item-icon");
-		view.update_count_badge(view.unread_count);
+	// the header is one instance whose menu can be hung on another element
+	const header = sidebar.sidebar_header;
+	if (header && wrapper) {
+		const menu: unknown = header.attach_menu(wrapper.find(".dock-logo"));
+		void menu;
+		const rows = header.switcher_items();
+		void rows;
 	}
-	// edit mode
-	const editing: boolean = !!sidebar.editor && sidebar.editor.edit_mode;
-	void editing;
+	// the user menu is shared with the dock's avatar
+	if (wrapper) {
+		sidebar.create_user_menu({
+			parent: wrapper.find(".dropdown-navbar-user"),
+			button: wrapper.find(".sidebar-user-button"),
+			side: "right",
+			align: "end",
+		});
+	}
+	// the unread badge is a document-wide `.notification-count` lookup now
+	const view = sidebar.notifications?.tabs.notifications;
+	if (view) view.update_count_badge(view.unread_count);
+	// the notifications panel and its dismissal
+	frappe.ui.sidebar_panels.toggle("notifications");
+	frappe.ui.sidebar_panels.close_all();
+	// the search modal behind the Search row
+	frappe.app?.awesome_bar?.open();
 }
 
 // boot payload shapes
-const first: FrappeWorkspaceSidebarItem | undefined = frappe.boot.workspace_sidebar_item["projects"]?.items[0];
-const kind: "Link" | "Section Break" | "Spacer" | "Sidebar Item Group" | undefined = first?.type;
+const first: FrappeSidebarItem | undefined = frappe.boot.module_sidebars["Accounts"]?.items[0];
+const kind: "Link" | "Section Break" | "Spacer" | undefined = first?.type;
 void kind;
-const nested: FrappeWorkspaceSidebarItem[] = first?.nested_items ?? [];
+const nested: FrappeSidebarItem[] = first?.nested_items ?? [];
 void nested;
+const rail_rows: FrappeArrangedDockRow[] = frappe.boot.dock["erpnext"] ?? [];
+void rail_rows;
+const owner_shell: string | undefined = frappe.boot.entity_module["Item"];
+const canonical: string | undefined = frappe.boot.canonical_shell.DocType["Item"];
+const home_shell: string | null = frappe.boot.home_shell;
+const heirs: string[] | undefined = frappe.boot.code_only_module_heirs["Core"];
+const host: string | undefined = frappe.boot.app_rail_host["india_compliance"];
+const desktop_page: "Apps" | "Desktop Icons" = frappe.boot.desktop_page;
+void owner_shell;
+void canonical;
+void home_shell;
+void heirs;
+void host;
+void desktop_page;
 const search_on: boolean = frappe.boot.desk_settings.search_bar === 1;
 void search_on;
-const icon_app: string | null | undefined = frappe.boot.desktop_icons[0]?.app;
+const dock_mode: "Floating" | "Pinned" | null = frappe.boot.desk_settings.dock_mode;
+void dock_mode;
+// `desktop_icons` exists only when Desktop Settings.desktop_page is "Desktop Icons"
+const icon_app: string | null | undefined = frappe.boot.desktop_icons?.[0]?.app;
 void icon_app;
-const route: string | undefined = frappe.utils.get_route_for_icon(frappe.boot.desktop_icons[0]);
+const route: string | undefined = frappe.utils.get_route_for_icon(frappe.boot.desktop_icons?.[0]);
 void route;
 const mobile: boolean = frappe.is_mobile();
 void mobile;
+// shell routing: the shell the URL names, and how one is spelled in a path
+const shell_in_url: string | null = frappe.router.current_shell;
+const shell_slug: string = frappe.router.shell_slug("Shift & Attendance");
+void shell_in_url;
+void shell_slug;
+const item_route: string | null | undefined = frappe.ui.sidebar_item.get_route(
+	{ type: "Link", link_type: "Workspace", link_to: "Home" },
+	false,
+	"Accounts"
+);
+void item_route;
+const module_icon: string | null = frappe.get_module_icon("Accounts");
+void module_icon;
 
 // datatype / number_format casts and the datetime format helpers — what a
 // paste-into-grid coercion needs (carbon_frappe tables/datatable/paste.ts)
