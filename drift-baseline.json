@@ -1,0 +1,253 @@
+{
+  "schema": 1,
+  "source": {
+    "ref": "v16.33.1",
+    "commit": "988e54f3c4c291e2077a83809663f123731abe76",
+    "date": "2026-09-08"
+  },
+  "version": "16.33.1",
+  "scss": {
+    "bundles": {
+      "frappe/public/scss/desk.bundle.scss": [
+        "frappe/public/css/fonts/fontawesome/font-awesome.min.css",
+        "frappe/public/css/octicons/octicons.css",
+        "frappe/public/css/fonts/inter/inter.scss",
+        "~frappe-charts/dist/frappe-charts.min",
+        "~plyr/dist/plyr",
+        "./desk/index",
+        "frappe/public/js/lib/leaflet/leaflet.css",
+        "frappe/public/js/lib/leaflet_easy_button/easy-button.css",
+        "frappe/public/js/lib/leaflet_control_locate/L.Control.Locate.css",
+        "frappe/public/js/lib/leaflet_draw/leaflet.draw.css",
+        "frappe/public/node_modules/highlight.js/styles/tomorrow.css"
+      ],
+      "frappe/public/scss/email.bundle.scss": [],
+      "frappe/public/scss/login.bundle.scss": [
+        "./desk/variables"
+      ],
+      "frappe/public/scss/print.bundle.scss": [
+        "./desk/variables",
+        "frappe/public/css/bootstrap.css",
+        "./common/quill",
+        "~bootstrap/scss/utilities/spacing",
+        "./desk/css_variables",
+        "./element/checkbox"
+      ],
+      "frappe/public/scss/print_format.bundle.scss": [
+        "./desk/variables.scss",
+        "./common/mixins.scss",
+        "./common/global.scss",
+        "./common/icons.scss",
+        "~bootstrap/scss/bootstrap"
+      ],
+      "frappe/public/scss/report.bundle.scss": [
+        "~frappe-datatable/dist/frappe-datatable",
+        "frappe/public/css/tree_grid.css"
+      ],
+      "frappe/public/scss/web_form.bundle.scss": [
+        "frappe/website/css/web_form.css",
+        "frappe/public/css/octicons/octicons.css",
+        "~frappe-datatable/dist/frappe-datatable"
+      ],
+      "frappe/public/scss/website.bundle.scss": [
+        "./website/index"
+      ]
+    }
+  },
+  "hooks": {
+    "includes": {
+      "app_include_js": [
+        "libs.bundle.js",
+        "billing.bundle.js",
+        "desk.bundle.js",
+        "list.bundle.js",
+        "form.bundle.js",
+        "controls.bundle.js",
+        "report.bundle.js",
+        "telemetry.bundle.js"
+      ],
+      "app_include_css": [
+        "desk.bundle.css",
+        "report.bundle.css"
+      ],
+      "app_include_icons": [
+        "/assets/frappe/icons/lucide/icons.svg",
+        "/assets/frappe/icons/timeless/icons.svg",
+        "/assets/frappe/icons/espresso/icons.svg",
+        "/assets/frappe/icons/desktop_icons/alphabets.svg"
+      ],
+      "web_include_js": [
+        "website_script.js"
+      ],
+      "web_include_css": [],
+      "web_include_icons": [
+        "/assets/frappe/icons/lucide/icons.svg",
+        "/assets/frappe/icons/timeless/icons.svg",
+        "/assets/frappe/icons/espresso/icons.svg"
+      ],
+      "email_css": [
+        "email.bundle.css"
+      ]
+    }
+  },
+  "icons": {
+    "sprites": {
+      "frappe/public/icons/lucide/icons.svg": {
+        "symbols": 1640,
+        "distinct": 1640,
+        "prefixes": {
+          "icon-": 1640
+        },
+        "idsSha256": "6615660240863fcb6c55acbe687088175e9c29ad37b19a316582231e832c19a3"
+      },
+      "frappe/public/icons/timeless/icons.svg": {
+        "symbols": 141,
+        "distinct": 141,
+        "prefixes": {
+          "icon-": 141
+        },
+        "idsSha256": "caa10059e2eaa84f9f3cdbcae5528fa4b36a2deb8994e75298586cd4c3c26828"
+      },
+      "frappe/public/icons/espresso/icons.svg": {
+        "symbols": 275,
+        "distinct": 261,
+        "prefixes": {
+          "es-": 2,
+          "es-line-": 175,
+          "es-small-": 6,
+          "es-solid-": 74,
+          "espressoline-": 1,
+          "icon/": 3
+        },
+        "idsSha256": "f88a76149c57609ed8406e6ad46f4ea8f5e1bc24afe98da868e2e0385be37223"
+      },
+      "frappe/public/icons/desktop_icons/alphabets.svg": {
+        "symbols": 26,
+        "distinct": 26,
+        "prefixes": {
+          "(bare)": 26
+        },
+        "idsSha256": "cfa4f846a6dbeb24477910a408ea21df3244beb5b1a2c7544b9397a0f2a50561"
+      }
+    },
+    "unresolved": [],
+    "directories": {
+      "frappe/public/css/octicons": true,
+      "frappe/public/css/fonts/fontawesome": true
+    },
+    "fontStylesheetImports": [
+      "frappe/public/scss/desk.bundle.scss: frappe/public/css/fonts/fontawesome/font-awesome.min.css",
+      "frappe/public/scss/desk.bundle.scss: frappe/public/css/octicons/octicons.css",
+      "frappe/public/scss/web_form.bundle.scss: frappe/public/css/octicons/octicons.css"
+    ],
+    "helpers": {
+      "icon": "icon(icon_name, size = \"sm\", icon_class = \"\", icon_style = \"\", svg_class = \"\", current_color = false, stroke_color = null) {",
+      "desktop_icon": "desktop_icon(label, color, size) {"
+    }
+  },
+  "bundles": [
+    "frappe/public/js/billing.bundle.js",
+    "frappe/public/js/bootstrap-4-web.bundle.js",
+    "frappe/public/js/calendar.bundle.js",
+    "frappe/public/js/controls.bundle.js",
+    "frappe/public/js/data_import_tools.bundle.js",
+    "frappe/public/js/desk.bundle.js",
+    "frappe/public/js/dialog.bundle.js",
+    "frappe/public/js/form.bundle.js",
+    "frappe/public/js/form_builder/form_builder.bundle.js",
+    "frappe/public/js/frappe-web.bundle.js",
+    "frappe/public/js/frappe/build_events/build_events.bundle.js",
+    "frappe/public/js/frappe/file_uploader/file_uploader.bundle.js",
+    "frappe/public/js/frappe/ui/user_onboarding/user_onboarding.bundle.js",
+    "frappe/public/js/frappe/views/kanban/kanban_board.bundle.js",
+    "frappe/public/js/libs.bundle.js",
+    "frappe/public/js/list.bundle.js",
+    "frappe/public/js/logtypes.bundle.js",
+    "frappe/public/js/onboarding_tours.bundle.js",
+    "frappe/public/js/photoswipe.bundle.js",
+    "frappe/public/js/print.bundle.js",
+    "frappe/public/js/print_format_builder/print_format_builder.bundle.js",
+    "frappe/public/js/report.bundle.js",
+    "frappe/public/js/sentry.bundle.js",
+    "frappe/public/js/syntax_highlighting.bundle.js",
+    "frappe/public/js/telemetry.bundle.js",
+    "frappe/public/js/video_player.bundle.js",
+    "frappe/public/js/web_form.bundle.js",
+    "frappe/public/js/workflow_builder/workflow_builder.bundle.js",
+    "frappe/public/scss/desk.bundle.scss",
+    "frappe/public/scss/email.bundle.scss",
+    "frappe/public/scss/login.bundle.scss",
+    "frappe/public/scss/print.bundle.scss",
+    "frappe/public/scss/print_format.bundle.scss",
+    "frappe/public/scss/report.bundle.scss",
+    "frappe/public/scss/web_form.bundle.scss",
+    "frappe/public/scss/website.bundle.scss"
+  ],
+  "boot": {
+    "keys": [
+      "__messages",
+      "active_domains",
+      "additional_filters_config",
+      "all_domains",
+      "app_data",
+      "app_logo_url",
+      "calendars",
+      "changelog_feed",
+      "cloud_settings",
+      "desk_settings",
+      "desktop_icon_style",
+      "desktop_icon_urls",
+      "desktop_icons",
+      "docs",
+      "doctype_layouts",
+      "doctype_ptype_map",
+      "enable_address_autocompletion",
+      "error_report_email",
+      "frequently_visited_links",
+      "has_awesomebar_search",
+      "home_folder",
+      "home_page",
+      "ipinfo",
+      "is_fc_site",
+      "lang",
+      "lang_dict",
+      "letter_heads",
+      "link_preview_doctypes",
+      "link_title_doctypes",
+      "marketplace_apps",
+      "max_file_size",
+      "module_app",
+      "module_list",
+      "module_wise_workspaces",
+      "modules",
+      "navbar_settings",
+      "nested_set_doctypes",
+      "notification_settings",
+      "notification_unread_count",
+      "onboarding_tours",
+      "print_css",
+      "sentry_dsn",
+      "server_date",
+      "setup_wizard_completed_apps",
+      "setup_wizard_requires",
+      "single_types",
+      "site_info",
+      "sitename",
+      "sms_gateway_enabled",
+      "subscription_conf",
+      "success_action",
+      "sysdefaults",
+      "time_zone",
+      "timezone_info",
+      "translated_doctypes",
+      "tree_view_doctypes",
+      "treeviews",
+      "user",
+      "user_info",
+      "versions",
+      "workspace_sidebar_item"
+    ],
+    "dynamic": 1,
+    "bulk": 1
+  }
+}
