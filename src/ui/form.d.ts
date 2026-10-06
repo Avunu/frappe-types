@@ -622,8 +622,12 @@ export declare class BaseControl {
 	get_query?: unknown;
 	/** Rich-text controls expose an editor with its own focus handling. */
 	editor?: { set_focus(): void };
-	/** `ControlLink`'s Awesomplete instance — frappe/public/js/frappe/form/controls/link.js:225. */
-	awesomplete?: { ul: HTMLElement; list: unknown; [key: string]: unknown };
+	/**
+	 * `ControlLink`'s Awesomplete instance — frappe/public/js/frappe/form/controls/link.js:225.
+	 * `close()` is the one method `Grid#make`'s horizontal-scroll listener calls on it
+	 * (frappe/public/js/frappe/form/grid.js:187).
+	 */
+	awesomplete?: { ul: HTMLElement; list: unknown; close(): void; [key: string]: unknown };
 	/** `ControlLink`'s `.link-btn` handle — frappe/public/js/frappe/form/controls/link.js:28. */
 	$link?: JQuery<HTMLElement>;
 }
