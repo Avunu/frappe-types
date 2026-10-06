@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { analyzeCitations, compareAnchors, parseLineSpec, resolveCitation, scanCitations } from "../scripts/lib/citations.mjs";
+import { analyzeCitations, compareAnchors, parseLineSpec, resolveCitation, scanCitations, scanMentions } from "../scripts/lib/citations.mjs";
 
 /**
  * An in-memory tree, for the code that only needs the reader interface.
@@ -156,6 +156,36 @@ test("analyze: statuses, tallies and the never-resolved list", async () => {
 	// Distinct anchors: a.js 1,2,3 (one changed) + same.js 1. Occurrences repeat a.js:2.
 	assert.deepEqual(report.anchors?.distinct, { total: 4, changed: 1, invalid: 0 });
 	assert.deepEqual(report.anchors?.occurrences, { total: 5, changed: 2, invalid: 0 });
+	assert.deepEqual(report.anchors?.following, { citations: 0, anchors: 0 });
+});
+
+test("analyze: citations that already follow the audited tree are left out of the comparison, not counted as changed", async () => {
+	const base = memoryReader({ "frappe/a.js": "one\ntwo\nthree\n" });
+	// two lines were inserted at the top: `three` is now line 5, and line 3 reads `two`
+	const head = memoryReader({ "frappe/a.js": "x\ny\none\ntwo\nthree\n" });
+	const text = "frappe/a.js:3 frappe/a.js:1";
+	// without the information: both are compared by number against the baseline
+	const naive = await analyzeCitations({ declarations: [{ file: "src/x.d.ts", text }], base, head, git: null });
+	assert.deepEqual(naive.anchors?.occurrences, { total: 2, changed: 2, invalid: 0 });
+	// `frappe/a.js:3` was moved to follow the new tree (it IS the new line of `one`); `:1` was not
+	const report = await analyzeCitations({
+		declarations: [{ file: "src/x.d.ts", text }],
+		base,
+		head,
+		git: null,
+		following: (citation) => citation.index === 0,
+	});
+	assert.deepEqual(report.anchors?.occurrences, { total: 1, changed: 1, invalid: 0 });
+	assert.deepEqual(report.anchors?.following, { citations: 1, anchors: 1 });
+	// the file still counts both citations; only the comparison skipped one
+	assert.equal(report.files[0]?.citations, 2);
+});
+
+test("scan: every match carries its offset, so a rewriter can edit it in place", () => {
+	const text = "ab grid.js:12 and frappe/public/js/frappe/db.js:3";
+	const { full, unresolvable } = scanCitations(text, "src/x.d.ts");
+	assert.equal(text.slice(unresolvable[0]?.index, (unresolvable[0]?.index ?? 0) + (unresolvable[0]?.text.length ?? 0)), "grid.js:12");
+	assert.equal(text.slice(full[0]?.index, (full[0]?.index ?? 0) + (full[0]?.text.length ?? 0)), "frappe/public/js/frappe/db.js:3");
 });
 
 test("analyze: without a baseline a missing file is simply not found", async () => {
@@ -169,4 +199,14 @@ test("analyze: without a baseline a missing file is simply not found", async () 
 	assert.deepEqual(report.neverResolved, ["frappe/b.js"]);
 	assert.equal(report.anchors, null);
 	assert.deepEqual(report.files.map((f) => [f.path, f.status, f.lines]), [["frappe/a.js", "present", null]]);
+});
+
+test("mentions: directory-qualified paths with no line number, and nothing else", () => {
+	const text = [
+		"see form/sidebar/document_follow.js and `ui/dialog.js` (not ui/dialog.js:10, which is a citation)",
+		"a bare grid.js, a version v16.50.0, http://example.com/x/y.js, ../frappe/x/y.js, @scope/pkg/y.js and src/ui/form.d.ts",
+		"frappe/public/js/frappe/db.js is a mention too, and so is carbon_frappe/public/js/x.js",
+	].join("\n");
+	assert.deepEqual(scanMentions(text).map((m) => m.text), ["form/sidebar/document_follow.js", "ui/dialog.js", "frappe/public/js/frappe/db.js", "carbon_frappe/public/js/x.js"]);
+	assert.equal(text.slice(scanMentions(text)[0]?.index, (scanMentions(text)[0]?.index ?? 0) + 5), "form/");
 });

@@ -21,6 +21,9 @@
 //
 // A snapshot covers five structural surfaces and the version (see lib/extract-surfaces.mjs);
 // the citation report (lib/citations.mjs) covers `frappe/<path>:<line>` references in src/.
+// Citations that scripts/remap-citations.mjs has moved to the audited tree (recorded in
+// citation-anchors.json) are left out of the line-anchor comparison: their numbers are
+// head numbers, and comparing a head number with the baseline measures nothing.
 //
 // EXIT CODE. 0, unless --strict AND there is drift: a surface differs from the baseline,
 // or a cited file is gone. Line anchors that now read differently are reported but never
@@ -39,6 +42,7 @@ import { parseArgs } from "node:util";
 import { analyzeCitations, readDeclarationFiles } from "./lib/citations.mjs";
 import { diffSnapshots, SNAPSHOT_SCHEMA, takeSnapshot } from "./lib/extract-surfaces.mjs";
 import { countCommits, fsReader, gitReader, inspectCheckout } from "./lib/frappe-reader.mjs";
+import { checkLedger, referenceTags } from "./lib/remap.mjs";
 import { resolveFrappe } from "./lib/resolve-frappe.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -83,6 +87,41 @@ function parseOptions() {
 function display(file) {
 	const relative = path.relative(process.cwd(), file);
 	return relative === "" || relative.startsWith("..") ? file : relative;
+}
+
+/**
+ * Citations whose line numbers scripts/remap-citations.mjs has already moved to the tree
+ * being audited. The ledger (`citation-anchors.json`) records which tag each file's
+ * numbers follow, and which citations were left on the old one for a person to review;
+ * without it the audit would compare the moved numbers to the baseline and report text
+ * that merely moved as text that changed.
+ * @param {object} input
+ * @param {{ file: string, text: string }[]} input.declarations
+ * @param {string} input.frappePath
+ * @param {string | null} input.auditedCommit
+ * @returns {Promise<((citation: import("./lib/citations.mjs").Citation) => boolean) | null>}
+ */
+async function followingTheAudited({ declarations, frappePath, auditedCommit }) {
+	const file = path.join(ROOT, "citation-anchors.json");
+	if (!auditedCommit || !existsSync(file)) return null;
+	const ledger = checkLedger(JSON.parse(await readFile(file, "utf8")));
+	/** @type {Map<string, string | null>} */
+	const commits = new Map();
+	/** @param {string} tag */
+	const commitOf = async (tag) => {
+		if (!commits.has(tag)) commits.set(tag, await gitReader(frappePath, tag).then((r) => r.commit, () => null));
+		return commits.get(tag) ?? null;
+	};
+	/** @type {Map<string, Set<number>>} */
+	const followed = new Map();
+	for (const { file: dts, text } of declarations) {
+		const tags = referenceTags(text, dts, ledger);
+		if (!tags) continue;
+		const set = new Set();
+		for (const [index, tag] of tags) if ((await commitOf(tag)) === auditedCommit) set.add(index);
+		followed.set(dts, set);
+	}
+	return (citation) => followed.get(citation.file)?.has(citation.index) === true;
 }
 
 /** @returns {Promise<number>} the exit code */
@@ -187,13 +226,16 @@ async function main() {
 	}
 
 	// ------------------------------------------------------------------ the citations
+	const declarations = await readDeclarationFiles(ROOT);
+	const following = await followingTheAudited({ declarations, frappePath, auditedCommit: headGit?.commit ?? headInfo.commit });
 	const citations = await analyzeCitations({
-		declarations: await readDeclarationFiles(ROOT),
+		declarations,
 		base: baseReader,
 		head,
 		git: baseReader
 			? { repo: frappePath, baseCommit: baseReader.commit, headCommit: headGit?.commit ?? null }
 			: null,
+		...(following ? { following } : {}),
 	});
 
 	const headCommit = headGit?.commit ?? headInfo.commit;
@@ -421,6 +463,13 @@ function renderReport(report, format, top, frappePath) {
 			`  A line is compared by number, trimmed. A range contributes its two endpoints. ` +
 				`${d.invalid} anchor(s) were past the end of the file at ${code(base.ref ?? "the baseline")} already and are left out.`,
 		);
+		if (c.anchors.following.citations > 0) {
+			out.push(
+				`  ${c.anchors.following.citations} citation(s) (${c.anchors.following.anchors} anchors) were left out of that comparison: ` +
+					`${code("citation-anchors.json")} records that their numbers already follow the audited tree (scripts/remap-citations.mjs moved them), ` +
+					"so the count above is of the citations still on the baseline's numbering.",
+			);
+		}
 	} else {
 		out.push(`- No baseline ref, so line anchors are not compared; pass ${code("--from <ref>")} to measure them.`);
 	}

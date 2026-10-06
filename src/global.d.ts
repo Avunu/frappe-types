@@ -60,7 +60,7 @@
  * So: guard with `window.frappe`, then use `frappe`. Both resolve to one
  * {@link Frappe} type.
  *
- * Verified against **frappe v16.33.0**.
+ * Verified against **frappe v16.50.0**.
  *
  * @packageDocumentation
  */
@@ -97,7 +97,7 @@ declare global {
 	/**
 	 * The desk API root.
 	 *
-	 * `frappe/www/desk.html:52` and `frappe/public/js/frappe/provide.js:5` both
+	 * `frappe/www/desk.html:64` and `frappe/public/js/frappe/provide.js:5` both
 	 * do `if (!window.frappe) window.frappe = {}`, so the object exists before
 	 * any bundle runs; its *members* arrive lazily via `frappe.provide()`.
 	 *
@@ -109,30 +109,41 @@ declare global {
 	/** `frappe/public/js/frappe/translate.js:26` — `window.__ = frappe._;` */
 	var __: TranslateFunction;
 
-	/** `frappe/public/js/frappe/ui/messages.js:317` — `window.msgprint = frappe.msgprint`. */
+	/** `frappe/public/js/frappe/ui/messages.js:333` — `window.msgprint = frappe.msgprint`. */
 	var msgprint: Frappe["msgprint"];
 
 	/** `frappe/public/js/frappe/provide.js:21` — `frappe.provide("locals")`. */
 	var locals: LocalsStore;
 
-	/** `provide.js:50` (as `null`), then `form.js:406` / `pageview.js:106`. */
+	/** `provide.js:50` (as `null`), then `form.js:453` / `pageview.js:99`. */
 	var cur_frm: CurrentForm;
 
-	/** `list_factory.js:6` (as `null`), `:93`, `:96`. Holds a `ReportView` on `/view/report`. */
+	/**
+	 * `frappe/public/js/frappe/list/list_factory.js:6` (as `null`), assigned at
+	 * `frappe/public/js/frappe/list/list_factory.js:99` and reset at
+	 * `frappe/public/js/frappe/list/list_factory.js:102`. Holds a `ReportView`
+	 * on `/view/report`.
+	 */
 	var cur_list: CurrentListView;
 
-	/** `ui/dialog.js:6` (as `null`), `:115-119`, `:127` — the top of the modal stack. */
+	/**
+	 * `frappe/public/js/frappe/ui/dialog.js:6` (as `null`), popped at
+	 * `frappe/public/js/frappe/ui/dialog.js:115-119` and set at
+	 * `frappe/public/js/frappe/ui/dialog.js:127` — the top of the modal stack.
+	 */
 	var cur_dialog: CurrentDialog;
 
 	/**
-	 * `views/container.js:8` (as `null`), `:43`. Despite the name it holds the
-	 * `frappe.views.Container` singleton, never a page.
+	 * `frappe/public/js/frappe/views/container.js:8` (as `null`), assigned at
+	 * `frappe/public/js/frappe/views/container.js:51`. Despite the name it holds
+	 * the `frappe.views.Container` singleton, never a page.
 	 */
 	var cur_page: CurrentPageContainer;
 
 	/**
-	 * ERPNext's namespace root — `erpnext/public/js/conf.js:4`,
-	 * `frappe.provide("erpnext")`.
+	 * ERPNext's namespace root — `erpnext/public/js/utils.js:3`,
+	 * `frappe.provide("erpnext")`, the first import of
+	 * `erpnext/public/js/erpnext.bundle.js:1` (read at ERPNext v16.50.0).
 	 *
 	 * **Only exists once the ERPNext bundle has run.** It is declared as a bare
 	 * global because that is how ERPNext client scripts reference it, but on a
@@ -158,43 +169,50 @@ declare global {
 	var DataTable: DataTableConstructor;
 
 	// -- datatype.js / number_format.js casts ---------------------------------
-	// Assigned to `window` at bundle load: datatype.js:5-17 writes `cstr` and
-	// `cint` directly; number_format.js:320-336 `Object.assign(window, {...})`s
-	// the rest. Both files are imported unconditionally by the desk bundle, so
-	// none of these is optional.
+	// Assigned to `window` at bundle load:
+	// `frappe/public/js/frappe/utils/datatype.js:4-17` writes `cstr` and `cint`
+	// directly; `frappe/public/js/frappe/utils/number_format.js:324-340`
+	// `Object.assign(window, {...})`s the rest (and `cint` again, unchanged). Both
+	// files are imported unconditionally by the desk bundle, so none of these is
+	// optional.
 
-	/** `utils/datatype.js:5-8` — `""` for `null`/`undefined`, else `s + ""`. */
+	/** `frappe/public/js/frappe/utils/datatype.js:4-7` — `""` for `null`/`undefined`, else `s + ""`. */
 	var cstr: (s: unknown) => string;
 	/**
-	 * `utils/datatype.js:9-17` — `true`/`false` → 1/0; otherwise strips
-	 * leading zeros and `parseInt`s the string form. On NaN returns `def`,
-	 * or `0` when `def` is `undefined` (an explicit `null` IS returned).
+	 * `frappe/public/js/frappe/utils/datatype.js:9-17` — `true`/`false` → 1/0;
+	 * otherwise strips leading zeros and `parseInt`s the string form. On NaN
+	 * returns `def`, or `0` when `def` is `undefined` (an explicit `null` IS
+	 * returned).
 	 */
 	var cint: (v: unknown, def?: number | null) => number;
 	/**
-	 * `utils/number_format.js:8-29` — `0` for `null`/`""`; a string is first
-	 * freed of a leading currency symbol (:14-18) and of the group separators
-	 * of `number_format` (default: the system format, via
+	 * `frappe/public/js/frappe/utils/number_format.js:8-29` — `0` for
+	 * `null`/`""`; a string is first freed of a leading currency symbol
+	 * (`frappe/public/js/frappe/utils/number_format.js:14-19`) and of the group
+	 * separators of `number_format` (default: the system format, via
 	 * {@link strip_number_groups}), then `parseFloat`ed — **NaN becomes 0**
-	 * (:24), so the return never signals a parse failure. With `decimals`,
-	 * rounded by `_round(v, decimals, rounding_method)` (:27).
+	 * (`frappe/public/js/frappe/utils/number_format.js:24`), so the return never
+	 * signals a parse failure. With `decimals`, rounded by
+	 * `_round(v, decimals, rounding_method)`
+	 * (`frappe/public/js/frappe/utils/number_format.js:27`).
 	 */
 	var flt: (v: unknown, decimals?: number | null, number_format?: string, rounding_method?: string) => number;
 	/**
-	 * `utils/number_format.js:31-46` — removes the group separator of
-	 * `number_format` (default `get_number_format()`, :32) and rewrites its
+	 * `frappe/public/js/frappe/utils/number_format.js:31-46` — removes the group
+	 * separator of `number_format` (default `get_number_format()`,
+	 * `frappe/public/js/frappe/utils/number_format.js:32`) and rewrites its
 	 * decimal separator to `"."`. Pure string → string; does not parse.
 	 */
 	var strip_number_groups: (v: string, number_format?: string) => string;
 
-	// -- provide.js:41-44 constants -----------------------------------------
-	/** `frappe/public/js/frappe/provide.js:41` — `"\n"`. */
+	// -- provide.js:42-45 constants -----------------------------------------
+	/** `frappe/public/js/frappe/provide.js:42` — `"\n"`. */
 	var NEWLINE: string;
-	/** `provide.js:42` — `9`. */
+	/** `frappe/public/js/frappe/provide.js:43` — `9`. */
 	var TAB: number;
-	/** `provide.js:43` — `38`. */
+	/** `frappe/public/js/frappe/provide.js:44` — `38`. */
 	var UP_ARROW: number;
-	/** `provide.js:44` — `40`. */
+	/** `frappe/public/js/frappe/provide.js:45` — `40`. */
 	var DOWN_ARROW: number;
 
 	// -----------------------------------------------------------------------
@@ -217,7 +235,7 @@ declare global {
 		 */
 		frappe?: Frappe;
 
-		/** `ui/messages.js:317`. Optional for the same headless reason as `__`. */
+		/** `ui/messages.js:333`. Optional for the same headless reason as `__`. */
 		msgprint?: Frappe["msgprint"];
 
 		/** See the bare `DataTable` above — non-optional so it can be reassigned. */
@@ -235,7 +253,7 @@ declare global {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:12-26`. Both are installed inside
+	 * `frappe/public/js/frappe/utils/utils.js:13-28`. Both are installed inside
 	 * a single `if (!Array.prototype.uniqBy)` guard, so `move` exists if and
 	 * only if `uniqBy` does. `move` returns `undefined` — see
 	 * {@link FrappeArrayPolyfills}.
@@ -252,9 +270,9 @@ declare global {
 	 * frappe's own jQuery plugins (`add_options`, `set_working`, `done_working`,
 	 * `enterKey`, `datepicker`) and the Bootstrap 4 plugin surface the desk
 	 * bundles load — `frappe/public/js/jquery-bootstrap.js`. `Dialog#show`
-	 * (`ui/dialog.js:297`) calls `.modal("show")` on a plain jQuery handle, so
-	 * without this the package's own declarations would not type-check at their
-	 * call sites.
+	 * (`frappe/public/js/frappe/ui/dialog.js:325`) calls `.modal("show")` on a
+	 * plain jQuery handle, so without this the package's own declarations would
+	 * not type-check at their call sites.
 	 */
 	interface JQuery<TElement = HTMLElement> extends JQueryFrappePlugins<TElement> {}
 

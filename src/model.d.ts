@@ -2,11 +2,13 @@
  * `frappe-types` — group: **frappe-model-meta**
  *
  * Declarations for `frappe.model.*`, `frappe.meta.*`, the global `locals` doc
- * cache, and the core data shapes (`FrappeDoc`, `DocField`, `DocTypeMeta`).
+ * cache, the core data shapes (`FrappeDoc`, `DocField`, `DocTypeMeta`), the
+ * evaluated per-permlevel permission array (`Permission`) and the
+ * `frappe.get_indicator` tuple (`IndicatorTuple`).
  *
- * Verified against **Frappe v16.33.0** (`git tag v16.33.0`, branch `version-16`)
+ * Verified against **Frappe v16.50.0** (`git tag v16.50.0`, branch `version-16`)
  * at `apps/frappe`. Every non-obvious declaration cites the file and line it was
- * read from. Line numbers are only valid for v16.33.0 — re-verify on bump.
+ * read from. Line numbers are only valid for v16.50.0 — re-verify on bump.
  *
  * Primary sources:
  * - `frappe/public/js/frappe/model/model.js`        (frappe.model core)
@@ -14,10 +16,13 @@
  * - `frappe/public/js/frappe/model/sync.js`         (locals population, docinfo)
  * - `frappe/public/js/frappe/model/create_new.js`   (new doc / child rows)
  * - `frappe/public/js/frappe/model/user_settings.js`
+ * - `frappe/public/js/frappe/model/perm.js`         (`frappe.perm`: the `Permission` array)
+ * - `frappe/public/js/frappe/model/indicator.js`    (`frappe.get_indicator`)
  * - `frappe/public/js/frappe/provide.js`            (`locals` bootstrap)
  * - `frappe/core/doctype/docfield/docfield.json`    (authoritative DocField list)
  * - `frappe/core/doctype/doctype/doctype.json`      (authoritative DocType list)
  * - `frappe/desk/form/meta.py`                      (the `__*` sugar keys)
+ * - `frappe/desk/form/load.py`                      (`get_docinfo`: the `DocInfo` keys)
  *
  * Design note on index signatures: `DocField`, `FrappeDoc` and `DocTypeMeta` all
  * carry `[key: string]: unknown`. Frappe documents are open bags — Custom Fields,
@@ -48,9 +53,9 @@ import type { FrappeIndicator } from "./core";
  * Source: `frappe/core/doctype/docfield/docfield.json` → the `fieldtype` field's
  * `options` (44 entries). Cross-checked against
  * `frappe/public/js/frappe/model/model.js:7-48` (`frappe.model.all_fieldtypes`),
- * which is the same list MINUS the four layout types and `Fold`/`Section Break`/
- * `Column Break`/`Tab Break` — `all_fieldtypes` is the "pickable in a control"
- * list, not the full enum.
+ * which is the same list MINUS the four layout types (`Section Break`,
+ * `Column Break`, `Tab Break`, `Fold`) — `all_fieldtypes` is the "pickable in a
+ * control" list, not the full enum.
  */
 export type FieldTypeName =
 	| "Autocomplete"
@@ -102,9 +107,10 @@ export type FieldTypeName =
  * The type actually stored on a `df.fieldtype`.
  *
  * Deliberately NOT a closed union: frappe itself synthesises pseudo-fieldtypes at
- * runtime that are absent from the DocType. `frappe/public/js/frappe/form/formatters.js:435`
+ * runtime that are absent from the DocType. `frappe/public/js/frappe/form/formatters.js:443`
  * rewrites `_user_tags` to `df = { ...df, fieldtype: "Tag" }`, and
- * `formatters.js:432` substitutes `{ fieldtype: "Data" }` for masked fields.
+ * `frappe/public/js/frappe/form/formatters.js:442` substitutes `{ fieldtype: "Data" }`
+ * for masked fields.
  * `FieldTypeName | (string & {})` keeps editor completion for the 44 real types
  * while still accepting the runtime-only ones.
  */
@@ -113,10 +119,10 @@ export type FieldType = FieldTypeName | (string & {});
 /**
  * Frappe stores booleans as `0 | 1` in the database, but its own desk JS
  * sometimes assigns real booleans over the top of a loaded docfield — e.g.
- * `frappe/public/js/frappe/form/grid.js:919` `column.df.hidden = false;` and
- * `:948` `column.df.hidden = true;`, against `grid.js:879` which writes
- * `hidden = show ? 0 : 1`. Any `df` flag frappe mutates client-side therefore has
- * to accept both.
+ * `frappe/public/js/frappe/form/grid.js:1072` `column.df.hidden = false;` and
+ * `frappe/public/js/frappe/form/grid.js:1101` `column.df.hidden = true;`, against
+ * `frappe/public/js/frappe/form/grid.js:1041` which writes `hidden = show ? 0 : 1`.
+ * Any `df` flag frappe mutates client-side therefore has to accept both.
  */
 export type FrappeCheck = 0 | 1;
 
@@ -144,7 +150,7 @@ export type TableFieldType = "Table" | "Table MultiSelect";
  * (`if (typeof this.df.options === "string") options = this.df.options.split("\n")`),
  * and `frappe/public/js/frappe/form/controls/select.js:158-177` (`parse_option`)
  * accepts each entry as either a bare string or a `{value,label,disabled,selected}`
- * object. `frappe/public/js/frappe/model/model.js:863`
+ * object. `frappe/public/js/frappe/model/model.js:902`
  * (`frm.set_df_property("default_view", "options", default_views)`) is frappe
  * assigning a `string[]` in-tree.
  */
@@ -160,7 +166,8 @@ export type SelectOption =
 /**
  * Extra arguments `frappe.format` threads into a formatter.
  * `frappe/public/js/frappe/form/formatters.js:11-17` reads `inline` / `only_value`;
- * `:96` reads `always_show_decimals`. The bag is open — apps pass their own keys.
+ * `frappe/public/js/frappe/form/formatters.js:71` reads `always_show_decimals`. The
+ * bag is open — apps pass their own keys.
  *
  * COLLISION RESOLVED — `ui/form.d.ts` declared a second, longer `FormatterOptions`
  * for the same runtime bag. `model.d.ts` wins ownership because it is the lower
@@ -171,17 +178,22 @@ export type SelectOption =
  * `ui/form.d.ts` now re-exports this declaration.
  */
 export interface FormatterOptions {
-	/** formatters.js:12 — suppresses `_right`'s right-aligned wrapper div. */
+	/** frappe/public/js/frappe/form/formatters.js:12 — suppresses `_right`'s right-aligned wrapper div. */
 	inline?: boolean | 1 | 0;
-	/** formatters.js:12, :159, :182 — return the bare value, no markup. */
+	/** frappe/public/js/frappe/form/formatters.js:12, :158, :182 — return the bare value, no markup. */
 	only_value?: boolean | 1 | 0;
-	/** formatters.js:182 — Link renders as plain text rather than an anchor. */
+	/** frappe/public/js/frappe/form/formatters.js:182 — Link renders as plain text rather than an anchor. */
 	for_print?: boolean | 1 | 0;
-	/** formatters.js:71/:96 — Float keeps trailing zeros. */
+	/** frappe/public/js/frappe/form/formatters.js:71 — Float keeps trailing zeros. */
 	always_show_decimals?: boolean | 1 | 0;
-	/** formatters.js:213 — overrides the Link's anchor text. */
+	/** frappe/public/js/frappe/form/formatters.js:213 — overrides the Link's anchor text. */
 	label?: string;
-	/** Passed by `frm.get_formatted` / `set_disp_area`; no formatter reads it. */
+	/**
+	 * Passed by `frm.get_formatted` (`frappe/public/js/frappe/form/form.js:2007`),
+	 * `set_disp_area` (`frappe/public/js/frappe/form/controls/base_input.js:166`) and
+	 * the side panel (`frappe/public/js/frappe/ui/side_panel.js:104`); no formatter
+	 * in `formatters.js` reads it.
+	 */
 	no_icon?: boolean | 1 | 0;
 	[key: string]: unknown;
 }
@@ -190,17 +202,31 @@ export interface FormatterOptions {
  * A custom `df.formatter`.
  *
  * Called as `formatter(value, df, options, doc)` —
- * `frappe/public/js/frappe/form/formatters.js:443-445`
- * (`var formatter = df.formatter || frappe.form.get_formatter(fieldtype);
+ * `frappe/public/js/frappe/form/formatters.js:452-456`
+ * (`var formatter = frappe.meta.get_docfield(doc?.doctype, df.fieldname)?.formatter
+ *   || frappe.form.get_formatter(fieldtype);
  *   var formatted = formatter(value, df, options, doc);`).
+ *
+ * WHERE `frappe.format` finds it: since the lookup at `formatters.js:452-454` it is
+ * the formatter registered on the DocType's own docfield
+ * (`frappe.meta.get_docfield(doc?.doctype, df.fieldname)`), NOT `df.formatter` on
+ * whatever descriptor is passed in. With no `doc`, `doc?.doctype` is `undefined`,
+ * `get_docfield` yields `null`, and a custom formatter is never picked up. The
+ * `Data`-family formatters (`Data`, and `Autocomplete`/`Select` through it)
+ * additionally call a registered formatter with TWO arguments only,
+ * `std_df.formatter(value, df)`
+ * (`frappe/public/js/frappe/form/formatters.js:30`) — hence every parameter after
+ * `value` is optional.
  *
  * The return type is deliberately `unknown`, NOT `string`. Frappe's own built-in
  * formatters return non-strings on common paths: `formatters.Int`
- * (`formatters.js:83-92`) returns `_right(cint(value), options)` and `_right`
- * (`formatters.js:11-17`) returns the raw `value` when `options.inline` is set —
- * i.e. a `number`. `frappe.format` itself guards with
+ * (`frappe/public/js/frappe/form/formatters.js:80-89`) returns
+ * `_right(cint(value), options)` and `_right`
+ * (`frappe/public/js/frappe/form/formatters.js:11-17`) returns the raw `value` when
+ * `options.inline` is set — i.e. a `number`. `frappe.format` itself guards with
  * `if (typeof formatted == "string") formatted = frappe.dom.remove_script_and_style(formatted)`
- * (`formatters.js:447`), which only makes sense because non-strings occur.
+ * (`frappe/public/js/frappe/form/formatters.js:458`), which only makes sense because
+ * non-strings occur.
  * Narrow the result before inserting it into the DOM.
  */
 export type DocFieldFormatter = (
@@ -258,16 +284,24 @@ export interface DocField {
 	 * May be an array — see {@link SelectOption}.
 	 */
 	options?: string | SelectOption[];
-	/** The DB column default. Read via `df["default"]` in `create_new.js:189-221`. */
+	/** The DB column default. Read via `df["default"]` in `frappe/public/js/frappe/model/create_new.js:189-225`. */
 	default?: unknown;
 	/**
 	 * DB type is a Select of `"" | "0".."9"`, so it arrives as a **string**, and
-	 * frappe `cint()`s it (`meta.js:353`). But `formatters.js:99`
-	 * (`docfield.precision = precision`) writes a **number** back. Both occur.
+	 * frappe `cint()`s it (`frappe/public/js/frappe/model/meta.js:353`). But the
+	 * Float formatter (`frappe/public/js/frappe/form/formatters.js:67`,
+	 * `docfield.precision = precision`, where `precision` is
+	 * `docfield.precision || cint(float_precision) || null` —
+	 * `frappe/public/js/frappe/form/formatters.js:61-64`) writes a **number** back,
+	 * or `null` when neither the field nor the system default names one. All three occur.
 	 */
-	precision?: string | number;
+	precision?: string | number | null;
 	length?: number;
-	/** `frappe/public/js/frappe/model/meta.js:158`, `create_new.js` skip virtual fields. */
+	/**
+	 * `frappe/public/js/frappe/model/meta.js:158` (`get_table_fields` skips virtual
+	 * tables unless asked), `frappe/public/js/frappe/model/perm.js:241` and
+	 * `:251` (a virtual field is never writable).
+	 */
 	is_virtual?: FrappeCheck;
 	not_nullable?: FrappeCheck;
 	non_negative?: FrappeCheck;
@@ -283,7 +317,7 @@ export interface DocField {
 	unique?: FrappeCheck;
 	set_only_once?: FrappeCheck;
 	read_only?: FrappeCheckLoose;
-	/** `frappe/public/js/frappe/form/grid.js:1331` → `frm.get_perm(df.permlevel, "read")`. */
+	/** `frappe/public/js/frappe/form/grid.js:1495` → `frm.get_perm(df.permlevel, "read")`. */
 	permlevel?: number;
 	ignore_user_permissions?: FrappeCheck;
 	ignore_xss_filter?: FrappeCheck;
@@ -300,10 +334,11 @@ export interface DocField {
 
 	/**
 	 * See {@link FrappeCheckLoose} — frappe's grid writes real booleans here
-	 * (`form/grid.js:919`, `:948`) as well as `0 | 1` (`form/grid.js:879`).
+	 * (`frappe/public/js/frappe/form/grid.js:1072`, `frappe/public/js/frappe/form/grid.js:1101`)
+	 * as well as `0 | 1` (`frappe/public/js/frappe/form/grid.js:1041`).
 	 */
 	hidden?: FrappeCheckLoose;
-	/** Set by `frappe/public/js/frappe/form/layout.js:728-729` from `depends_on`. */
+	/** Set by `frappe/public/js/frappe/form/layout.js:730-731` from `depends_on`. */
 	hidden_due_to_dependency?: boolean;
 	depends_on?: string;
 	collapsible?: FrappeCheck;
@@ -319,14 +354,36 @@ export interface DocField {
 	hide_seconds?: FrappeCheck;
 	alignment?: "" | "Left" | "Center" | "Right";
 	button_color?: "" | "Default" | "Primary" | "Info" | "Success" | "Warning" | "Danger";
-	/** Both are DB `Data`, i.e. strings like `"120px"` — not numbers. */
+	/** DB `Data`, i.e. a string like `"120px"` — not a number. */
 	print_width?: string;
-	width?: string;
+	/**
+	 * DB `Data` (`frappe/core/doctype/docfield/docfield.json:436-446`), so from the
+	 * server it is a string such as `"120px"`. But the grid and the list view treat
+	 * `df.width` as a static **pixel** width and write a **number** over it:
+	 * `Grid#save_column_width` (`frappe/public/js/frappe/form/grid.js:603`
+	 * `df.width = width;`), `Grid#setup_user_defined_columns`
+	 * (`frappe/public/js/frappe/form/grid.js:1558`
+	 * `column.width = cint(row.width) || LEGACY_COLSIZE_TO_PX[row.columns];`) and
+	 * `ListView#build_columns_from_fields`
+	 * (`frappe/public/js/frappe/list/list_view.js:664` `if (field.width) df.width = field.width;`).
+	 * Both readers `cint()` it (`Grid#get_column_width`,
+	 * `frappe/public/js/frappe/form/grid.js:1531-1537`; `frappe/public/js/frappe/list/list_view.js:1560`),
+	 * which is why both shapes are accepted. The grid clamps the result to 60-600px
+	 * (`frappe/public/js/frappe/form/grid.js:10-11`).
+	 */
+	width?: string | number;
 	max_height?: string;
 	/**
-	 * Grid column span. A value of 1..12 is a legacy Bootstrap span; the grid
-	 * translates it through its own px table (`form/grid.js:1334`
-	 * `df.colsize = df.columns`).
+	 * Legacy grid/list column span, DB `Int`. A value of 1..12 is an old Bootstrap
+	 * span that the grid translates to pixels through its own table
+	 * (`LEGACY_COLSIZE_TO_PX[df.columns]`,
+	 * `frappe/public/js/frappe/form/grid.js:1534`; the table is
+	 * `frappe/public/js/frappe/form/grid.js:23-36`); any other value is ignored and
+	 * the width falls back to the fieldtype default. The precedence is
+	 * `df.width` > `df.columns` > fieldtype default > 140px
+	 * (`frappe/public/js/frappe/form/grid.js:1530-1537`). The grid no longer writes a
+	 * span back onto the df — `colsize` is gone; read the pixel width with
+	 * `Grid#get_column_width`.
 	 */
 	columns?: number;
 
@@ -345,10 +402,22 @@ export interface DocField {
 	show_on_timeline?: FrappeCheck;
 	remember_last_selected_value?: FrappeCheck;
 	/**
-	 * Pin the grid column. DB `Check`, but `form/grid_row.js:643` writes
-	 * `sticky: $(...).is(":checked") ? 1 : 0` and `:680` writes `cint(...)`.
+	 * Pin the grid column. DB `Check`. Every client-side write is a number, never a
+	 * boolean: the Configure Columns dialog stores `sticky: ... ? 1 : 0`
+	 * (`frappe/public/js/frappe/form/grid_row.js:637`) and `cint(event.target.checked)`
+	 * (`frappe/public/js/frappe/form/grid_row.js:673`) into the per-user GridView
+	 * settings, which `Grid#setup_user_defined_columns` copies onto the docfield
+	 * (`frappe/public/js/frappe/form/grid.js:1559` `column.sticky = row.sticky;`,
+	 * `frappe/public/js/frappe/form/grid_row.js:806`). Hence `0 | 1`, not
+	 * {@link FrappeCheckLoose}.
 	 */
-	sticky?: FrappeCheckLoose;
+	sticky?: FrappeCheck;
+	/**
+	 * Include the field in the data import template. DB `Check`
+	 * (`frappe/core/doctype/docfield/docfield.json:665-671`); read server-side only —
+	 * no desk JS reads it.
+	 */
+	in_import_template?: FrappeCheck;
 
 	/* -- legacy ------------------------------------------------------------ */
 
@@ -358,72 +427,61 @@ export interface DocField {
 	/* -- runtime-only (never in the DB) ------------------------------------ */
 
 	/**
-	 * Grid column size in Bootstrap spans, computed and CACHED ON THE DF by
-	 * `Grid#update_default_colsize` (`form/grid.js:1383-1395`
-	 * `df.colsize = colsize;`) and by `Grid#setup_visible_columns`
-	 * (`form/grid.js:1334` `df.colsize = df.columns;`).
-	 *
-	 * Optional on purpose — it really is absent until the grid computes it. TS
-	 * cannot see that `update_default_colsize(df)` fills it in, so the frappe
-	 * idiom
-	 * ```js
-	 * let value = df.columns || df.colsize;
-	 * if (!value) { this.update_default_colsize(df); value = df.colsize; }
-	 * return value <= 12 ? SPAN_PX[value] || 140 : value;   // TS18048
-	 * ```
-	 * needs one rewrite to compile: read it back with a default —
-	 * `const value = df.columns || df.colsize || 140;`.
-	 */
-	colsize?: number;
-
-	/**
 	 * Per-field render override. Assigned by
-	 * `frappe.meta.set_formatter` (`model/meta.js:76-78`),
-	 * `frappe.meta.set_indicator_formatter` (`model/meta.js:80-92`) and copied
-	 * onto grid column dfs by `Grid#setup_visible_columns`
-	 * (`form/grid.js:1347-1350`).
+	 * `frappe.meta.set_formatter` (`frappe/public/js/frappe/model/meta.js:76-78`),
+	 * `frappe.meta.set_indicator_formatter` (`frappe/public/js/frappe/model/meta.js:80-92`)
+	 * and copied onto grid column dfs by `Grid#setup_visible_columns`
+	 * (`frappe/public/js/frappe/form/grid.js:1505-1507`).
+	 *
+	 * `frappe.format` consults the formatter registered on the docfield of
+	 * `doc?.doctype`, not this property on an arbitrary descriptor — see
+	 * {@link DocFieldFormatter}.
 	 */
 	formatter?: DocFieldFormatter;
 
-	/** Set by `frappe.format` for Dynamic Link resolution (`form/formatters.js:440`). */
+	/** Set by `frappe.format` for Dynamic Link resolution (`frappe/public/js/frappe/form/formatters.js:449`). */
 	_options?: string | null;
 
-	/** Stamped by `frappe.model.get_default_value` (`model/create_new.js:232`). */
+	/** Stamped by `frappe.model.get_default_value` (`frappe/public/js/frappe/model/create_new.js:232`). */
 	__default_value?: unknown;
 
 	/**
 	 * Child docfields, on a Table/Table MultiSelect df used OUTSIDE a form
 	 * (dialogs, standalone grids). `Grid#setup_fields` reads
-	 * `this.docfields = this.df.fields` (`form/grid.js:710`).
+	 * `this.docfields = this.df.fields` (`frappe/public/js/frappe/form/grid.js:867`).
 	 */
 	fields?: DocField[];
 
 	/**
-	 * Rows for a frm-less grid. `Grid#get_data` (`form/grid.js:789-798`) falls
-	 * back to `this.df.data` when `this.frm` is absent, and `form/grid.js:1058`
-	 * pushes bare `{ idx, __islocal: true, ...defaults }` objects into it — which
+	 * Rows for a frm-less grid. `Grid#get_data` (`frappe/public/js/frappe/form/grid.js:951-960`)
+	 * falls back to `this.df.data` when `this.frm` is absent, and
+	 * `frappe/public/js/frappe/form/grid.js:1211` pushes bare `{ idx, __islocal: true, ...defaults }` objects into it — which
 	 * is why {@link GridDataRow} has an optional `name`.
 	 */
 	data?: GridDataRow[];
 
 	/**
 	 * Lazy row/option supplier. Grid calls it with no argument
-	 * (`form/grid.js:863-864`, `form/grid_row.js:125-126`); MultiSelect calls it
-	 * with the typed text (`form/controls/multiselect_pills.js:142-144`).
+	 * (`frappe/public/js/frappe/form/grid.js:1025-1026`,
+	 * `frappe/public/js/frappe/form/grid_row.js:124-125`); MultiSelect calls it
+	 * with the typed text (`frappe/public/js/frappe/form/controls/multiselect_pills.js:142-144`).
 	 * May return a promise (multiselect awaits it).
 	 */
 	get_data?: (txt?: string) => unknown[] | PromiseLike<unknown[]>;
 
 	/**
 	 * Grid behaviour switches set by app code onto the TABLE df, never in the DB.
-	 * `form/grid.js:246`, `:363`, `:406`, `:658`, `:1027`;
-	 * `form/grid_row.js:332`, `:374`.
+	 * `cannot_add_rows`: `frappe/public/js/frappe/form/grid.js:298`, `:442`, `:480`,
+	 * `:815`, `:1180` and `frappe/public/js/frappe/form/grid_row.js:1395`;
+	 * `cannot_delete_rows`: `frappe/public/js/frappe/form/grid.js:434` and
+	 * `frappe/public/js/frappe/form/grid_row.js:1402`;
+	 * `in_place_edit`: `frappe/public/js/frappe/form/grid_row.js:330`, `:369`.
 	 */
 	cannot_add_rows?: boolean | FrappeCheck;
 	cannot_delete_rows?: boolean | FrappeCheck;
 	in_place_edit?: boolean | FrappeCheck;
 
-	/** Grid perm fallback: `form/grid.js:54` `this.control?.perm || this.frm?.perm || this.df.perm`. */
+	/** Grid perm fallback: `frappe/public/js/frappe/form/grid.js:84` `this.control?.perm || this.frm?.perm || this.df.perm`. */
 	perm?: DocPerm[];
 
 	/**
@@ -436,10 +494,14 @@ export interface DocField {
 /**
  * A *partial* docfield descriptor, as frappe synthesises for pseudo-columns.
  *
- * `frappe/public/js/frappe/list/list_view.js:424-429` and `:488-494` push
- * `df: { label: __("ID"), fieldname: "name" }` — no `fieldtype`, no `parent`.
- * `model/model.js:210` returns `{ fieldname: fieldname }` from `get_std_field`
- * when the field is unknown and `ignore` is set.
+ * `frappe/public/js/frappe/list/list_view.js:513-519` and `:565-571` push
+ * `df: { label: __("ID"), fieldname: "name" }` — no `fieldtype`, no `parent` —
+ * and `build_columns_from_fields` falls back to `{ label, fieldname }`
+ * (`frappe/public/js/frappe/list/list_view.js:659-662`) or `{ fieldname: "status_field" }`
+ * (`frappe/public/js/frappe/list/list_view.js:653`) for a saved column whose
+ * docfield is unknown.
+ * `frappe/public/js/frappe/model/model.js:209` returns `{ fieldname: fieldname }`
+ * from `get_std_field` when the field is unknown and `ignore` is set.
  *
  * Anything that consumes a docfield defensively (notably
  * {@link FrappeModelNamespace.is_numeric_field}) must accept this shape.
@@ -492,7 +554,7 @@ export interface FrappeDocBase {
 	__islocal?: FrappeCheckLoose;
 	/** `model/create_new.js:16` — dirty. */
 	__unsaved?: FrappeCheckLoose;
-	/** `model/model.js:535-538` — a virgin child row nobody has touched. */
+	/** `model/model.js:556-559` — a virgin child row nobody has touched. */
 	__unedited?: boolean;
 	/** `model/sync.js:28` — `d.__last_sync_on = new Date();` (a `Date`, not a string). */
 	__last_sync_on?: Date;
@@ -538,13 +600,13 @@ export interface ChildDoc extends FrappeDoc {
 	 * Grid selection state. Written as the **number** `0 | 1`, never a boolean —
 	 * `frappe/public/js/frappe/form/grid_row.js:83`
 	 * `this.doc.__checked = checked ? 1 : 0;`. Read as a truthy test in
-	 * `form/grid.js:422` and `:428`.
+	 * `frappe/public/js/frappe/form/grid.js:493` and `:497`.
 	 */
 	__checked?: FrappeCheck;
 
 	/**
 	 * Opt a row out of drag-reordering. Compared with strict `=== false`
-	 * (`form/grid.js:767`, `form/grid_row.js:166`), so only the literal `false`
+	 * (`form/grid.js:929`, `form/grid_row.js:165`), so only the literal `false`
 	 * has any effect.
 	 */
 	_sortable?: false;
@@ -555,7 +617,7 @@ export interface ChildDoc extends FrappeDoc {
  *
  * **`name` and `idx` are optional on purpose.** For a grid bound to a form the
  * rows are real {@link ChildDoc}s and both are set, but for a frm-less grid the
- * rows come from `df.data`, and `frappe/public/js/frappe/form/grid.js:1058`
+ * rows come from `df.data`, and `frappe/public/js/frappe/form/grid.js:1211`
  * pushes `{ idx: row_idx, __islocal: true, ...defaults }` — no `name` at all.
  * That is exactly why both frappe and its consumers backfill with
  * `if (d.name === undefined) d.name = ...`. Declaring `name: string` here would
@@ -567,7 +629,7 @@ export interface GridDataRow extends FrappeDocBase {
 	name?: string;
 	/**
 	 * Also optional: only a form-bound grid guarantees a `doctype` on its rows.
-	 * `form/grid.js:1058` pushes `{ idx, __islocal: true, ...defaults }`.
+	 * `form/grid.js:1211` pushes `{ idx, __islocal: true, ...defaults }`.
 	 */
 	doctype?: string;
 	idx?: number;
@@ -614,32 +676,52 @@ export interface DocPerm {
  * {@link DocPerm}). It is what `frm.perm`, `BaseControl#perm` and `Grid#perm`
  * hold.
  *
- * Source: `frappe/public/js/frappe/model/perm.js:64-127` (`_get_perm`) and
- * `perm.js:130-188` (`get_role_permissions`). The array is indexed by
- * permlevel; `_get_perm` seeds it with `[{ read: 0, permlevel: 0 }]`
- * (perm.js:68) and `get_role_permissions` fills gaps with `{}` (perm.js:165),
- * so **every property except `permlevel` can be missing** and
+ * Source: `frappe/public/js/frappe/model/perm.js:78-157` (`_get_perm`) and
+ * `frappe/public/js/frappe/model/perm.js:159-196` (`get_role_permissions`). The
+ * array is indexed by permlevel; both seed it with
+ * `[{ read: 0, permlevel: 0, rights_without_if_owner: new Set() }]`
+ * (`frappe/public/js/frappe/model/perm.js:82`, `:168`) and
+ * `get_role_permissions` adds a `{ permlevel }` entry per further permlevel
+ * (`frappe/public/js/frappe/model/perm.js:173`), so **every property except
+ * `permlevel` can be missing**. The array can also be SPARSE: with DocPerm rows
+ * at permlevels 0 and 2 only, index 1 is a hole. The "fill gaps with empty
+ * object" `perm.map((p) => p || {})` (`frappe/public/js/frappe/model/perm.js:194`)
+ * does not fill it — `Array.prototype.map` skips holes — so frappe itself guards
+ * `perm[df.permlevel]` (`frappe/public/js/frappe/model/perm.js:246-250`) and
  * `noUncheckedIndexedAccess` will (correctly) make an indexed read optional.
  *
+ * Without the DocType meta loaded, `_get_perm` returns only the seed, with `read`
+ * taken from `frappe.boot.user.all_read` and, only when no `doc` is passed,
+ * `select`/`write`/`delete`/`submit`/`cancel`/`create` taken from the other
+ * `frappe.boot.user` lists (`frappe/public/js/frappe/model/perm.js:88-107`);
+ * `get_perm` then refuses to cache that degraded result
+ * (`frappe/public/js/frappe/model/perm.js:69-73`).
+ *
  * The right names come from `frappe.perm.get_rights(doctype)`
- * (perm.js:41-46) = the 14 fixed rights at perm.js:18-33 PLUS any custom
- * ptypes from `frappe.boot.doctype_ptype_map` (the Permission Type doctype).
- * That extensibility is why the index signature is open rather than a closed
- * union of keys.
+ * (`frappe/public/js/frappe/model/perm.js:43-48`) = the 14 fixed rights at
+ * `frappe/public/js/frappe/model/perm.js:20-35` PLUS any custom ptypes from
+ * `frappe.boot.doctype_ptype_map` (the Permission Type doctype). That
+ * extensibility is why the index signature is open rather than a closed union of
+ * keys.
  *
  * `rights_without_if_owner` is the odd one out: it is a real `Set<string>`
- * (perm.js:138, 159), present only at permlevel 0, and read at perm.js:95 and
- * perm.js:197. It is included in the index signature's value union so the two
- * declarations stay compatible.
+ * (`frappe/public/js/frappe/model/perm.js:82`, `:168`, `:176`), present only at
+ * permlevel 0, and read, unguarded, at `frappe/public/js/frappe/model/perm.js:124`
+ * and `frappe/public/js/frappe/model/perm.js:226`. It is included in the index
+ * signature's value union so the two declarations stay compatible.
  *
  * SEAM NOTE — this type is imported by `ui/form.d.ts` (`Form#perm`,
  * `BaseControl#perm`) and by `deep-modules.d.ts` (`Grid#perm`), which both used
  * to spell it locally.
  */
 export interface Permission {
-	/** perm.js:68, 144 — always present; the array index this entry sits at. */
+	/**
+	 * `frappe/public/js/frappe/model/perm.js:82`, `:173` — present on every entry
+	 * that exists (the array index it sits at); an index with no DocPerm row has no
+	 * entry at all, see above.
+	 */
 	permlevel: number;
-	/** perm.js:68 — the one right `_get_perm` guarantees a slot for. */
+	/** `frappe/public/js/frappe/model/perm.js:82` — the one right the seed entry guarantees a slot for. */
 	read?: FrappeCheck;
 	write?: FrappeCheck;
 	create?: FrappeCheck;
@@ -655,12 +737,14 @@ export interface Permission {
 	share?: FrappeCheck;
 	select?: FrappeCheck;
 	/**
-	 * Permlevel 0 only (perm.js:137-139). The rights granted by a role whose
-	 * DocPerm row does NOT have `if_owner` set; consulted at perm.js:95 and
-	 * perm.js:197 to decide whether ownership narrows the permission.
+	 * Permlevel 0 only (`frappe/public/js/frappe/model/perm.js:175-177`). The rights
+	 * granted by a role whose DocPerm row does NOT have `if_owner` set; consulted at
+	 * `frappe/public/js/frappe/model/perm.js:124` and
+	 * `frappe/public/js/frappe/model/perm.js:226` to decide whether ownership narrows
+	 * the permission.
 	 */
 	rights_without_if_owner?: Set<string>;
-	/** Custom permission types from the Permission Type doctype (perm.js:42-45). */
+	/** Custom permission types from the Permission Type doctype (`frappe/public/js/frappe/model/perm.js:44-47`). */
 	[right: string]: FrappeCheck | number | Set<string> | undefined;
 }
 
@@ -669,11 +753,18 @@ export interface Permission {
  * `[label, colour]` or `[label, colour, filter]`, where `filter` is a
  * `"fieldname,operator,value"` triple string the list view turns into a filter.
  *
- * Source: `frappe/public/js/frappe/model/indicator.js:26-121` — every `return`
- * in that function is one of these two shapes (`:28` two-element for the unsaved
- * case, `:66`, `:72`, `:76`, and the settings-driven `:37`/`:118` paths
- * three-element). `null` when no indicator applies, which is why callers type it
- * `IndicatorTuple | null | undefined`.
+ * Source: `frappe/public/js/frappe/model/indicator.js:26-124` — every explicit
+ * `return` is one of these two shapes: `:28` is the two-element unsaved case, and
+ * the rest are three-element (`:67` workflow state, `:73` draft, `:78` cancelled,
+ * `:85` document state, `:95` submitted, `:100-104` status, `:110`/`:112`
+ * enabled, `:119`/`:121` disabled). The one exception is `:90`, which passes
+ * through whatever the doctype's `listview_settings.get_indicator` returned. The
+ * colours are not a closed set either: `:56-65` maps a workflow state's style to
+ * `green`/`orange`/`red`/`blue`/`black`/`light-blue` (else `gray`), `:84` slugs a
+ * DocType State's colour, and `:102` calls `frappe.utils.guess_colour`.
+ *
+ * The function has no final `return`, so when no rule matches the result is
+ * `undefined` — not `null`.
  *
  * SEAM NOTE — `core.d.ts` had this inline on
  * `FrappeListViewSettings.get_indicator` and `views.d.ts` imported the name from
@@ -720,7 +811,7 @@ export interface DocTypeState {
 /* -------------------------------------------------------------------------- */
 
 /**
- * The `__dashboard` payload (`frappe/desk/form/meta.py:234` →
+ * The `__dashboard` payload (`frappe/desk/form/meta.py:235` →
  * `Meta.get_dashboard_data()`), consumed by
  * `frappe/public/js/frappe/form/dashboard.js:249`.
  * The server builds it from each DocType's `<doctype>_dashboard.py`, so the
@@ -740,16 +831,16 @@ export interface DocTypeDashboardData {
  *
  * This is what `frappe.get_meta(doctype)` and `locals.DocType[doctype]` return.
  * DB properties are from `frappe/core/doctype/doctype/doctype.json`; the `__*`
- * properties are `ASSET_KEYS` in `frappe/desk/form/meta.py:14-29`, populated by
- * `FormMeta.load_assets()` (`meta.py:56-70`) and serialised by
- * `FormMeta.as_dict()` (`meta.py:72-82`).
+ * properties are `ASSET_KEYS` in `frappe/desk/form/meta.py:14-30`, populated by
+ * `FormMeta.load_assets()` (`frappe/desk/form/meta.py:56-69`) and serialised by
+ * `FormMeta.as_dict()` (`frappe/desk/form/meta.py:71-81`).
  */
 export interface DocTypeMeta extends FrappeDoc {
 	name: string;
 	doctype: string;
 
 	module?: string;
-	/** The DocType's own fields. Frappe reads it defensively (`model/model.js:686`
+	/** The DocType's own fields. Frappe reads it defensively (`frappe/public/js/frappe/model/model.js:719`
 	 * `frappe.get_meta(doctype).fields || []`), so treat an absent value as `[]`. */
 	fields: DocField[];
 	permissions?: DocPerm[];
@@ -759,14 +850,14 @@ export interface DocTypeMeta extends FrappeDoc {
 
 	/* -- behaviour flags --------------------------------------------------- */
 	is_submittable?: FrappeCheck;
-	/** `model/model.js:374` — this DocType is a child table. */
+	/** `model/model.js:396` — this DocType is a child table. */
 	istable?: FrappeCheck;
-	/** `model/model.js:429` — single doctype. */
+	/** `model/model.js:450` — single doctype. */
 	issingle?: FrappeCheck;
 	/**
 	 * Whether rows are editable inline in the grid.
-	 * `frappe/public/js/frappe/form/grid.js:62`
-	 * `if ((this.meta && this.meta.editable_grid) || !this.meta) return true;`
+	 * `frappe/public/js/frappe/form/grid.js:92`
+	 * `return !this.meta || !!this.meta.editable_grid;`
 	 */
 	editable_grid?: FrappeCheck;
 	quick_entry?: FrappeCheck;
@@ -775,16 +866,24 @@ export interface DocTypeMeta extends FrappeDoc {
 	track_views?: FrappeCheck;
 	custom?: FrappeCheck;
 	beta?: FrappeCheck;
+	/**
+	 * Marks the DocType as deprecated: still works, but the list view badges it
+	 * (`frappe/public/js/frappe/list/base_list.js:197-198`) and the form sidebar warns
+	 * (`frappe/public/js/frappe/form/templates/form_sidebar.html:47`). Never set on a
+	 * child table (`depends_on: eval:!doc.istable`).
+	 * `frappe/core/doctype/doctype/doctype.json:212-219`.
+	 */
+	deprecated?: FrappeCheck;
 	read_only?: FrappeCheck;
 	in_create?: FrappeCheck;
-	/** `model/model.js:384`. */
+	/** `model/model.js:406`. */
 	is_tree?: FrappeCheck;
 	is_virtual?: FrappeCheck;
-	/** `model/model.js:836` — enables the Calendar and Gantt default views. */
+	/** `model/model.js:875` — enables the Calendar and Gantt default views. */
 	is_calendar_and_gantt?: FrappeCheck;
 	allow_copy?: FrappeCheck;
 	allow_rename?: FrappeCheck;
-	/** `model/model.js:393` — gates `frappe.model.can_import`. */
+	/** `model/model.js:415` — gates `frappe.model.can_import`. */
 	allow_import?: FrappeCheck;
 	allow_events_in_timeline?: FrappeCheck;
 	allow_auto_repeat?: FrappeCheck;
@@ -815,7 +914,7 @@ export interface DocTypeMeta extends FrappeDoc {
 		| 'By "Naming Series" field'
 		| "Expression"
 		| (string & {});
-	/** `model/model.js:636` — `frappe.model.get_doc_title` prefers this field. */
+	/** `model/model.js:669` — `frappe.model.get_doc_title` prefers this field. */
 	title_field?: string;
 	image_field?: string;
 	timeline_field?: string;
@@ -853,40 +952,52 @@ export interface DocTypeMeta extends FrappeDoc {
 	migration_hash?: string;
 	field_order?: string[];
 
-	/* -- server-injected sugar (frappe/desk/form/meta.py:14-29) ------------ */
+	/* -- server-injected sugar (frappe/desk/form/meta.py:14-30) ------------ */
 
-	/** Form client script; `new Function(...)`'d by `form/script_manager.js:182`. */
+	/** Form client script; `new Function(...)`'d by `frappe/public/js/frappe/form/script_manager.js:182`. */
 	__js?: string | null;
 	__css?: string | null;
-	/** List client script; `new Function(...)`'d by `model/model.js:255-259`. */
+	/**
+	 * List client script. `init_doctype` `new Function(...)`s `__list_js`,
+	 * `__calendar_js`, `__tree_js`, `__kanban_js` and then `__custom_list_js`, in
+	 * that order, so a Client Script can override any standard view definition
+	 * (`frappe/public/js/frappe/model/model.js:257-267`).
+	 */
 	__list_js?: string | null;
 	__calendar_js?: string | null;
 	__tree_js?: string | null;
-	/** Client Script doctype content, `meta.py:178-179`. */
+	/**
+	 * Kanban view script, from `<doctype>_kanban.js`
+	 * (`frappe/desk/form/meta.py:103`) and the `doctype_kanban_js` hook
+	 * (`frappe/desk/form/meta.py:113`); in `ASSET_KEYS` at
+	 * `frappe/desk/form/meta.py:18` and run by `init_doctype`
+	 * (`frappe/public/js/frappe/model/model.js:261-265`).
+	 */
+	__kanban_js?: string | null;
+	/** Client Script doctype content, `frappe/desk/form/meta.py:179-180`. */
 	__custom_js?: string | null;
 	__custom_list_js?: string | null;
-	/** `Print Format` docs, synced into `locals[":Print Format"]` by `model/sync.js:48-59`. */
+	/** `Print Format` docs, synced into `locals[":Print Format"]` by `frappe/public/js/frappe/model/sync.js:48-59`. */
 	__print_formats?: FrappeDoc[] | null;
 	/** Workflow + Workflow State docs; `model/meta.js:24` feeds them to `frappe.model.sync`. */
 	__workflow_docs?: FrappeDoc[] | null;
 	/**
 	 * `fieldname -> HTML template` for grid row templates, from a module's
-	 * `form_grid_templates` (`meta.py:222-231`). Read by the Grid constructor:
-	 * `form/grid.js:42-46`.
+	 * `form_grid_templates` (`frappe/desk/form/meta.py:223-232`). Read by the Grid constructor:
+	 * `frappe/public/js/frappe/form/grid.js:72-76`.
 	 */
 	__form_grid_templates?: Record<string, string> | null;
 	__listview_template?: string | null;
 	__dashboard?: DocTypeDashboardData | null;
 	__kanban_column_fields?: string[] | null;
-	/** `name -> HTML`, merged into `frappe.templates` by `model/model.js:261-263`. */
+	/** `name -> HTML`, merged into `frappe.templates` by `frappe/public/js/frappe/model/model.js:269-271`. */
 	__templates?: Record<string, string> | null;
-	__workspaces?: string[] | null;
-	/** `meta.py:70`. */
+	/** `frappe/desk/form/meta.py:69`. */
 	__assets_loaded?: boolean;
 	/**
 	 * Fieldnames the current user may not see, computed per-user
-	 * (`frappe/desk/form/meta.py:80`). `frappe.format` substitutes a plain Data
-	 * formatter for these (`form/formatters.js:427-432`).
+	 * (`frappe/desk/form/meta.py:79`). `frappe.format` substitutes a plain Data
+	 * formatter for these (`frappe/public/js/frappe/form/formatters.js:436-442`).
 	 */
 	masked_fields?: string[];
 
@@ -911,12 +1022,12 @@ export type LocalsDocStore = Record<string, FrappeDoc>;
  * - `locals["Task"]["TASK-0001"]` — a real document.
  * - `locals[":Print Settings"]`, `locals[":Print Format"]`, `locals[":User"]` — the
  *   leading colon marks partial docs shipped in `frappe.boot`
- *   (`model/sync.js:48-59`, `model/model.js:472`, `model/create_new.js:239`).
+ *   (`model/sync.js:48-59`, `model/model.js:493`, `model/create_new.js:239`).
  *
  * The inner records are typed WITHOUT `| undefined`: with `strict` (but not
  * `noUncheckedIndexedAccess`) that matches how frappe's own code reads them after
  * its `locals[dt] && locals[dt][dn]` guard. Missing keys really are `undefined` at
- * runtime — guard before dereferencing, exactly as `model/model.js:453` does.
+ * runtime — guard before dereferencing, exactly as `model/model.js:474` does.
  */
 export interface Locals {
 	/** Always provided at boot; holds every loaded {@link DocTypeMeta}. */
@@ -929,30 +1040,58 @@ export interface Locals {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * One row of a {@link DocInfo} list: a bare query result row (`frappe.get_all`,
+ * or SQL for communications), not a loaded document. It carries only the columns
+ * the server selected and has NO `doctype` key, which is why it is not a
+ * {@link FrappeDoc}. Attachments, comments, versions, shares, view logs and
+ * milestones are `get_all` rows (`frappe/desk/form/load.py:150-154`, `:180-187`,
+ * `:191-204`, `:245-251`, `:425-432`; `frappe/share.py:163-167`).
+ */
+export interface DocInfoRow {
+	name?: string;
+	[key: string]: unknown;
+}
+
+/**
+ * One entry of `docinfo.assignments`: a ToDo selected as
+ * `name, allocated_to as owner, description, status`
+ * (`frappe/desk/form/load.py:402-412`). `owner` is the ASSIGNEE, not the ToDo's
+ * creator; `frappe/public/js/frappe/form/form.js:2348` maps it to a user list.
+ */
+export interface DocInfoAssignment {
+	name: string;
+	owner: string;
+	description?: string | null;
+	status?: string;
+	[key: string]: unknown;
+}
+
+/**
  * The sidebar/timeline payload that rides alongside a `getdoc` response.
  *
- * Keys from `frappe/desk/form/load.py` `get_docinfo()`. Every list element is an
- * app/DB row whose columns vary by installed app, so they are left `unknown`-ish
- * records rather than invented shapes.
+ * Keys from `frappe/desk/form/load.py` `get_docinfo()`
+ * (`frappe/desk/form/load.py:93-137`). Every list element is a DB row whose
+ * columns vary by installed app, so they are left `unknown`-ish records
+ * ({@link DocInfoRow}) rather than invented shapes.
  */
 export interface DocInfo {
 	doctype: string;
 	name: string;
-	attachments?: FrappeDoc[];
-	comments?: FrappeDoc[];
-	communications?: FrappeDoc[];
-	automated_messages?: FrappeDoc[];
-	versions?: FrappeDoc[];
-	assignments?: string[];
+	attachments?: DocInfoRow[];
+	comments?: DocInfoRow[];
+	communications?: DocInfoRow[];
+	automated_messages?: DocInfoRow[];
+	versions?: DocInfoRow[];
+	assignments?: DocInfoAssignment[];
 	permissions?: Record<string, unknown>;
-	shared?: FrappeDoc[];
-	views?: FrappeDoc[];
+	shared?: DocInfoRow[];
+	views?: DocInfoRow[];
 	additional_timeline_content?: unknown[];
-	milestones?: FrappeDoc[];
+	milestones?: DocInfoRow[];
 	is_document_followed?: boolean;
 	tags?: string;
 	document_email?: string | null;
-	/** Merged into `frappe.boot.user_info` by `model/sync.js:114`. */
+	/** Merged into `frappe.boot.user_info` by `frappe/public/js/frappe/model/sync.js:114`. */
 	user_info?: Record<string, unknown>;
 	[key: string]: unknown;
 }
@@ -964,10 +1103,10 @@ export interface DocInfo {
 /** Argument accepted wherever frappe takes "a fieldtype or a docfield". */
 export type FieldTypeLike = string | { fieldtype?: string | null } | null | undefined;
 
-/** Filters accepted by `frappe.utils.filter_dict` (`model/model.js:474`). */
+/** Filters accepted by `frappe.utils.filter_dict` (`frappe/public/js/frappe/model/model.js:495`). */
 export type ModelFilters = Record<string, unknown> | Array<[string, string, unknown]>;
 
-/** Signature of a `frappe.model.on` trigger (`model/model.js:570-599`). */
+/** Signature of a `frappe.model.on` trigger (`frappe/public/js/frappe/model/model.js:591-620`). */
 export type ModelTrigger = (
 	fieldname: string,
 	value: unknown,
@@ -979,10 +1118,13 @@ export type ModelTrigger = (
  * `frappe.model.user_settings` — a doctype-keyed cache that ALSO carries methods.
  *
  * `frappe/public/js/frappe/model/user_settings.js:1-49`. The doctype entries are
- * whatever `frappe.model.utils.user_settings.get` returned (`:45`
- * `frappe.model.user_settings[doctype] = r.message;`) plus an `updated_on`
- * timestamp stamped by `model/model.js:241`. The value shape is app-defined —
- * `GridView`, `last_view`, `List`, `Report`, … — so it stays `unknown`.
+ * whatever `getdoctype` shipped, JSON-parsed
+ * (`frappe/public/js/frappe/model/model.js:240`), or what the last `update`
+ * stored (`frappe/public/js/frappe/model/user_settings.js:45`
+ * `frappe.model.user_settings[doctype] = r.message;`), plus an `updated_on`
+ * timestamp stamped by `frappe/public/js/frappe/model/model.js:241`. The value
+ * shape is app-defined — `GridView`, `last_view`, `List`, `Report`, … — so it
+ * stays `unknown`.
  */
 export interface FrappeModelUserSettings {
 	/** Fetches (does not cache) the settings for a doctype. */
@@ -996,7 +1138,8 @@ export interface FrappeModelUserSettings {
 }
 
 /**
- * Options for `frappe.model.open_mapped_doc` (`model/create_new.js:325-360`).
+ * Options for `frappe.model.open_mapped_doc`
+ * (`frappe/public/js/frappe/model/create_new.js:355-403`).
  * `frm` is a `frappe.ui.form.Form`, declared in the `frappe-ui-form` group.
  */
 export interface OpenMappedDocOptions {
@@ -1009,6 +1152,27 @@ export interface OpenMappedDocOptions {
 	run_link_triggers?: boolean;
 	[key: string]: unknown;
 }
+
+/**
+ * A guard registered with `frappe.model.add_mapped_doc_guard`: called as
+ * `guard(mapped_doc, opts)` after the server has built the mapped document and
+ * before it is synced into `locals` and opened. A falsy (awaited) result stops the
+ * document from opening.
+ *
+ * Source: the contract comment at
+ * `frappe/public/js/frappe/model/create_new.js:329` (`fn(mapped_doc, opts) ->
+ * boolean | Promise<boolean>; false blocks opening the doc`) and the call
+ * `await guard(mapped_doc, opts)` at `frappe/public/js/frappe/model/create_new.js:344`.
+ * `mapped_doc` is the `frappe.model.mapper.make_mapped_doc` response
+ * (`frappe/public/js/frappe/model/create_new.js:390`), which `open_mapped_doc`
+ * then reads `doctype` and `name` from (`:398`, `:400`). Only truthiness is
+ * tested, but the declared return is `boolean` so a guard that forgets to
+ * `return` — which silently blocks every mapped doc — fails to compile.
+ */
+export type MappedDocGuard = (
+	mapped_doc: FrappeDoc,
+	opts: OpenMappedDocOptions,
+) => boolean | PromiseLike<boolean>;
 
 /**
  * `frappe.model` — the document/metadata layer.
@@ -1070,7 +1234,7 @@ export interface FrappeModelNamespace {
 
 	/** `localname -> server name`, filled after save. `model/sync.js:62`. */
 	new_names: Record<string, string>;
-	/** `doctype -> fieldname|"*" -> handlers`. `model/model.js:563-567`. */
+	/** `doctype -> fieldname|"*" -> handlers`. `model/model.js:584-588`. */
 	events: Record<string, Record<string, ModelTrigger[]>>;
 	/** `doctype -> docname -> DocInfo`. `model/sync.js:5`, `:104-118`. */
 	docinfo: Record<string, Record<string, DocInfo>>;
@@ -1088,7 +1252,7 @@ export interface FrappeModelNamespace {
 	is_non_std_field(fieldname: string): boolean;
 
 	/**
-	 * `model/model.js:823-829`:
+	 * `model/model.js:862-868`:
 	 * ```js
 	 * if (!fieldtype) return;                                    // -> undefined
 	 * if (typeof fieldtype === "object") fieldtype = fieldtype.fieldtype;
@@ -1116,91 +1280,152 @@ export interface FrappeModelNamespace {
 		async?: boolean,
 	): Promise<unknown>;
 
-	/** Runs the `__list_js`/`__custom_list_js`/`__calendar_js`/`__tree_js` assets and
-	 * merges `__templates`. `model/model.js:249-264`. */
+	/**
+	 * Runs the `__list_js`/`__calendar_js`/`__tree_js`/`__kanban_js`/`__custom_list_js`
+	 * assets (in that order: custom scripts last, so they override the standard
+	 * definitions) and merges `__templates`.
+	 * `frappe/public/js/frappe/model/model.js:249-272`.
+	 */
 	init_doctype(meta: DocTypeMeta): void;
 
 	/**
-	 * Ensures a document (and its docinfo) is loaded. `model/model.js:266-291`.
+	 * Ensures a document (and its docinfo) is loaded.
+	 * `frappe/public/js/frappe/model/model.js:274-313`.
 	 *
 	 * Resolves with `frappe.get_doc(doctype, name)`, which returns `null` when
 	 * the doctype slice is missing and `undefined` when the docname is. When
 	 * `name` is omitted the doctype is treated as a Single (`if (!name) name = doctype;`).
+	 *
+	 * `callback` is called as `callback(name)` for a cache hit
+	 * (`frappe/public/js/frappe/model/model.js:283`) and as `callback(name, r)` with
+	 * the `getdoc` response after a fetch
+	 * (`frappe/public/js/frappe/model/model.js:295`).
+	 *
+	 * `error_callback` is called when the `getdoc` request fails, as
+	 * `error_callback(r, permission_denied)`
+	 * (`frappe/public/js/frappe/model/model.js:303-309`). `r` is whatever
+	 * `frappe.call`'s `error` handler received, which depends on the HTTP status: the
+	 * parsed response on a 417 (`frappe/public/js/frappe/request.js:207`), the data
+	 * and response text on a 501 (`frappe/public/js/frappe/request.js:211`), the
+	 * jqXHR for a status with no handler (`frappe/public/js/frappe/request.js:357`),
+	 * and nothing at all for a 401, 403, 404 or 500
+	 * (`frappe/public/js/frappe/request.js:137`, `:174`, `:145`, `:216`) — so `r` is
+	 * `unknown`, and a `PermissionError` (403) arrives with `r === undefined`.
+	 * `permission_denied` is `true` when the server's `exc_type` was `PermissionError`
+	 * (the per-request handler at `frappe/public/js/frappe/model/model.js:298-302`,
+	 * dispatched by `frappe/public/js/frappe/request.js:459-467`), in which case the
+	 * doc is also dropped from `locals`
+	 * (`frappe/public/js/frappe/model/model.js:304-306`).
+	 *
+	 * TWO behaviours depend on it. Passing an `error_callback` bypasses the
+	 * `locals` cache: the doc is refetched even when it and its docinfo are already
+	 * loaded (`const use_cache = !error_callback && ...`,
+	 * `frappe/public/js/frappe/model/model.js:277-282`). And the returned promise now
+	 * REJECTS with `r` on a failed fetch (`frappe/public/js/frappe/model/model.js:308`),
+	 * with or without an `error_callback`; before, it simply never settled. A
+	 * rejection is not expressible in the `Promise` type — catch it.
 	 */
 	with_doc(
 		doctype: string,
 		name?: string,
 		callback?: (name: string, r?: unknown) => void,
+		error_callback?: (r: unknown, permission_denied: boolean) => void,
 	): Promise<FrappeDoc | null | undefined>;
 
 	/* -- docinfo ----------------------------------------------------------- */
 
-	/** `model/model.js:293-295` — returns `null` when absent. */
+	/** `frappe/public/js/frappe/model/model.js:315-317` — returns `null` when absent. */
 	get_docinfo(doctype: string, name: string): DocInfo | null;
-	/** No-op when the docinfo slot does not exist. `model/model.js:297-301`. */
+	/** No-op when the docinfo slot does not exist. `frappe/public/js/frappe/model/model.js:319-323`. */
 	set_docinfo(doctype: string, name: string, key: string, value: unknown): void;
 	/**
-	 * `model/model.js:303-305` — `get_docinfo(...).shared`. **Throws** if there is
+	 * `frappe/public/js/frappe/model/model.js:325-327` — `get_docinfo(...).shared`. **Throws** if there is
 	 * no docinfo for the doc, because the source does not guard the `null`.
 	 */
-	get_shared(doctype: string, name: string): FrappeDoc[] | undefined;
+	get_shared(doctype: string, name: string): DocInfoRow[] | undefined;
 
 	/* -- naming helpers ---------------------------------------------------- */
 
-	/** `model/model.js:307-312`. */
+	/** `model/model.js:329-334`. */
 	get_server_module_name(doctype: string): string;
-	/** Slugify: spaces to underscores, lowercased. `model/model.js:314-316`. */
+	/** Slugify: spaces to underscores, lowercased. `model/model.js:336-338`. */
 	scrub(txt: string): string;
-	/** Inverse-ish of `scrub`: `-`/`_` to spaces, Title Cased. `model/model.js:318-322`. */
+	/** Inverse-ish of `scrub`: `-`/`_` to spaces, Title Cased. `model/model.js:340-344`. */
 	unscrub(txt: string): string;
 
-	/* -- permissions (model/model.js:324-449) ------------------------------ */
+	/* -- permissions (frappe/public/js/frappe/model/model.js:346-470) ------ */
 
+	/** `frappe/public/js/frappe/model/model.js:346-348`. */
 	can_create(doctype: string): boolean;
-	/** Returns `undefined` when `frappe.boot.user` is not loaded yet (`:328-332`). */
+	/** Returns `undefined` when `frappe.boot.user` is not loaded yet (`frappe/public/js/frappe/model/model.js:350-354`). */
 	can_select(doctype: string): boolean | undefined;
-	/** Returns `undefined` when `frappe.boot.user` is not loaded yet (`:334-338`). */
+	/** Returns `undefined` when `frappe.boot.user` is not loaded yet (`frappe/public/js/frappe/model/model.js:356-360`). */
 	can_read(doctype: string): boolean | undefined;
 	can_write(doctype: string): boolean;
 	can_get_report(doctype: string): boolean;
 	can_delete(doctype?: string): boolean;
 	can_submit(doctype?: string): boolean;
 	can_cancel(doctype?: string): boolean;
-	/** `frm` short-circuits to `frm.perm[0].import === 1` (`:392-400`). */
+	/** `frm` short-circuits to `frm.perm[0].import === 1` (`frappe/public/js/frappe/model/model.js:414-422`). */
 	can_import(doctype: string, frm?: unknown, meta?: DocTypeMeta | null): boolean;
 	can_export(doctype: string, frm?: unknown): boolean;
 	can_print(doctype: string | null, frm?: unknown): boolean;
+	/**
+	 * Whether a document of `doctype` in `docstatus` may be printed, by the Print
+	 * Settings alone: a non-submittable doctype or a submitted doc (`docstatus == 1`)
+	 * always may; a cancelled one only with `allow_print_for_cancelled`, a draft only
+	 * with `allow_print_for_draft`; any other value may not
+	 * (`frappe/public/js/frappe/model/model.js:437-444`). `docstatus` is compared
+	 * with `==`, so a string is accepted. Split out of `can_print_doc`, which now
+	 * delegates to it.
+	 */
+	can_print_docstatus(doctype: string, docstatus: number | string | null | undefined): boolean;
+	/**
+	 * `can_print_docstatus` AND `can_print(null, frm)` AND not a Single
+	 * (`frappe/public/js/frappe/model/model.js:446-452`).
+	 */
 	can_print_doc(frm: unknown): boolean;
 	can_email(doctype: string, frm?: unknown): boolean;
+	/**
+	 * `false` for everyone except `Administrator` while document sharing is disabled
+	 * (`frappe.defaults.is_enabled("disable_document_sharing")`); otherwise
+	 * `frm.perm[0].share === 1`, or the boot list when there is no `frm`
+	 * (`frappe/public/js/frappe/model/model.js:459-470`).
+	 */
 	can_share(doctype: string, frm?: unknown): boolean;
 
 	/* -- doctype predicates ------------------------------------------------ */
 
-	/** Truthy row count of active Workflows. `model/model.js:363-365`. */
+	/** Truthy row count of active Workflows. `model/model.js:385-387`. */
 	has_workflow(doctype: string): number;
 	/** Reads `locals.DocType[doctype].is_submittable` — so `0 | 1 | false | undefined`. */
 	is_submittable(doctype?: string): FrappeCheck | false | undefined;
 	is_table(doctype?: string): FrappeCheck | false | undefined;
-	/** Checks `frappe.boot.single_types`. `model/model.js:377-380`. */
+	/** Checks `frappe.boot.single_types`. `model/model.js:399-402`. */
 	is_single(doctype?: string): boolean;
 	is_tree(doctype?: string): FrappeCheck | false | undefined;
-	/** True when `__last_sync_on` is under 5s old. `model/model.js:387-390`. */
-	is_fresh(doc?: FrappeDoc | null): boolean;
+	/**
+	 * True when `__last_sync_on` is under 5s old. The body is
+	 * `doc && doc.__last_sync_on && new Date() - doc.__last_sync_on < 5000`
+	 * (`frappe/public/js/frappe/model/model.js:409-412`), so a missing doc or a doc
+	 * that was never synced gives back `null` / `undefined`, not `false`.
+	 */
+	is_fresh(doc?: FrappeDoc | null): boolean | null | undefined;
 
 	/* -- values ------------------------------------------------------------ */
 
-	/** `model/model.js:451-469` — for table fields, true iff a child row exists. */
+	/** `model/model.js:472-490` — for table fields, true iff a child row exists. */
 	has_value(dt: string, dn: string, fn: string): boolean;
 
-	/** Filters `locals[doctype]` (falling back to `locals[":"+doctype]`). `model/model.js:471-475`. */
+	/** Filters `locals[doctype]` (falling back to `locals[":"+doctype]`). `model/model.js:492-496`. */
 	get_list(doctype: string, filters?: ModelFilters): FrappeDoc[];
 
 	/**
-	 * Read one field. `model/model.js:477-504`.
+	 * Read one field. `model/model.js:498-525`.
 	 *
 	 * With a `callback` it goes to the server (`frappe.client.get_value`, which
-	 * returns a `{fieldname: value}` **dict** — `frappe/client.py` `get_value`
-	 * with `as_dict=True`, `{}` when nothing matched) and returns `undefined`
+	 * returns a `{fieldname: value}` **dict** — `frappe/client.py:166-167`,
+	 * `get_value` with `as_dict=True`, `{}` when nothing matched) and returns `undefined`
 	 * synchronously. Without one it reads `locals` and returns the value, or
 	 * `null` when no row matched.
 	 */
@@ -1218,13 +1443,13 @@ export interface FrappeModelNamespace {
 
 	/**
 	 * Set one or more values locally and run the field triggers.
-	 * `model/model.js:506-551`.
+	 * `model/model.js:527-572`.
 	 *
 	 * Two supported shapes: `(doctype, docname, fieldname, value)` and
 	 * `(doctype, docname, updates)` where `updates` is a plain object.
 	 *
 	 * There is a THIRD, doc-first shape in the source that is **broken** — see
-	 * `model/model.js:517-521`:
+	 * `model/model.js:538-542`:
 	 * ```js
 	 * if ($.isPlainObject(doctype)) { doc = doctype; fieldname = docname; value = fieldname; }
 	 * ```
@@ -1250,12 +1475,12 @@ export interface FrappeModelNamespace {
 		fieldtype?: string,
 		skip_dirty_trigger?: boolean,
 	): Promise<unknown>;
-	/** Doc-first form, updates-object only. `model/model.js:517-521`. */
+	/** Doc-first form, updates-object only. `model/model.js:538-542`. */
 	set_value(doc: FrappeDoc, updates: Record<string, unknown>): Promise<unknown>;
 
-	/** Register a field trigger; `fieldname` may be `"*"`. `model/model.js:553-568`. */
+	/** Register a field trigger; `fieldname` may be `"*"`. `model/model.js:574-589`. */
 	on(doctype: string, fieldname: string, fn: ModelTrigger): void;
-	/** Run the registered triggers serially. `model/model.js:570-599`. */
+	/** Run the registered triggers serially. `model/model.js:591-620`. */
 	trigger(
 		fieldname: string,
 		value: unknown,
@@ -1266,10 +1491,10 @@ export interface FrappeModelNamespace {
 	/* -- doc access -------------------------------------------------------- */
 
 	/**
-	 * `model/model.js:601-609`. `name` may be a filter object, in which case the
+	 * `model/model.js:622-630`. `name` may be a filter object, in which case the
 	 * first match (or `null`) comes back. Returns `null` when the doctype slice
 	 * is missing, `undefined` when only the docname is.
-	 * Also aliased as the global `frappe.get_doc` (`model/model.js:869`).
+	 * Also aliased as the global `frappe.get_doc` (`model/model.js:908`).
 	 */
 	get_doc(
 		doctype: string,
@@ -1277,9 +1502,9 @@ export interface FrappeModelNamespace {
 	): FrappeDoc | null | undefined;
 
 	/**
-	 * `model/model.js:611-627`. Two shapes:
+	 * `model/model.js:632-648`. Two shapes:
 	 * `(doctype, parent, parentfield, filters?)` and `(doc, parentfield, filters?)`.
-	 * Aliased as `frappe.get_children` (`model/model.js:870`).
+	 * Aliased as `frappe.get_children` (`model/model.js:909`).
 	 */
 	get_children(
 		doctype: string,
@@ -1289,24 +1514,47 @@ export interface FrappeModelNamespace {
 	): ChildDoc[];
 	get_children(doc: FrappeDoc, parentfield: string, filters?: ModelFilters): ChildDoc[];
 
-	/** `__("New {0}")` for unsaved docs, else `title_field` or `name`. `model/model.js:629-641`. */
-	get_doc_title(doc: FrappeDoc): string;
+	/**
+	 * `__("New {0}")` for an unsaved doc, else the `title_field` value, else `name`
+	 * as a string. `frappe/public/js/frappe/model/model.js:662-674`.
+	 *
+	 * The `title_field` branch returns the field's RAW value
+	 * (`get_title_from_title_field`, `frappe/public/js/frappe/model/model.js:650-660`),
+	 * not a coerced string, so a doc whose title field is unset gives back `null` /
+	 * `undefined`. Only the `name` fallback is `String(doc.name)`
+	 * (`frappe/public/js/frappe/model/model.js:672`).
+	 */
+	get_doc_title(doc: FrappeDoc): string | null | undefined;
+	/**
+	 * The value of `meta.title_field` on `doc`; when that field is a `Link` or
+	 * `Dynamic Link` it is swapped for the linked record's title —
+	 * `frappe.utils.get_link_title(doctype, value) ?? value`, the doctype being
+	 * `df.options` or, for a Dynamic Link, `doc[df.options]`
+	 * (`frappe/public/js/frappe/model/model.js:650-660`). Reads `meta.fields` with no
+	 * guard, so `meta` must be a loaded DocType meta.
+	 */
+	get_title_from_title_field(doc: FrappeDoc, meta: DocTypeMeta): unknown;
 
-	/** Deletes every child row from `locals` and empties the array. `model/model.js:643-648`. */
+	/** Deletes every child row from `locals` and empties the array. `model/model.js:676-681`. */
 	clear_table(doc: FrappeDoc, parentfield: string): void;
-	/** `model/model.js:650-655`. */
+	/** `model/model.js:683-688`. */
 	remove_from_locals(doctype: string, name: string): void;
-	/** Removes a doc and renumbers its siblings' `idx`. `model/model.js:657-681`. */
+	/** Removes a doc and renumbers its siblings' `idx`. `model/model.js:690-714`. */
 	clear_doc(doctype: string, name?: string): void;
 	/** Also clears `locals[":"+doctype]`. `model/sync.js:73-78`. */
 	delete_from_locals(doctype: string, name: string): void;
 
-	/** `["name","amended_from","amendment_date","cancel_reason"]` plus `no_copy` fields. `model/model.js:683-693`. */
+	/** `["name","amended_from","amendment_date","cancel_reason"]` plus `no_copy` fields. `model/model.js:716-726`. */
 	get_no_copy_list(doctype: string): string[];
 
-	/** Confirms, then calls `frappe.client.delete`. `model/model.js:695-722`. */
+	/**
+	 * Confirms with a destructive `frappe.warn` dialog (red primary button,
+	 * "Permanently delete {0}?"), then calls `frappe.client.delete` and clears the doc
+	 * from `locals`; `callback` runs only after a successful delete.
+	 * `frappe/public/js/frappe/model/model.js:728-761`.
+	 */
 	delete_doc(doctype: string, docname: string, callback?: (r: unknown, rt?: unknown) => void): void;
-	/** Opens the Rename dialog. `model/model.js:724-778`. */
+	/** Opens the Rename dialog. `model/model.js:763-817`. */
 	rename_doc(doctype: string, docname: string, callback?: (new_name: string) => void): void;
 	/** `model/sync.js:80-102`. */
 	rename_doc_in_locals(
@@ -1316,23 +1564,23 @@ export interface FrappeModelNamespace {
 		merge?: boolean,
 	): void;
 
-	/** In-place `flt(..., precision(...))` over Currency/Float fields. `model/model.js:780-793`. */
+	/** In-place `flt(..., precision(...))` over Currency/Float fields. `model/model.js:819-832`. */
 	round_floats_in(doc: FrappeDoc | null | undefined, fieldnames?: string[]): void;
-	/** `frappe.throw`s when the field is falsy. `model/model.js:795-803`. */
+	/** `frappe.throw`s when the field is falsy. `model/model.js:834-842`. */
 	validate_missing(doc: FrappeDoc, fieldname: string): void;
 
 	/**
-	 * Flatten a doc and every child row into one array. `model/model.js:805-816`.
+	 * Flatten a doc and every child row into one array. `model/model.js:844-855`.
 	 * Walks own enumerable keys, taking every `Array` whose key does not start
 	 * with `_` — so `_comments`-style arrays are skipped but `__islocal` is not
 	 * an array anyway. The parent is element 0.
 	 */
 	get_all_docs(doc: FrappeDoc): FrappeDoc[];
 
-	/** `` `tabDocType`.`fieldname` ``, passthrough if already qualified. `model/model.js:818-821`. */
+	/** `` `tabDocType`.`fieldname` ``, passthrough if already qualified. `model/model.js:857-860`. */
 	get_full_column_name(fieldname: string, doctype: string): string;
 
-	/** Recomputes the DocType form's `default_view` options. `model/model.js:831-865`. */
+	/** Recomputes the DocType form's `default_view` options. `model/model.js:870-904`. */
 	set_default_views_for_doctype(doctype: string, frm: unknown): void;
 
 	/* -- std fields -------------------------------------------------------- */
@@ -1362,8 +1610,18 @@ export interface FrappeModelNamespace {
 	sync_docinfo(r: { docinfo?: DocInfo; docs?: FrappeDoc[] }): FrappeDoc[] | undefined;
 	/** Registers a doc and its child rows in `locals`. `model/sync.js:120-154`. */
 	add_to_locals(doc: FrappeDoc): void;
-	/** Merges server values into the existing local doc rather than replacing it. `model/sync.js:156-241`. */
-	update_in_locals(doc: FrappeDoc): void;
+	/**
+	 * Merges server values into the existing local doc rather than replacing it.
+	 * `frappe/public/js/frappe/model/sync.js:156-272`.
+	 *
+	 * Child rows are matched by `name` against `locals` first and updated in place
+	 * (`frappe/public/js/frappe/model/sync.js:182-194`); only a row that is no longer
+	 * incoming is reused for a new one (`frappe/public/js/frappe/model/sync.js:195-232`),
+	 * and a row needed at another index gets a fresh local entry
+	 * (`frappe/public/js/frappe/model/sync.js:233-239`). Rows past the incoming length
+	 * are dropped from `locals` (`frappe/public/js/frappe/model/sync.js:242-256`).
+	 */
+	update_in_locals(updated_doc: FrappeDoc): void;
 
 	/* -- creation (model/create_new.js) ------------------------------------ */
 
@@ -1385,7 +1643,11 @@ export interface FrappeModelNamespace {
 	set_default_values(doc: FrappeDoc, parent_doc?: FrappeDoc | null): string[];
 	/** Adds one empty row per mandatory Table field. `model/create_new.js:119-129`. */
 	create_mandatory_children(doc: FrappeDoc): void;
-	/** `model/create_new.js:131-235`. Also stamps `df.__default_value`. */
+	/**
+	 * `frappe/public/js/frappe/model/create_new.js:131-235`. Also stamps `df.__default_value`.
+	 * A read-only Link field gets neither a user-permission default nor a user
+	 * default (`frappe/public/js/frappe/model/create_new.js:151`).
+	 */
 	get_default_value(df: DocField, doc: FrappeDoc, parent_doc?: FrappeDoc | null): unknown;
 	/** `model/create_new.js:237-250`. */
 	get_default_from_boot_docs(
@@ -1416,8 +1678,35 @@ export interface FrappeModelNamespace {
 		parentfield?: string | null,
 	): FrappeDoc;
 
-	/** Server-side mapper, then routes to the new doc. `model/create_new.js:325-360`. */
-	open_mapped_doc(opts: OpenMappedDocOptions): Promise<unknown>;
+	/**
+	 * Server-side mapper (`frappe.model.mapper.make_mapped_doc`), then the
+	 * registered guards, then a sync and a route to the new form.
+	 * `frappe/public/js/frappe/model/create_new.js:355-403`.
+	 *
+	 * Returns `undefined` — not a promise — when called while an earlier call's
+	 * guards are still deciding: the call is dropped
+	 * (`frappe/public/js/frappe/model/create_new.js:360-362`). Throws (via
+	 * `frappe.throw`) when `opts.frm` has unsaved changes
+	 * (`frappe/public/js/frappe/model/create_new.js:363-366`).
+	 */
+	open_mapped_doc(opts: OpenMappedDocOptions): Promise<unknown> | undefined;
+
+	/**
+	 * Register a guard that may stop a mapped document from opening; the same
+	 * function is registered once (`frappe/public/js/frappe/model/create_new.js:328-333`).
+	 * The backing list (`_mapped_doc_guards`) and the in-flight counter
+	 * (`_running_mapped_doc_guards`) are private and not declared.
+	 */
+	add_mapped_doc_guard(fn: MappedDocGuard): void;
+	/** Unregister a guard (`frappe/public/js/frappe/model/create_new.js:335-339`). */
+	remove_mapped_doc_guard(fn: MappedDocGuard): void;
+	/**
+	 * Run every registered guard in registration order and resolve `false` at the
+	 * first one that returns a falsy value. A guard that throws is logged with
+	 * `console.error` and skipped — it can never block the document
+	 * (`frappe/public/js/frappe/model/create_new.js:341-353`).
+	 */
+	should_open_mapped_doc(mapped_doc: FrappeDoc, opts: OpenMappedDocOptions): Promise<boolean>;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1448,7 +1737,7 @@ export interface FrappeMetaNamespace {
 	 *    `if (frappe.meta.docfield_map[dt]) { …[dt][fn]… }` guard compiles under
 	 *    `strict` (TS cannot narrow an element access keyed by a non-literal), but
 	 *    a missing key really is `undefined` at runtime — always guard, as frappe
-	 *    does in `form/grid.js:1341-1350` and `form/formatters.js:28-33`.
+	 *    does in `form/grid.js:1499-1508` and `form/formatters.js:28-33`.
 	 * 2. The inner key falls back to **`df.label`** when a field has no
 	 *    `fieldname` (layout breaks, HTML fields) — `meta.js:30`.
 	 */
@@ -1464,16 +1753,16 @@ export interface FrappeMetaNamespace {
 	/** `doctype -> DocField[]`, in insertion order, de-duplicated by fieldname. `meta.js:6`, `:32-39`. */
 	docfield_list: Record<string, DocField[]>;
 
-	/** Declared by `meta.js:7` but never written anywhere in v16.33.0 — always `{}`. */
+	/** Declared by `frappe/public/js/frappe/model/meta.js:7` but never written anywhere in v16.50.0 — always `{}`. */
 	doctypes: Record<string, unknown>;
 
-	/** Declared by `meta.js:8` but never written anywhere in v16.33.0 — always `{}`. */
+	/** Declared by `frappe/public/js/frappe/model/meta.js:8` but never written anywhere in v16.50.0 — always `{}`. */
 	precision_map: Record<string, unknown>;
 
 	/**
 	 * A frozen deep copy of the DocType doctype's own meta, kept because the
 	 * "DocType" entry in `locals.DocType` gets overwritten by the DocType *doc*
-	 * when you open the DocType form. `model/model.js:250-254`;
+	 * when you open the DocType form. `frappe/public/js/frappe/model/model.js:250-254`;
 	 * `frappe.get_meta("DocType")` prefers it (`meta.js:11-13`).
 	 */
 	__doctype_meta?: DocTypeMeta;
@@ -1489,8 +1778,9 @@ export interface FrappeMetaNamespace {
 
 	/**
 	 * `get_docfield`, falling back to `frappe.model.std_fields`. `meta.js:54-69`.
-	 * Returns `undefined` (not `null`) when the fallback also misses, because the
-	 * `out` variable is left at its `get_docfield` result.
+	 * When the fallback also misses, `out` is left at whatever `get_docfield`
+	 * returned, so the result is `null` (doctype not loaded) or `undefined` (doctype
+	 * loaded, no such field) — never a sentinel.
 	 */
 	get_field(doctype: string, fieldname: string, name?: string): DocField | null | undefined;
 
@@ -1610,7 +1900,15 @@ export interface FrappeMetaNamespace {
 	 */
 	get_field_currency(df: DocField | PartialDocField, doc?: FrappeDoc | null): string;
 
-	/** `df.precision`, else the currency/float default. `meta.js:350-366`. */
+	/**
+	 * `df.precision` when truthy; else, for Currency, the `currency_precision`
+	 * default when one is set — a stored `0` now counts, only `null`/`undefined`/`""`
+	 * fall through (`frappe/public/js/frappe/model/meta.js:355-361`) — else the
+	 * precision of the currency's number format
+	 * (`frappe/public/js/frappe/model/meta.js:362-367`); any other fieldtype gets
+	 * `float_precision`, or 3 (`frappe/public/js/frappe/model/meta.js:368-370`).
+	 * `frappe/public/js/frappe/model/meta.js:350-372`.
+	 */
 	get_field_precision(df: DocField | PartialDocField, doc?: FrappeDoc | null): number;
 }
 
@@ -1625,11 +1923,11 @@ export interface FrappeMetaNamespace {
  * `extends`/spread this interface rather than redeclaring these members, so the
  * `DocTypeMeta` type stays single-sourced.
  *
- * Source: the `Grid` constructor, `frappe/public/js/frappe/form/grid.js:22-51`.
+ * Source: the `Grid` constructor, `frappe/public/js/frappe/form/grid.js:53-81`.
  */
 export interface GridMetaContract {
 	/**
-	 * `form/grid.js:25` `this.doctype = this.df.options;` then `:30-32`
+	 * `frappe/public/js/frappe/form/grid.js:56` `this.doctype = this.df.options;` then `:60-62`
 	 * ```js
 	 * if (this.doctype) {
 	 *     this.meta = frappe.get_meta(this.doctype);
@@ -1640,15 +1938,15 @@ export interface GridMetaContract {
 	 * not been loaded (`model/meta.js:14`
 	 * `return locals["DocType"] ? locals["DocType"][doctype] : null;`).
 	 *
-	 * Frappe's own `allow_on_grid_editing` (`form/grid.js:62`) guards it:
-	 * `if ((this.meta && this.meta.editable_grid) || !this.meta)`. Consumers that
+	 * Frappe's own `allow_on_grid_editing` (`frappe/public/js/frappe/form/grid.js:92`)
+	 * guards it: `return !this.meta || !!this.meta.editable_grid;`. Consumers that
 	 * dereference it bare — e.g. `this.grid.meta.editable_grid` — need `?.`.
 	 */
 	meta?: DocTypeMeta | null;
 
 	/**
-	 * The grid-row HTML template, or `null`. `form/grid.js:38` initialises it to
-	 * `null` unconditionally, then `:40-46` overwrites it from
+	 * The grid-row HTML template, or `null`. `frappe/public/js/frappe/form/grid.js:68`
+	 * initialises it to `null` unconditionally, then `:70-76` overwrites it from
 	 * `this.frm.meta.__form_grid_templates[this.df.fieldname]` when the form's
 	 * meta carries one. So it is always PRESENT, and `null` is the normal value —
 	 * `string | null`, not optional.
@@ -1665,7 +1963,7 @@ export interface GridMetaContract {
  * into the assembled global `frappe` object.
  *
  * `frappe.get_doc` / `get_children` / `get_list` are legacy aliases installed by
- * `model/model.js:869-871`; `frappe.get_meta` is defined at `model/meta.js:10-15`
+ * `model/model.js:908-910`; `frappe.get_meta` is defined at `model/meta.js:10-15`
  * and `frappe.get_user_settings` at `model/user_settings.js:51-57`.
  */
 export interface FrappeModelMetaGlobals {
@@ -1675,32 +1973,32 @@ export interface FrappeModelMetaGlobals {
 	/**
 	 * `model/meta.js:10-15`. Returns `null` when `locals.DocType` itself is
 	 * missing, and `undefined` when the doctype is simply not loaded — frappe
-	 * guards both (`form/formatters.js:429` uses `frappe.get_meta(df.parent)?.…`).
+	 * guards both (`form/formatters.js:438` uses `frappe.get_meta(df.parent)?.…`).
 	 * `"DocType"` is special-cased to `frappe.meta.__doctype_meta`.
 	 */
 	get_meta(doctype: string): DocTypeMeta | null | undefined;
 
 	/**
-	 * Alias of {@link FrappeModelNamespace.get_doc} — `model/model.js:869`.
+	 * Alias of {@link FrappeModelNamespace.get_doc} — `model/model.js:908`.
 	 *
 	 * COLLISION RESOLVED — `FrappeCore` declared `get_doc`/`get_list`/`get_children`
 	 * too, with different signatures, which made a composite
 	 * `interface Frappe extends FrappeCore, FrappeModelMetaGlobals` a hard TS2320.
 	 * This file wins ownership: all three are defined in
 	 * `frappe/public/js/frappe/model/model.js` and merely *aliased* onto the root
-	 * at `model.js:869-871`, so the model group is where they live. The type
+	 * at `model.js:908-910`, so the model group is where they live. The type
 	 * parameter and the notes below were carried over from the `core.d.ts` copy so
 	 * nothing was lost in the merge.
 	 *
-	 * Synchronous `locals` lookup — **no network**; `model.js:601-610`. Three
+	 * Synchronous `locals` lookup — **no network**; `model.js:622-631`. Three
 	 * shapes: `get_doc(doctype, name)`, `get_doc(name)` for single doctypes
-	 * (`if (!name) name = doctype`, model.js:602), and `get_doc(doctype, filters)`
+	 * (`if (!name) name = doctype`, model.js:623), and `get_doc(doctype, filters)`
 	 * which delegates to `frappe.get_list` and returns the **first** match
-	 * (model.js:603-607).
+	 * (model.js:624-628).
 	 *
 	 * Returns `null` when the doctype bucket is missing and `undefined` when the
 	 * bucket exists but the name is not in it — `locals[doctype][name]`
-	 * (model.js:608) is an unchecked index. For a server round-trip use
+	 * (model.js:629) is an unchecked index. For a server round-trip use
 	 * {@link FrappeDb.get_doc} instead.
 	 */
 	get_doc<T extends FrappeDoc = FrappeDoc>(
@@ -1709,11 +2007,11 @@ export interface FrappeModelMetaGlobals {
 	): T | null | undefined;
 
 	/**
-	 * Alias of {@link FrappeModelNamespace.get_children} — `model/model.js:870`.
+	 * Alias of {@link FrappeModelNamespace.get_children} — `model/model.js:909`.
 	 *
 	 * Either `(doctype, parent, parentfield, filters?)` or
 	 * `(doc, parentfield, filters?)` — the overload is selected at runtime by
-	 * `$.isPlainObject(doctype)` (model.js:613). Returns `doc[parentfield] || []`,
+	 * `$.isPlainObject(doctype)` (model.js:634). Returns `doc[parentfield] || []`,
 	 * so `[]` when the parentfield is empty.
 	 */
 	get_children<T extends ChildDoc = ChildDoc>(
@@ -1729,10 +2027,10 @@ export interface FrappeModelMetaGlobals {
 	): T[];
 
 	/**
-	 * Alias of {@link FrappeModelNamespace.get_list} — `model/model.js:871`.
+	 * Alias of {@link FrappeModelNamespace.get_list} — `model/model.js:910`.
 	 *
 	 * Filters `locals[doctype]` (falling back to `locals[":" + doctype]` for
-	 * singles) in memory — `model.js:471-475`. Returns `[]` when nothing is cached.
+	 * singles) in memory — `model.js:492-496`. Returns `[]` when nothing is cached.
 	 */
 	get_list<T extends FrappeDoc = FrappeDoc>(
 		doctype: string,

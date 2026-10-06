@@ -1,7 +1,8 @@
 /**
  * frappe-types — group `deep-module-imports`, ambient wiring.
  *
- * Frappe v16.33.0. Companion to `deep-module-imports.d.ts`.
+ * Frappe v16.50.0. Companion to `deep-modules.d.ts`, which declares everything
+ * the four specifiers below re-export.
  *
  * THIS FILE MUST STAY A SCRIPT. It deliberately has no top-level `import` or
  * `export`. Add one and every `declare module` below silently degrades from an
@@ -24,37 +25,55 @@
  *   frappe/public/js/frappe/form/grid
  *     → <apps>/frappe + /frappe/public/js/frappe/form/grid.js
  *
- * Ship this file in the package's `types`/`typesVersions` entry point (or
- * `/// <reference path="./deep-module-imports.ambient.d.ts" />` it from
- * `global.d.ts`), because nothing imports it.
+ * Ship this file by `/// <reference path="./modules.d.ts" />` from
+ * `global.d.ts` (and as the `./modules` subpath of the package's `exports`
+ * map), because nothing imports it.
+ *
+ * ONLY DEFAULT EXPORTS, except one: each specifier below is declared with
+ * exactly the exports the real module has. `grid_row`, `grid_row_form` and
+ * `grid_pagination` have a default export and nothing else. `grid` has the
+ * default `Grid` PLUS, since v16.50, four named const exports
+ * (frappe/public/js/frappe/form/grid.js:10-36). No module has a named export
+ * for its own class, so none is declared: an `import { Grid } from ...` would
+ * type-check against a phantom export and then fail in esbuild.
  */
 
 declare module "frappe/public/js/frappe/form/grid" {
-	// grid.js:21 — `export default class Grid {`. No named exports.
+	// frappe/public/js/frappe/form/grid.js:52 — `export default class Grid {`.
+	//
+	// Since v16.50 the module ALSO has four NAMED exports, all const pixel-width
+	// tables (frappe/public/js/frappe/form/grid.js:10-36); they are re-exported
+	// below. `Grid` itself is the DEFAULT export only: `import { Grid } from ...`
+	// is a "No matching export" error at build time, so it is not declared here.
 	import { Grid } from "frappe-types/deep-modules";
 	export default Grid;
-	export { Grid };
+	export {
+		GRID_MIN_COLUMN_WIDTH,
+		GRID_MAX_COLUMN_WIDTH,
+		DEFAULT_COLUMN_WIDTHS,
+		LEGACY_COLSIZE_TO_PX,
+	} from "frappe-types/deep-modules";
 }
 
 declare module "frappe/public/js/frappe/form/grid_row" {
-	// grid_row.js:9 — `export default class GridRow {`. No named exports.
+	// frappe/public/js/frappe/form/grid_row.js:9 — `export default class GridRow {`.
+	// No named exports.
 	import { GridRow } from "frappe-types/deep-modules";
 	export default GridRow;
-	export { GridRow };
 }
 
 declare module "frappe/public/js/frappe/form/grid_row_form" {
-	// grid_row_form.js:1 — `export default class GridRowForm {`. No named exports.
+	// frappe/public/js/frappe/form/grid_row_form.js:1 —
+	// `export default class GridRowForm {`. No named exports.
 	import { GridRowForm } from "frappe-types/deep-modules";
 	export default GridRowForm;
-	export { GridRowForm };
 }
 
 declare module "frappe/public/js/frappe/form/grid_pagination" {
-	// grid_pagination.js:1 — `export default class GridPagination {`. No named
-	// exports. Not imported by carbon_frappe today; declared because it is the
-	// type of `Grid#grid_pagination` and the same specifier shape works.
+	// frappe/public/js/frappe/form/grid_pagination.js:1 —
+	// `export default class GridPagination {`. No named exports. Not imported by
+	// carbon_frappe today; declared because it is the type of
+	// `Grid#grid_pagination` and the same specifier shape works.
 	import { GridPagination } from "frappe-types/deep-modules";
 	export default GridPagination;
-	export { GridPagination };
 }
