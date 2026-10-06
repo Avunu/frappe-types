@@ -1,27 +1,30 @@
 {
   "schema": 1,
   "source": {
-    "ref": "v16.33.1",
-    "commit": "988e54f3c4c291e2077a83809663f123731abe76",
-    "date": "2026-09-08"
+    "ref": "v16.50.0",
+    "commit": "f20f92d29706510551b4438cc196b0323a7f1a92",
+    "date": "2026-10-06"
   },
-  "version": "16.33.1",
+  "version": "16.50.0",
   "scss": {
     "bundles": {
       "frappe/public/scss/desk.bundle.scss": [
-        "frappe/public/css/fonts/fontawesome/font-awesome.min.css",
-        "frappe/public/css/octicons/octicons.css",
         "frappe/public/css/fonts/inter/inter.scss",
         "~frappe-charts/dist/frappe-charts.min",
         "~plyr/dist/plyr",
         "./desk/index",
+        "./desk/full_height_page",
+        "./espresso_components",
+        "frappe/public/node_modules/highlight.js/styles/tomorrow.css",
+        "./common/utilities"
+      ],
+      "frappe/public/scss/email.bundle.scss": [],
+      "frappe/public/scss/leaflet.bundle.scss": [
         "frappe/public/js/lib/leaflet/leaflet.css",
         "frappe/public/js/lib/leaflet_easy_button/easy-button.css",
         "frappe/public/js/lib/leaflet_control_locate/L.Control.Locate.css",
-        "frappe/public/js/lib/leaflet_draw/leaflet.draw.css",
-        "frappe/public/node_modules/highlight.js/styles/tomorrow.css"
+        "frappe/public/js/lib/leaflet_draw/leaflet.draw.css"
       ],
-      "frappe/public/scss/email.bundle.scss": [],
       "frappe/public/scss/login.bundle.scss": [
         "./desk/variables"
       ],
@@ -46,11 +49,12 @@
       ],
       "frappe/public/scss/web_form.bundle.scss": [
         "frappe/website/css/web_form.css",
-        "frappe/public/css/octicons/octicons.css",
         "~frappe-datatable/dist/frappe-datatable"
       ],
       "frappe/public/scss/website.bundle.scss": [
-        "./website/index"
+        "./website/index",
+        "./espresso_components",
+        "common/utilities"
       ]
     }
   },
@@ -74,7 +78,8 @@
         "/assets/frappe/icons/lucide/icons.svg",
         "/assets/frappe/icons/timeless/icons.svg",
         "/assets/frappe/icons/espresso/icons.svg",
-        "/assets/frappe/icons/desktop_icons/alphabets.svg"
+        "/assets/frappe/icons/desktop_icons/alphabets.svg",
+        "/assets/frappe/icons/module-icons.svg"
       ],
       "web_include_js": [
         "website_script.js"
@@ -93,12 +98,12 @@
   "icons": {
     "sprites": {
       "frappe/public/icons/lucide/icons.svg": {
-        "symbols": 1640,
-        "distinct": 1640,
+        "symbols": 1853,
+        "distinct": 1853,
         "prefixes": {
-          "icon-": 1640
+          "icon-": 1853
         },
-        "idsSha256": "6615660240863fcb6c55acbe687088175e9c29ad37b19a316582231e832c19a3"
+        "idsSha256": "7cc980a1c8518cab68b35c905b9d66b89ac5ae8892a8c06b0feac43c64f975d5"
       },
       "frappe/public/icons/timeless/icons.svg": {
         "symbols": 141,
@@ -128,40 +133,53 @@
           "(bare)": 26
         },
         "idsSha256": "cfa4f846a6dbeb24477910a408ea21df3244beb5b1a2c7544b9397a0f2a50561"
+      },
+      "frappe/public/icons/module-icons.svg": {
+        "symbols": 12,
+        "distinct": 12,
+        "prefixes": {
+          "icon-": 12
+        },
+        "idsSha256": "e22c14e029b3bafc9af87d6085a1f8504a1cce01425f8c6c978ba6ee3dbcc2ad"
       }
     },
     "unresolved": [],
     "directories": {
-      "frappe/public/css/octicons": true,
+      "frappe/public/css/octicons": false,
       "frappe/public/css/fonts/fontawesome": true
     },
-    "fontStylesheetImports": [
-      "frappe/public/scss/desk.bundle.scss: frappe/public/css/fonts/fontawesome/font-awesome.min.css",
-      "frappe/public/scss/desk.bundle.scss: frappe/public/css/octicons/octicons.css",
-      "frappe/public/scss/web_form.bundle.scss: frappe/public/css/octicons/octicons.css"
-    ],
+    "fontStylesheetImports": [],
     "helpers": {
       "icon": "icon(icon_name, size = \"sm\", icon_class = \"\", icon_style = \"\", svg_class = \"\", current_color = false, stroke_color = null) {",
-      "desktop_icon": "desktop_icon(label, color, size) {"
+      "desktop_icon": "desktop_icon(label, color, size, style) {"
     }
   },
   "bundles": [
+    "frappe/public/js/arrangement_editor.bundle.js",
     "frappe/public/js/billing.bundle.js",
     "frappe/public/js/bootstrap-4-web.bundle.js",
     "frappe/public/js/calendar.bundle.js",
     "frappe/public/js/controls.bundle.js",
     "frappe/public/js/data_import_tools.bundle.js",
+    "frappe/public/js/data_import_wizard.bundle.js",
     "frappe/public/js/desk.bundle.js",
+    "frappe/public/js/desktop_icons.bundle.js",
     "frappe/public/js/dialog.bundle.js",
+    "frappe/public/js/doctype_settings.bundle.js",
+    "frappe/public/js/embedded_list.bundle.js",
     "frappe/public/js/form.bundle.js",
     "frappe/public/js/form_builder/form_builder.bundle.js",
     "frappe/public/js/frappe-web.bundle.js",
     "frappe/public/js/frappe/build_events/build_events.bundle.js",
     "frappe/public/js/frappe/file_uploader/file_uploader.bundle.js",
-    "frappe/public/js/frappe/ui/user_onboarding/user_onboarding.bundle.js",
     "frappe/public/js/frappe/views/kanban/kanban_board.bundle.js",
+    "frappe/public/js/frappe/views/kanban_v2/kanban.bundle.js",
+    "frappe/public/js/frappe/views/kanban_v2/kanban_settings.bundle.js",
+    "frappe/public/js/leaflet.bundle.js",
     "frappe/public/js/libs.bundle.js",
     "frappe/public/js/list.bundle.js",
+    "frappe/public/js/list_filter.bundle.js",
+    "frappe/public/js/list_view_virtualization.bundle.js",
     "frappe/public/js/logtypes.bundle.js",
     "frappe/public/js/onboarding_tours.bundle.js",
     "frappe/public/js/photoswipe.bundle.js",
@@ -169,13 +187,16 @@
     "frappe/public/js/print_format_builder/print_format_builder.bundle.js",
     "frappe/public/js/report.bundle.js",
     "frappe/public/js/sentry.bundle.js",
+    "frappe/public/js/side_panel.bundle.js",
     "frappe/public/js/syntax_highlighting.bundle.js",
     "frappe/public/js/telemetry.bundle.js",
+    "frappe/public/js/user_settings_dialog.bundle.js",
     "frappe/public/js/video_player.bundle.js",
     "frappe/public/js/web_form.bundle.js",
     "frappe/public/js/workflow_builder/workflow_builder.bundle.js",
     "frappe/public/scss/desk.bundle.scss",
     "frappe/public/scss/email.bundle.scss",
+    "frappe/public/scss/leaflet.bundle.scss",
     "frappe/public/scss/login.bundle.scss",
     "frappe/public/scss/print.bundle.scss",
     "frappe/public/scss/print_format.bundle.scss",
@@ -191,22 +212,29 @@
       "all_domains",
       "app_data",
       "app_logo_url",
+      "app_rail_host",
       "calendars",
-      "changelog_feed",
+      "canonical_shell",
       "cloud_settings",
+      "code_only_module_heirs",
       "desk_settings",
       "desktop_icon_style",
       "desktop_icon_urls",
       "desktop_icons",
+      "desktop_page",
+      "dock",
       "docs",
       "doctype_layouts",
       "doctype_ptype_map",
       "enable_address_autocompletion",
+      "entity_module",
       "error_report_email",
+      "file_chunk_size",
       "frequently_visited_links",
       "has_awesomebar_search",
       "home_folder",
       "home_page",
+      "home_shell",
       "ipinfo",
       "is_fc_site",
       "lang",
@@ -214,12 +242,9 @@
       "letter_heads",
       "link_preview_doctypes",
       "link_title_doctypes",
-      "marketplace_apps",
       "max_file_size",
       "module_app",
-      "module_list",
-      "module_wise_workspaces",
-      "modules",
+      "module_sidebars",
       "navbar_settings",
       "nested_set_doctypes",
       "notification_settings",
@@ -244,8 +269,7 @@
       "treeviews",
       "user",
       "user_info",
-      "versions",
-      "workspace_sidebar_item"
+      "versions"
     ],
     "dynamic": 1,
     "bulk": 1
