@@ -1,0 +1,167 @@
+{
+  "schema": 1,
+  "outOfScope": [
+    {"prefix": "carbon_frappe/", "owner": "carbon_frappe", "why": "the consumer app (apps/carbon_frappe/carbon_frappe/...)"},
+    {"prefix": "apps/carbon_frappe/", "owner": "carbon_frappe", "why": "the consumer app, spelled from the bench root"},
+    {"prefix": "erpnext/", "owner": "erpnext", "why": "another app's repo"},
+    {"prefix": "apps/erpnext/", "owner": "erpnext", "why": "another app's repo, spelled from the bench root"},
+    {"prefix": "node_modules/", "owner": "third-party", "why": "npm packages vendored under apps/frappe/node_modules (bootstrap, frappe-datatable, frappe-charts, ...)"},
+    {"prefix": "frappe-charts/", "owner": "frappe-charts", "why": "the frappe-charts package, which charts.d.ts cites as frappe-charts/src/js/..."},
+    {"prefix": "tables/", "owner": "carbon_frappe", "why": "carbon_frappe/public/js/tables/..., which datatable.d.ts and utils.d.ts write this way; frappe has no top-level tables/ directory"},
+    {"prefix": "anatomy/", "owner": "carbon_frappe", "why": "carbon_frappe/public/js/anatomy/...; frappe has no such directory"},
+    {"prefix": "dev/", "owner": "carbon_frappe", "why": "carbon_frappe/public/js/dev/...; frappe has no such directory"}
+  ],
+  "files": {
+    "src/charts.d.ts": {
+      "declared": "\"Citations of the form `BaseChart.js:34` refer to `frappe-charts/src/js/charts/…`\" (header)",
+      "bases": ["frappe/public/js/frappe/"],
+      "basis": "header",
+      "default": "frappe-charts",
+      "notCore": {
+        "carbon_charts.bundle.js": "carbon_frappe"
+      },
+      "core": {
+        "report_view.js": "frappe/public/js/frappe/views/reports/report_view.js",
+        "query_report.js": "frappe/public/js/frappe/views/reports/query_report.js",
+        "chart_widget.js": "frappe/public/js/frappe/widgets/chart_widget.js",
+        "form/dashboard.js": "frappe/public/js/frappe/form/dashboard.js",
+        "utils.js": "frappe/public/js/frappe/utils/utils.js"
+      },
+      "notes": ["Unlisted bare names are frappe-charts' own (BaseChart.js, utils/colors.js, chart.js:9-15 is src/js/chart.js, not frappe's ui/chart.js, which this file always writes in full).", "The five pinned names are frappe files this file cites for how frappe CALLS the library: report_view.js:654 and query_report.js:1186-1205 pass options, chart_widget.js:648/700-708 and form/dashboard.js:523-530 build a Dashboard Chart's, utils.js:1506-1528 is frappe.utils.make_chart."]
+    },
+    "src/core.d.ts": {
+      "declared": "none: the header says only that every non-obvious declaration cites `file:line`",
+      "bases": ["frappe/public/js/frappe/", "frappe/"],
+      "basis": "full-path-evidence: every full-path citation in the file is under frappe/public/js/frappe/ or frappe/",
+      "notCore": {
+        "patch.js": "carbon_frappe",
+        "carbon_charts.bundle.js": "carbon_frappe",
+        "carbon_desk.bundle.js": "carbon_frappe"
+      },
+      "core": {
+        "user.py": "frappe/utils/user.py"
+      },
+      "ambiguous": {
+        "datatable.js": "datatable.js:34-36 is cited in a window-globals comment with no path; ui/datatable.js, utils/datatable.js, frappe-datatable's and carbon_frappe's all exist"
+      },
+      "notes": ["user.py: the file names both frappe/utils/user.py and frappe/core/doctype/user/user.py in full, so the in-file rule cannot choose; every bare user.py citation sits in the UserPermissions section whose source line is `frappe/utils/user.py:218-281`."]
+    },
+    "src/datatable.d.ts": {
+      "declared": "\"Verified against: apps/frappe/node_modules/frappe-datatable@1.20.7/src/*.js (the library itself)\" plus five frappe files given by full path; every other bare name is the library's (header)",
+      "bases": ["frappe/public/js/frappe/"],
+      "basis": "header",
+      "default": "frappe-datatable",
+      "notCore": {
+        "managers.js": "carbon_frappe",
+        "install.js": "carbon_frappe",
+        "editing.js": "carbon_frappe",
+        "navigation.js": "carbon_frappe",
+        "table.js": "carbon_frappe"
+      },
+      "core": {
+        "report_view.js": "frappe/public/js/frappe/views/reports/report_view.js",
+        "query_report.js": "frappe/public/js/frappe/views/reports/query_report.js",
+        "import_preview.js": "frappe/public/js/frappe/data_import/import_preview.js",
+        "multi_select_dialog.js": "frappe/public/js/frappe/form/multi_select_dialog.js",
+        "ui/datatable.js": "frappe/public/js/frappe/ui/datatable.js"
+      },
+      "notes": ["The five pinned names are the construction sites in the header table (report_view.js:340, query_report.js:1134, import_preview.js:139, multi_select_dialog.js:217) and ui/datatable.js, the one place frappe.DataTable is assigned.", "managers.js, install.js, editing.js, navigation.js, table.js are carbon_frappe's replacement for the library (tables/datatable/*, tables/engine/table.js); either way they are not frappe core."]
+    },
+    "src/deep-modules.d.ts": {
+      "declared": "\"Source of truth: `apps/frappe/frappe/public/js/frappe/form/`\" (header)",
+      "bases": ["frappe/public/js/frappe/form/", "frappe/public/js/frappe/"],
+      "basis": "header",
+      "core": {
+        "node_utils.js": "node_utils.js",
+        "utils.js": "frappe/public/js/frappe/utils/utils.js"
+      },
+      "notes": ["node_utils.js is the repo-root file apps/frappe/node_utils.js, which the file's last section cites as `frappe/node_utils.js`.", "utils.js:893-919 is cited as the source of frappe.utils.debounce, which lives in utils/utils.js."]
+    },
+    "src/global.d.ts": {
+      "declared": "none: the header names no base",
+      "bases": ["frappe/public/js/frappe/", "frappe/"],
+      "basis": "full-path-evidence: every full-path citation in the file is under frappe/public/js/frappe/ or frappe/"
+    },
+    "src/globals.d.ts": {
+      "declared": "\"Every citation below is `path/relative/to/apps/frappe/file.js:line`\" (header)",
+      "bases": ["frappe/public/js/frappe/", "frappe/"],
+      "basis": "header: the file's own full-path citations are under frappe/public/js/frappe/ or frappe/, so a bare name is looked for there and not across the whole repo",
+      "notCore": {
+        "collapse.js": "bootstrap",
+        "modal.js": "bootstrap",
+        "tooltip.js": "bootstrap",
+        "conf.js": "erpnext",
+        "editable_title.js": "carbon_frappe",
+        "editing.js": "carbon_frappe",
+        "managers.js": "carbon_frappe",
+        "navigation.js": "carbon_frappe"
+      },
+      "notes": ["collapse.js, modal.js, tooltip.js are bootstrap/js/dist/*, which the file cites in full as node_modules/bootstrap/js/dist/*.js."]
+    },
+    "src/index.d.ts": {
+      "declared": "none: the header says only \"Every declaration cites `file.js:line`\"",
+      "bases": ["frappe/public/js/frappe/", "frappe/"],
+      "basis": "full-path-evidence: every full-path citation in the file is under frappe/public/js/frappe/ or frappe/",
+      "notCore": {
+        "body-renderer.js": "frappe-datatable"
+      }
+    },
+    "src/model.d.ts": {
+      "declared": "\"Primary sources:\" listed by full path under frappe/public/js/frappe/model/ and frappe/ (header)",
+      "bases": ["frappe/public/js/frappe/", "frappe/"],
+      "basis": "header"
+    },
+    "src/modules.d.ts": {
+      "declared": "none: \"Companion to `deep-module-imports.d.ts`\"; it cites only the Grid family (grid.js:21 ...)",
+      "bases": ["frappe/public/js/frappe/form/"],
+      "basis": "full-path-evidence: the specifiers it declares are frappe/public/js/frappe/form/*"
+    },
+    "src/ui/form.d.ts": {
+      "declared": "\"citations are `file.js:line` relative to `frappe/public/js/frappe/`\" (header)",
+      "bases": ["frappe/public/js/frappe/"],
+      "basis": "header",
+      "core": {
+        "toolbar.js": "frappe/public/js/frappe/form/toolbar.js"
+      },
+      "notes": ["toolbar.js: the file's source of truth is frappe/public/js/frappe/form/**, its Toolbar section is `frappe.ui.form.Toolbar` and cites `form/toolbar.js:7` in full; ui/toolbar/toolbar.js (the desk navbar) is not discussed anywhere in it."]
+    },
+    "src/ui/notifications.d.ts": {
+      "declared": "\"Citations are `notifications.js:line`\" (header), the file being `frappe/public/js/frappe/ui/notifications/notifications.js`",
+      "bases": ["frappe/public/js/frappe/ui/notifications/", "frappe/public/js/frappe/"],
+      "basis": "header",
+      "implicit": "frappe/public/js/frappe/ui/notifications/notifications.js",
+      "notes": ["A file-less `:N` here (`(:9)`, `at :69`) means notifications.js: the header says every citation in the file is `notifications.js:line`, and the only other file it cites, ui/sidebar/sidebar.js, is always written with its path."]
+    },
+    "src/ui/sidebar.d.ts": {
+      "declared": "\"Citations are `file.js:line` relative to `frappe/public/js/frappe/ui/sidebar/` unless a path is given\" (header)",
+      "bases": ["frappe/public/js/frappe/ui/sidebar/", "frappe/", "frappe/public/js/frappe/"],
+      "basis": "header",
+      "notes": ["\"unless a path is given\": boot.py is the header's own second source (`frappe/boot.py`), and the one desk.js citation follows `frappe/public/js/frappe/desk.js:90` written out in full, so both are looked for in the wider bases after ui/sidebar/."]
+    },
+    "src/utils.d.ts": {
+      "declared": "\"the citations are `path/to/file.js:line` relative to `apps/frappe/`\" (header)",
+      "bases": ["frappe/public/js/frappe/", "frappe/"],
+      "basis": "header: the file's source list is under frappe/public/js/frappe/, so a bare name is looked for there and not across the whole repo",
+      "notCore": {
+        "table.js": "carbon_frappe",
+        "render.js": "carbon_frappe",
+        "classes.js": "carbon_frappe",
+        "ui_shell.js": "carbon_frappe",
+        "datatable.js": "carbon_frappe",
+        "carbon_charts.bundle.js": "carbon_frappe",
+        "public/js/carbon_charts.bundle.js": "carbon_frappe",
+        "public/js/tables/engine/dom.js": "carbon_frappe",
+        "body-renderer.js": "frappe-datatable"
+      },
+      "notes": ["table.js, render.js, classes.js, ui_shell.js, datatable.js:81 are cited bare in SECTION 6 (DOM-side contracts), which is about carbon_frappe's tables/engine/* and tables/datatable/*."]
+    },
+    "src/views.d.ts": {
+      "declared": "\"Citations in comments are `file.js:line` relative to `frappe/public/js/frappe/`\" (header)",
+      "bases": ["frappe/public/js/frappe/", "frappe/"],
+      "basis": "header",
+      "notCore": {
+        "cellmanager.js": "frappe-datatable"
+      }
+    }
+  }
+}

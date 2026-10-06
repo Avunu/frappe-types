@@ -28,7 +28,11 @@ const execFileAsync = promisify(execFile);
  * @property {(dir: string) => Promise<string[]>} listFiles every file below `dir`, sorted
  */
 
-/** @typedef {FrappeReader & { commit: string, date: string }} GitReader a reader of one git commit */
+/**
+ * @typedef {FrappeReader & { commit: string, date: string, allFiles: () => Promise<string[]> }} GitReader
+ *   a reader of one git commit. `allFiles` is every tracked path in it, sorted — what
+ *   `listFiles` cannot say, because it needs a directory to start from and a repo root has none.
+ */
 
 /**
  * Code-unit order. NEVER `localeCompare`: a snapshot is committed to the repo, so its
@@ -222,6 +226,9 @@ export async function gitReader(repo, ref) {
 			const prefix = `${dir.replace(/\/+$/, "")}/`;
 			return files.filter((f) => f.startsWith(prefix));
 		},
+		async allFiles() {
+			return [...(await loadTree()).files];
+		},
 	};
 }
 
@@ -263,6 +270,86 @@ export async function numstat(repo, from, to, paths) {
 			out.set(file, { added: Number(added) || 0, deleted: Number(deleted) || 0 });
 		}
 	}
+	return out;
+}
+
+/**
+ * How each file changed between two commits, renames followed, from
+ * `git diff -M --name-status`. Keyed by the path at `from`, so "what became of the file
+ * I cited" is one lookup. Files that did not change are absent; files that only exist
+ * at `to` (additions) are not reported, since nothing cited them.
+ * @param {string} repo
+ * @param {string} from commit
+ * @param {string} to commit
+ * @param {number} [similarity] percent of content a pair must share to count as a rename (git's own default is 50)
+ * @returns {Promise<Map<string, { status: "M" | "D" | "R" | "T", to: string, similarity: number | null }>>}
+ */
+export async function nameStatus(repo, from, to, similarity = 50) {
+	const stdout = await git(repo, ["diff", "--name-status", "-z", `--find-renames=${similarity}%`, from, to]);
+	/** @type {Map<string, { status: "M" | "D" | "R" | "T", to: string, similarity: number | null }>} */
+	const out = new Map();
+	// With -z every field is NUL-terminated: `M\0path\0`, `R092\0old\0new\0`.
+	const fields = stdout.split("\0");
+	for (let i = 0; i < fields.length; ) {
+		const code = fields[i++] ?? "";
+		if (code === "") continue;
+		const letter = code[0];
+		if (letter === "R" || letter === "C") {
+			const oldPath = fields[i++] ?? "";
+			const newPath = fields[i++] ?? "";
+			// A copy leaves the original in place, so for a citation it is an addition, not a move.
+			if (letter === "R") out.set(oldPath, { status: "R", to: newPath, similarity: Number(code.slice(1)) });
+		} else {
+			const file = fields[i++] ?? "";
+			if (letter === "M" || letter === "D" || letter === "T") out.set(file, { status: letter, to: file, similarity: null });
+		}
+	}
+	return out;
+}
+
+/**
+ * The zero-context patch (`git diff -U0`) between two commits for groups of paths, as
+ * text for `parseDiff` in remap.mjs. Each group is diffed in the same call, so a rename
+ * `[old, new]` is still seen as one — rename detection only pairs paths git was shown.
+ * @param {string} repo
+ * @param {string} from commit
+ * @param {string} to commit
+ * @param {readonly (readonly string[])[]} groups paths that must stay together
+ * @param {number} [similarity] rename threshold, percent
+ * @returns {Promise<string>}
+ */
+export async function diffZero(repo, from, to, groups, similarity = 50) {
+	let out = "";
+	/** @type {string[]} */
+	let chunk = [];
+	const flush = async () => {
+		if (chunk.length === 0) return;
+		// `--literal-pathspecs`: file names lifted from prose, not patterns. `core.quotepath=false`:
+		// without it git wraps any non-ASCII path in quotes and escapes, which the parser would not undo.
+		// `--minimal`: the smallest edit script, so the fewest lines are reported as changed when a
+		// region was mostly kept — a spurious "changed" here is a citation sent to a human for nothing.
+		out += await git(repo, [
+			"-c",
+			"core.quotepath=false",
+			"--literal-pathspecs",
+			"diff",
+			"--no-color",
+			"--no-ext-diff",
+			"-U0",
+			"--minimal",
+			`--find-renames=${similarity}%`,
+			from,
+			to,
+			"--",
+			...chunk,
+		]);
+		chunk = [];
+	};
+	for (const group of groups) {
+		if (chunk.length + group.length > 400) await flush();
+		chunk.push(...group);
+	}
+	await flush();
 	return out;
 }
 

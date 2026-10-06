@@ -35,11 +35,18 @@ const FULL = new RegExp(`${LEFT}(apps/)?frappe/((?:${SEGMENT}/)*${SEGMENT}\\.(?:
 // not a citation, so the line spec is required here.
 const OTHER = new RegExp(`${LEFT}((?:[\\w.-]+/)*${SEGMENT}\\.(?:${EXTENSIONS}))(?!\\w)(${LINES})`, "g");
 
+// A path with at least one directory and NO line number: `form/sidebar/document_follow.js`.
+// Not a citation — there is no number to go stale — but the file it names can be deleted,
+// and a mention nobody checks is how a deleted file stays "cited". A bare `grid.js` is still
+// not matched: without a directory it is as likely a word as a path.
+const MENTION = new RegExp(`${LEFT}(?!\\.{1,2}/)((?:[\\w.-]+/)+${SEGMENT}\\.(?:${EXTENSIONS}))(?![\\w/]|:\\d)`, "g");
+
 /**
  * @typedef {object} Citation
  * @property {string} text the citation as written
  * @property {string} file the .d.ts it appears in
  * @property {number} line its 1-based line within that file
+ * @property {number} index offset of `text` within the file's text (what a rewriter needs to edit it in place)
  * @property {string[]} candidates repo-root-relative paths it can mean, in order of preference
  * @property {number[]} anchors cited lines, ascending; a range contributes both endpoints
  */
@@ -49,6 +56,7 @@ const OTHER = new RegExp(`${LEFT}((?:[\\w.-]+/)*${SEGMENT}\\.(?:${EXTENSIONS}))(
  * @property {string} text
  * @property {string} file
  * @property {number} line
+ * @property {number} index offset of `text` within the file's text
  * @property {string} root first path segment (`carbon_frappe`), or `(bare)` for `grid.js:412`
  */
 
@@ -113,6 +121,7 @@ export function scanCitations(text, file) {
 			text: m[0],
 			file,
 			line: lineAt(starts, m.index),
+			index: m.index,
 			candidates: m[1] ? [rest] : [`frappe/${rest}`, rest],
 			anchors: m[3] ? parseLineSpec(m[3]) : [],
 		});
@@ -126,10 +135,22 @@ export function scanCitations(text, file) {
 			text: m[0],
 			file,
 			line: lineAt(starts, m.index),
+			index: m.index,
 			root: target.includes("/") ? (target.split("/")[0] ?? "") : "(bare)",
 		});
 	}
 	return { full, unresolvable };
+}
+
+/**
+ * Directory-qualified paths written without a line number, `frappe/…` ones included.
+ * Callers that also scan citations should drop those that overlap one: a full path
+ * with no line is both a `Citation` and a mention.
+ * @param {string} text
+ * @returns {{ text: string, index: number }[]}
+ */
+export function scanMentions(text) {
+	return [...text.matchAll(MENTION)].map((m) => ({ text: m[0], index: m.index }));
 }
 
 /**
@@ -226,7 +247,9 @@ export async function readDeclarationFiles(root, dir = "src") {
  * @property {CitedFile[]} files one per distinct file, sorted by path
  * @property {string[]} neverResolved cited paths that exist in none of the trees consulted: with a baseline, in neither; without one, not in the checkout
  * @property {{ total: number, byRoot: Record<string, number> }} unresolvable
- * @property {{ distinct: AnchorTally, occurrences: AnchorTally } | null} anchors null without a baseline
+ * @property {{ distinct: AnchorTally, occurrences: AnchorTally, following: { citations: number, anchors: number } } | null} anchors null without a baseline.
+ *   `following`: citations (and their anchors) that were left out because `following` said
+ *   their numbers already follow the audited tree, so comparing them by number against the baseline would measure nothing
  */
 
 /**
@@ -238,9 +261,14 @@ export async function readDeclarationFiles(root, dir = "src") {
  * @param {import("./frappe-reader.mjs").FrappeReader} input.head
  * @param {{ repo: string, baseCommit: string, headCommit: string | null } | null} input.git
  *   how to ask git for churn; null when no baseline is available
+ * @param {(citation: Citation) => boolean} [input.following] true for a citation whose line numbers
+ *   already follow the audited tree (scripts/remap-citations.mjs moved them). The audit compares
+ *   `base[n]` with `head[n]`, which is only the question "did the cited text change" while `n` is a
+ *   BASELINE line number; a moved one is a head line number, and comparing it to the baseline would
+ *   count text that merely moved as text that changed, in the other direction.
  * @returns {Promise<CitationReport>}
  */
-export async function analyzeCitations({ declarations, base, head, git }) {
+export async function analyzeCitations({ declarations, base, head, git, following }) {
 	/** @type {Citation[]} */
 	const citations = [];
 	/** @type {Unresolvable[]} */
@@ -277,8 +305,13 @@ export async function analyzeCitations({ declarations, base, head, git }) {
 	/** @type {AnchorTally} */
 	const occurrences = { total: 0, changed: 0, invalid: 0 };
 
+	let followingCitations = 0;
+	let followingAnchors = 0;
 	for (const file of paths) {
-		const cites = byPath.get(file)?.citations ?? [];
+		const every = byPath.get(file)?.citations ?? [];
+		const cites = following ? every.filter((c) => !following(c)) : every;
+		followingCitations += every.length - cites.length;
+		followingAnchors += every.filter((c) => !cites.includes(c)).reduce((n, c) => n + c.anchors.length, 0);
 		const anchors = [...new Set(cites.flatMap((c) => c.anchors))].sort((a, b) => a - b);
 		const nowThere = (await head.kindOf(file)) === "file";
 		const wasThere = base !== null && (await base.kindOf(file)) === "file";
@@ -299,8 +332,8 @@ export async function analyzeCitations({ declarations, base, head, git }) {
 
 		files.push({
 			path: file,
-			citations: cites.length,
-			sites: cites.map((c) => `${c.file}:${c.line}`),
+			citations: every.length,
+			sites: every.map((c) => `${c.file}:${c.line}`),
 			anchors,
 			status,
 			churn: churn.get(file) ?? null,
@@ -319,7 +352,7 @@ export async function analyzeCitations({ declarations, base, head, git }) {
 		files,
 		neverResolved: [...neverResolved].sort(cmp),
 		unresolvable: { total: bare.length, byRoot: Object.fromEntries(Object.entries(byRoot).sort(([a], [b]) => cmp(a, b))) },
-		anchors: base ? { distinct, occurrences } : null,
+		anchors: base ? { distinct, occurrences, following: { citations: followingCitations, anchors: followingAnchors } } : null,
 	};
 }
 

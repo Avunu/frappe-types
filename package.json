@@ -64,6 +64,7 @@
     "test:unit": "node --test \"test/*.test.mjs\"",
     "coverage": "node scripts/audit-coverage.mjs",
     "audit:drift": "node scripts/audit-drift.mjs",
+    "remap:citations": "node scripts/remap-citations.mjs",
     "consumers": "node scripts/audit-consumer.mjs",
     "upgrade": "npx npm-check-updates -u --reject @types/jquery && npm install"
   },
