@@ -1657,6 +1657,30 @@ export interface FrappeCore {
 	 */
 	is_mobile(): boolean;
 
+	// -- avatars --------------------------------------------------------------
+
+	/**
+	 * `frappe/public/js/frappe/utils/common.js:4-44`. An HTML string for a user's
+	 * avatar: `<span class="avatar <css_class>"><span class="avatar-frame …">` —
+	 * the user's image as a background when they have one, otherwise a letter chip
+	 * in a palette colour. `user` is read through `frappe.user_info(user)` on the
+	 * desk; on the website pass a falsy `user` and the name comes from `title` or
+	 * the `full_name` cookie (frappe/public/js/frappe/utils/common.js:15-26). `title` defaults to the user's full
+	 * name and is also written to the avatar's `title` attribute
+	 * (`frappe.get_avatar`, frappe/public/js/frappe/utils/common.js:79-80). The result is the `innerHTML` of a
+	 * scratch element (frappe/public/js/frappe/utils/common.js:82), so it is a string, not a node. A falsy
+	 * `css_class` becomes `"avatar-small"` (frappe/public/js/frappe/utils/common.js:47-49), and `avatar-small` /
+	 * `avatar-xs` keep one letter of the abbreviation (frappe/public/js/frappe/utils/common.js:67-69).
+	 */
+	avatar(
+		user: string | null | undefined,
+		css_class?: string,
+		title?: string | null,
+		image_url?: string | null,
+		remove_color?: boolean,
+		filterable?: boolean,
+	): string;
+
 	// -- translation --------------------------------------------------------
 
 	/** `frappe/public/js/frappe/translate.js:5`. Aliased to `window.__` at translate.js:26. */
