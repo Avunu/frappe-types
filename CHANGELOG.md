@@ -1,5 +1,16 @@
 # Changelog
 
+## [16.4.0](https://github.com/Avunu/frappe-types/compare/v16.3.1...v16.4.0) (2026-10-06)
+
+
+### Features
+
+* add remap-citations to move cited line numbers between frappe tags ([c5c9141](https://github.com/Avunu/frappe-types/commit/c5c9141ccdc65e3b83d7263e33a864d97241fbee))
+* re-verify the typeset against frappe v16.50.0 ([ee6d2e0](https://github.com/Avunu/frappe-types/commit/ee6d2e05fcccad1cffdff6a661efed206df6d386))
+* re-verify the typeset against frappe v16.50.0 ([8b372d6](https://github.com/Avunu/frappe-types/commit/8b372d6dfa23cb2f7540dbe721e9354d1c91a242))
+* track frappe release drift with audit:drift and a DRIFT.md ledger ([a2cbeaf](https://github.com/Avunu/frappe-types/commit/a2cbeaf09a4936083b02a087fe07bc6bf130d4ea))
+* track frappe release drift with audit:drift and a DRIFT.md ledger ([45ce97c](https://github.com/Avunu/frappe-types/commit/45ce97c851b138e7a236c1a077c59f7adb9f5daa))
+
 ## [16.3.1](https://github.com/Avunu/frappe-types/compare/v16.3.0...v16.3.1) (2026-09-17)
 
 
