@@ -101,7 +101,7 @@ export type DataTableRowIndex = number;
  * `RowManager.getCheckedRows` (`rowmanager.js:80-87`) iterates its `checkMap`
  * array with `for (let rowIndex in this.checkMap)`, so stock frappe-datatable
  * hands back the array's own STRING keys, not numbers. Every consumer
- * (`report_view.js:1415-1416`, `query_report.js:2406-2413`) only uses them to
+ * (`report_view.js:1390-1391`, `query_report.js:2509-2516`) only uses them to
  * index `this.data`, so the wart is invisible in JS — but it is load-bearing in
  * TypeScript. carbon_frappe's replacement (`tables/datatable/managers.js:190-195`)
  * uses `reduce` and returns real numbers.
@@ -146,7 +146,7 @@ export type DataTableCellValue = string | number | boolean | null | undefined;
  * on prepared cells may ignore the `undefined` arm; it may not be pretended
  * away.
  *
- * @remarks `query_report.js:1433-1447` declares its own `format` with the same
+ * @remarks `query_report.js:1523-1537` declares its own `format` with the same
  * five parameters and forwards them to `report_settings.formatter`.
  */
 export type DataTableCellFormatter = (
@@ -162,8 +162,8 @@ export type DataTableCellFormatter = (
  * `lessThan` / `range` methods (`filterRows.js:52-64` `getCompareValues`).
  *
  * Must return a `[cellValue, keywordValue]` pair, or a falsy value to fall back
- * to numeric-then-string comparison. `report_view.js:1272-1281` and
- * `query_report.js:1411-1420` both install one for `Date` columns that returns
+ * to numeric-then-string comparison. `report_view.js:1252-1261` and
+ * `query_report.js:1501-1510` both install one for `Date` columns that returns
  * `[+cellValue, +keywordValue]` or `null`.
  */
 export type DataTableCompareValue = (
@@ -282,7 +282,7 @@ export interface DataTableCellBase {
  * Produced by `datamanager.prepareRow` (`datamanager.js:208-226`): a scalar in
  * the source data becomes `{ content: <scalar>, ... }`, and an object in the
  * source data is merged wholesale (`datamanager.js:122-127`), which is how
- * `report_view.build_row` (`report_view.js:1360-1380`) attaches `name`,
+ * `report_view.build_row` (`report_view.js:1331-1351`) attaches `name`,
  * `doctype`, `editable` and a per-cell `format`.
  */
 export interface DataTableCell extends DataTableCellBase {
@@ -294,13 +294,13 @@ export interface DataTableCell extends DataTableCellBase {
 
 	/**
 	 * Docname of the record this cell belongs to.
-	 * Source: `report_view.js:1367` / `1390`; read back at `report_view.js:705`.
+	 * Source: `report_view.js:1338` / `1390`; read back at `report_view.js:685`.
 	 */
 	name?: string;
 
 	/**
 	 * Doctype of the record this cell belongs to (child tables differ from the
-	 * list's doctype). Source: `report_view.js:1368`; read at `report_view.js:706`.
+	 * list's doctype). Source: `report_view.js:1339`; read at `report_view.js:686`.
 	 */
 	doctype?: string;
 
@@ -327,8 +327,8 @@ export interface DataTableColumn extends DataTableCellBase {
 	/**
 	 * Stable column key. `_checkbox` and `_rowIndex` for the injected standard
 	 * columns (`datamanager.js:58` / `:73`); otherwise the caller's id, e.g. the
-	 * fieldname (`report_view.js:1258`) or `"{child_doctype}:{fieldname}"`
-	 * (`report_view.js:1261`).
+	 * fieldname (`report_view.js:1238`) or `"{child_doctype}:{fieldname}"`
+	 * (`report_view.js:1241`).
 	 */
 	id: string;
 
@@ -343,16 +343,16 @@ export interface DataTableColumn extends DataTableCellBase {
 
 	/**
 	 * The doc field behind the column.
-	 * Source: `report_view.js:1288`; read at `report_view.js:704`
-	 * (`getColumn(colIndex).docfield.fieldname`) and `report_view.js:555`.
+	 * Source: `report_view.js:1268`; read at `report_view.js:684`
+	 * (`getColumn(colIndex).docfield.fieldname`) and `report_view.js:535`.
 	 * Absent on `_checkbox` / `_rowIndex` and on Query Report columns.
 	 */
 	docfield?: DocField;
 
-	/** Fieldname the column reads from the row (`report_view.js:1286`). */
+	/** Fieldname the column reads from the row (`report_view.js:1266`). */
 	field?: string;
 
-	/** Inline-filter comparator override (`report_view.js:1292`). */
+	/** Inline-filter comparator override (`report_view.js:1272`). */
 	compareValue?: DataTableCompareValue | null;
 
 	/** Measured width, filled by `style.setupNaturalColumnWidth` (`style.js:183-213`). */
@@ -363,7 +363,7 @@ export interface DataTableColumn extends DataTableCellBase {
 
 	/**
 	 * Query Report columns carry their raw report-column fields through
-	 * untouched — `Object.assign(column, {...})` at `query_report.js:1424`. The
+	 * untouched — `Object.assign(column, {...})` at `query_report.js:1514`. The
 	 * total-row hook reads `column.fieldtype` and `column.disable_total`
 	 * (`utils.js:970-977`).
 	 */
@@ -422,7 +422,7 @@ export interface DataTableRowMeta {
  *
  * This shape is asserted by carbon_frappe's own browser suite
  * (`scripts/tables/report.mjs:81` `Array.isArray(dt.datamanager.rows[0])`) and
- * is what `import_preview.js:180` iterates (`.map(row => row.meta.rowIndex)`).
+ * is what `import_preview.js:516` iterates (`.map(row => row.meta.rowIndex)`).
  */
 export interface DataTableRow extends Array<DataTableCell> {
 	meta: DataTableRowMeta;
@@ -475,7 +475,7 @@ export interface DataTableRowRenderProps extends Partial<Omit<DataTableRowMeta, 
 export interface DataTableEditor {
 	/**
 	 * Seed the control. Upstream's default editor ignores the 2nd and 3rd
-	 * arguments (`cellmanager.js:518-521`); `report_view.js:709-711` does too.
+	 * arguments (`cellmanager.js:518-521`); `report_view.js:689-691` does too.
 	 */
 	initValue(value: DataTableCellValue, rowIndex?: DataTableRowIndex, column?: DataTableColumn): void;
 
@@ -484,7 +484,7 @@ export interface DataTableEditor {
 
 	/**
 	 * Persist. A rejected promise reverts the optimistic cell update
-	 * (`cellmanager.js:566-572`); `report_view.js:712-715` returns the
+	 * (`cellmanager.js:566-572`); `report_view.js:692-695` returns the
 	 * `frappe.db.set_value` promise from here.
 	 */
 	setValue(
@@ -511,8 +511,8 @@ export interface DataTableEditor {
  * walk back up with `parent.closest('.dt-cell')`, so it must stay a descendant
  * of the cell.
  *
- * Installed by `report_view.js:343` (`getEditor: this.get_editing_object.bind(this)`,
- * implementation at `report_view.js:697-730`) and by report scripts through
+ * Installed by `report_view.js:308` (`getEditor: this.get_editing_object.bind(this)`,
+ * implementation at `report_view.js:677-710`) and by report scripts through
  * `report_settings.get_datatable_options`.
  */
 export type DataTableGetEditor = (
@@ -717,7 +717,7 @@ export interface DataTableOptions {
 	/**
 	 * EXTRA dropdown items. Concatenated after the six built-ins
 	 * (`datatable.js:72-76`), so index 0-5 are always Sort Asc/Desc/Reset,
-	 * Remove column, Freeze, Unfreeze. `report_view.js:366` appends "Add Column".
+	 * Remove column, Freeze, Unfreeze. `report_view.js:336` appends "Add Column".
 	 */
 	headerDropdown?: DataTableHeaderDropdownItem[];
 
@@ -753,7 +753,7 @@ export interface DataTableOptions {
 
 	/**
 	 * Inject the `_checkbox` column. Default `false` (`defaults.js:92`);
-	 * `report_view.js:346` and `multi_select_dialog.js:224` set it `true`.
+	 * `report_view.js:311` and `multi_select_dialog.js:224` set it `true`.
 	 * Also what makes `rowmanager.checkMap` exist at all (`rowmanager.js:40-43`).
 	 */
 	checkboxColumn?: boolean;
@@ -776,8 +776,8 @@ export interface DataTableOptions {
 
 	/**
 	 * Row height in px. Default `40` (`defaults.js:80`); frappe passes 35
-	 * (`report_view.js:349`, `import_preview.js:143`, `multi_select_dialog.js:225`)
-	 * and 33 (`query_report.js:1121`). Drives HyperList's `itemHeight`
+	 * (`report_view.js:314`, `import_preview.js:143`, `multi_select_dialog.js:225`)
+	 * and 33 (`query_report.js:1200`). Drives HyperList's `itemHeight`
 	 * (`body-renderer.js:41`) and the `.dt-row` height (`style.js:164-169`).
 	 */
 	cellHeight?: number;
@@ -787,7 +787,7 @@ export interface DataTableOptions {
 
 	/**
 	 * Render the filter row under the header. Default `false` (`defaults.js:82`);
-	 * `report_view.js:347`, `query_report.js:1118` and
+	 * `report_view.js:312`, `query_report.js:1197` and
 	 * `multi_select_dialog.js:222` set it `true`.
 	 */
 	inlineFilters?: boolean;
@@ -845,10 +845,10 @@ export interface DataTableOptions {
  * `report_settings.get_datatable_options` — a Query Report's chance to rewrite
  * the whole options bag before construction.
  *
- * Called ONCE, on construction only (`query_report.js:1130-1133`); the
- * `datatable.refresh(data, columns)` reuse path at `query_report.js:1112` skips
+ * Called ONCE, on construction only (`query_report.js:1209-1212`); the
+ * `datatable.refresh(data, columns)` reuse path at `query_report.js:1191` skips
  * it, which is why a report that changes `checkboxColumn` must destroy the
- * instance to see it take effect. `query_report.js:1391` also calls it with `{}`
+ * instance to see it take effect. `query_report.js:1481` also calls it with `{}`
  * purely to sniff `checkboxColumn` when placing the "Total" label.
  *
  * The hook is expected to RETURN the options (mutating and returning the same
@@ -858,7 +858,7 @@ export type DataTableGetDatatableOptions = (options: DataTableOptions) => DataTa
 
 /**
  * `report_settings.after_datatable_render` — run right after construction
- * (`query_report.js:1138-1140`) with the live instance. Report scripts use it
+ * (`query_report.js:1217-1219`) with the live instance. Report scripts use it
  * for `style.setStyle`, `rowmanager.checkMap = []` and per-cell `editable` flags.
  */
 export type DataTableAfterRender = (datatable: DataTableInstance) => void;
@@ -906,8 +906,8 @@ export declare class DataManager {
 
 	/**
 	 * Display order as original row indices. Sorting permutes THIS, never `rows`
-	 * (`datamanager.js:201-206`). Read by `report_view.js:1636` and
-	 * `query_report.js:1891` to export rows in the order the user sees.
+	 * (`datamanager.js:201-206`). Read by `report_view.js:1611` and
+	 * `query_report.js:1981` to export rows in the order the user sees.
 	 */
 	rowViewOrder: DataTableRowIndex[];
 
@@ -975,7 +975,7 @@ export declare class DataManager {
 
 	getColumnCount(skipStandardColumns?: boolean): number;
 
-	/** `report_view.get_column_widths()` calls this with `true` (`report_view.js:1501`). */
+	/** `report_view.get_column_widths()` calls this with `true` (`report_view.js:1476`). */
 	getColumns(skipStandardColumns?: boolean): DataTableColumn[];
 
 	/** Falls back to every row index when no filter has run (`datamanager.js:460-462`). */
@@ -1104,8 +1104,8 @@ export declare class RowManager {
 	 * @remarks 13 call sites across frappe / ERPNext / HRMS. Stock returns the
 	 * array's STRING keys (`rowmanager.js:80-87`, a `for...in`); carbon_frappe
 	 * returns numbers (`managers.js:190-195`). See {@link DataTableRowIndexKey}.
-	 * Consumers only ever use them as indices — `report_view.js:1416`,
-	 * `query_report.js:2408-2413`.
+	 * Consumers only ever use them as indices — `report_view.js:1391`,
+	 * `query_report.js:2511-2516`.
 	 */
 	getCheckedRows(): DataTableRowIndexKey[];
 
@@ -1115,7 +1115,7 @@ export declare class RowManager {
 	/**
 	 * Fires `onCheckRow` with NO argument (`rowmanager.js:134`). Passing `false`
 	 * empties `checkMap` outright (`rowmanager.js:124`) — this is
-	 * `report_view.clear_checked_items()` (`report_view.js:1426`).
+	 * `report_view.clear_checked_items()` (`report_view.js:1401`).
 	 */
 	checkAll(toggle: boolean): void;
 
@@ -1144,7 +1144,7 @@ export declare class RowManager {
 
 	collapseAllNodes(): void;
 
-	/** `query_report.js:1136` calls this with `report_settings.initial_depth`. */
+	/** `query_report.js:1215` calls this with `report_settings.initial_depth`. */
 	setTreeDepth(depth: number): void;
 
 	/**
@@ -1201,7 +1201,7 @@ export declare class ColumnManager {
 
 	/**
 	 * Current inline-filter keywords by column index.
-	 * `report_view.js:482` only checks `Object.keys(...).length > 0`.
+	 * `report_view.js:462` only checks `Object.keys(...).length > 0`.
 	 */
 	getAppliedFilters(): DataTableAppliedFilters;
 
@@ -1294,7 +1294,7 @@ export declare class CellManager {
 
 	/**
 	 * Close the editor. `submitValue` defaults to `true`
-	 * (`cellmanager.js:478-488`); `report_view.js:790` passes `false` to abandon
+	 * (`cellmanager.js:478-488`); `report_view.js:770` passes `false` to abandon
 	 * an edit before opening a dialog.
 	 */
 	deactivateEditing(submitValue?: boolean): void | boolean;
@@ -1400,7 +1400,7 @@ export declare class BodyRenderer {
 
 	/**
 	 * The row objects behind {@link visibleRowIndices} (`body-renderer.js:16`);
-	 * read by `query_report.js:1868`.
+	 * read by `query_report.js:1958`.
 	 *
 	 * Stock assigns the array it was handed (`body-renderer.js:16`
 	 * `this.visibleRows = rows`), so every element is there. carbon_frappe
@@ -1412,7 +1412,7 @@ export declare class BodyRenderer {
 
 	/**
 	 * Computed footer totals as a cell array (`body-renderer.js:95-135`).
-	 * `query_report.js:1870` and `:1900` push it into exports.
+	 * `query_report.js:1960` and `:1900` push it into exports.
 	 *
 	 * Typed as the WEAKER {@link DataTableColumnTotalCell}, not
 	 * {@link DataTableTotalCell}: stock stamps `isTotalRow: 1` on each cell
@@ -1487,7 +1487,7 @@ export declare class Style {
 	 * previous declaration block (`style.js:100-105`).
 	 *
 	 * 13 call sites across frappe / ERPNext / avunu, e.g.
-	 * `import_preview.js:181` `setStyle('.dt-scrollable', { height: 'auto' })`.
+	 * `import_preview.js:517` `setStyle('.dt-scrollable', { height: 'auto' })`.
 	 */
 	setStyle(selector: string, styleObject: DataTableStyleObject): void;
 
@@ -1850,7 +1850,7 @@ export interface DataTableEngine {
  *
  * @example
  * ```ts
- * // report_view.js:340
+ * // report_view.js:305
  * const dt = new DataTable(wrapper, {
  *   columns, data,
  *   getEditor: this.get_editing_object.bind(this),
@@ -1933,7 +1933,7 @@ export declare class DataTable {
 	/**
 	 * Re-initialise the data model and re-render (`datatable.js:140-144`).
 	 * Both arguments are optional; omitting `data` reuses `options.data`
-	 * (`datamanager.js:18-20`). `query_report.js:1112` uses this as the fast
+	 * (`datamanager.js:18-20`). `query_report.js:1191` uses this as the fast
 	 * path when only the rows changed.
 	 */
 	refresh(data?: DataTableData, columns?: DataTableColumnInput[]): void;
@@ -1943,7 +1943,7 @@ export declare class DataTable {
 
 	appendRows(rows: DataTableData): void;
 
-	/** Replaces one row and re-renders just its cells (`datatable.js:157-159`, `report_view.js:333`). */
+	/** Replaces one row and re-renders just its cells (`datatable.js:157-159`, `report_view.js:298`). */
 	refreshRow(row: DataTableCellInput[], rowIndex: DataTableRowIndex): void;
 
 	render(): void;
@@ -2114,9 +2114,9 @@ export interface DataTableConstructor {
  *
  * Assigned at MODULE SCOPE by two separate report bundles —
  * `report_view.js:6` and `query_report.js:6` — both `window.DataTable = DataTable`.
- * `query_report.js:1134` then constructs from the global, which is why
+ * `query_report.js:1213` then constructs from the global, which is why
  * reassigning it is enough to reach every Query Report, but NOT enough to reach
- * `report_view.js:340`, which uses its own module-local binding (carbon_frappe
+ * `report_view.js:305`, which uses its own module-local binding (carbon_frappe
  * patches `ReportView.prototype.setup_datatable` for that —
  * `tables/datatable/install.js:36-65`).
  *
@@ -2160,8 +2160,8 @@ export interface FrappeDataTableNamespace {
  * state and toast), `columnmanager.js:487-511` (dropdown).
  *
  * Consumed by: `frappe/public/scss/desk/frappe_datatable.scss`,
- * `desk/report.scss`, `desk/data_import.scss`, `report_view.js:326`/`:448`/`:460`,
- * `import_preview.js:184`, ERPNext `bank_reconciliation_tool/data_table_manager.js:136`.
+ * `desk/report.scss`, `desk/data_import.scss`, `report_view.js:291`/`:448`/`:460`,
+ * `import_preview.js:520`, ERPNext `bank_reconciliation_tool/data_table_manager.js:136`.
  */
 export type DataTableStaticClass =
 	// containers (datatable.js:113-128)

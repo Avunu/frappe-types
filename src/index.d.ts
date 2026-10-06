@@ -47,7 +47,7 @@
  * rather than the module level: `FrappeCore` and `FrappeModelMetaGlobals` both
  * declared them with different signatures, which made {@link Frappe}'s `extends`
  * clause a hard `TS2320` and meant no composite `Frappe` type could be formed at
- * all. `./model` owns them now (`model/model.js:869-871` only *aliases* them
+ * all. `./model` owns them now (`model/model.js:908-910` only *aliases* them
  * onto the root); the generic parameter and every note from the `core.d.ts`
  * copy were folded into {@link FrappeModelMetaGlobals}.
  *
@@ -631,22 +631,22 @@ export interface FrappeUiToolbarNamespace {
 		click: () => void,
 		icon: string
 	): JQuery<HTMLElement>;
-	/** toolbar.js:209-211 — `$("#navbar-" + label.toLowerCase())`. */
+	/** toolbar.js:205-207 — `$("#navbar-" + label.toLowerCase())`. */
 	get_menu(label: string): JQuery<HTMLElement>;
-	/** toolbar.js:212-216. A `string` is resolved through {@link FrappeUiToolbarNamespace.get_menu}. */
+	/** toolbar.js:208-212. A `string` is resolved through {@link FrappeUiToolbarNamespace.get_menu}. */
 	add_menu_divider(menu: string | JQuery<HTMLElement>): void;
 	/**
 	 * toolbar.js:217-230. **Throws** when `.navbar-right` is absent — it calls
 	 * `parent_element.insertBefore(...)` on the result of `.get(0)` unguarded.
 	 */
 	add_icon_link(route: string, icon: string, index: number, class_name: string): void;
-	/** toolbar.js:231-237. Flips `localStorage.container_fullwidth` and fires `toggleFullWidth` on `<body>`. */
+	/** toolbar.js:227-233. Flips `localStorage.container_fullwidth` and fires `toggleFullWidth` on `<body>`. */
 	toggle_full_width(): void;
-	/** toolbar.js:238-241. */
+	/** toolbar.js:234-237. */
 	set_fullwidth_if_enabled(): void;
-	/** toolbar.js:242-246 — always returns `false` to cancel the event. */
+	/** toolbar.js:238-242 — always returns `false` to cancel the event. */
 	show_shortcuts(e: JQuery.TriggeredEvent): false;
-	/** toolbar.js:249-259 — `frappe.utils.throttle(…, 10000)`; clears assets, then reloads the page. */
+	/** toolbar.js:245-255 — `frappe.utils.throttle(…, 10000)`; clears assets, then reloads the page. */
 	clear_cache(): void;
 }
 
@@ -668,7 +668,7 @@ export interface FrappeStandardShortcut {
  *
  * `add_shortcut` monkey-patches the page onto the function object
  * (keyboard.js:68 `handler.page = page`) so that
- * {@link FrappeUiKeysNamespace.off} can filter by page (keyboard.js:196-200) —
+ * {@link FrappeUiKeysNamespace.off} can filter by page (keyboard.js:198-202) —
  * hence the callable-plus-property form.
  */
 export interface FrappeKeyHandler {
@@ -711,13 +711,13 @@ export interface AltShortcutGroup {
 	>;
 	/** alt_keyboard_shortcuts.js:100-113 — locale-dependent; `[]` outside German. */
 	blacklisted_letters: string[];
-	/** alt_keyboard_shortcuts.js:121-132. */
+	/** alt_keyboard_shortcuts.js:118-129. */
 	bind_events(): void;
-	/** alt_keyboard_shortcuts.js:134-169. `$text_el` defaults to `$target`. */
+	/** alt_keyboard_shortcuts.js:131-166. `$text_el` defaults to `$target`. */
 	add($target: JQuery<HTMLElement>, $text_el?: JQuery<HTMLElement>): void;
-	/** alt_keyboard_shortcuts.js:171-192. */
+	/** alt_keyboard_shortcuts.js:168-189. */
 	underline_text(shortcut: { $text_el: JQuery<HTMLElement>; letter: string; text: string }): void;
-	/** alt_keyboard_shortcuts.js:194-204. */
+	/** alt_keyboard_shortcuts.js:191-201. */
 	is_taken(letter: string): boolean;
 }
 
@@ -726,9 +726,9 @@ export interface AltShortcutGroup {
  * keyboard.js:4 and alt_keyboard_shortcuts.js:1.
  */
 export interface FrappeUiKeysNamespace {
-	/** keyboard.js:4, :187-190. A key with no registered handler reads back `undefined`. */
+	/** keyboard.js:4, :189-192. A key with no registered handler reads back `undefined`. */
 	handlers: Record<string, FrappeKeyHandler[] | undefined>;
-	/** keyboard.js:284-310 — keyCode → key name, with A-Z filled in at :309. */
+	/** keyboard.js:286-312 — keyCode → key name, with A-Z filled in at :309. */
 	key_map: Record<number, string | undefined>;
 	/** keyboard.js:23-24, appended to by `add_shortcut` (keyboard.js:75-80). */
 	standard_shortcuts: FrappeStandardShortcut[];
@@ -740,16 +740,16 @@ export interface FrappeUiKeysNamespace {
 	AltShortcutGroup: new () => AltShortcutGroup;
 	/** keyboard.js:6-20. Binds the single `keydown` listener on `window`. */
 	setup(): void;
-	/** keyboard.js:163-184 — normalises an event into `"ctrl+shift+k"` form, lowercased. */
+	/** keyboard.js:165-186 — normalises an event into `"ctrl+shift+k"` form, lowercased. */
 	get_key(e: JQuery.KeyDownEvent | KeyboardEvent): string;
 	/** keyboard.js:25-31 — title-cased, with `⌘` / `⌥` / `⇧` substitutions. */
 	get_shortcut_label(shortcut: string): string;
 	/** keyboard.js:32-81. Replaces any handler already registered for the same page. */
 	add_shortcut(opts?: FrappeShortcutOptions): void;
-	/** keyboard.js:186-191. */
+	/** keyboard.js:188-193. */
 	on(key: string, handler: FrappeKeyHandler): void;
 	/**
-	 * keyboard.js:193-200. **Calling it without a `page` removes every handler
+	 * keyboard.js:195-202. **Calling it without a `page` removes every handler
 	 * for that key** — the filter predicate returns `false` for all of them.
 	 */
 	off(key: string, page?: Page): void;
@@ -792,7 +792,7 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	FieldGroup: typeof FieldGroup;
 	/** dialog.js:8 — the modal stack; `window.cur_dialog` is its top (dialog.js:112-119). */
 	open_dialogs: Dialog[];
-	/** dialog.js:381-390. Hides, or un-minimises, `window.cur_dialog`. */
+	/** dialog.js:408-417. Hides, or un-minimises, `window.cur_dialog`. */
 	hide_open_dialog(): void;
 	/** toolbar.js:4. */
 	toolbar: FrappeUiToolbarNamespace;
@@ -802,7 +802,7 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	ThemeSwitcher: typeof FrappeThemeSwitcher;
 	/** ui/chart.js:6 — frappe's only in-tree `frappe.Chart` subclass. */
 	RealtimeChart: typeof FrappeRealtimeChart;
-	/** ui/sidebar/sidebar.js:3 — the v16 Workspace Sidebar; instance at `frappe.app.sidebar`. */
+	/** ui/sidebar/sidebar.js:56 — the v16 Workspace Sidebar; instance at `frappe.app.sidebar`. */
 	Sidebar: typeof FrappeSidebar;
 	/** ui/sidebar/sidebar_header.js:1. */
 	SidebarHeader: typeof FrappeSidebarHeader;

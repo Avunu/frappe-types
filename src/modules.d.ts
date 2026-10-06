@@ -30,7 +30,7 @@
  */
 
 declare module "frappe/public/js/frappe/form/grid" {
-	// grid.js:21 — `export default class Grid {`. No named exports.
+	// grid.js:52 — `export default class Grid {`. No named exports.
 	import { Grid } from "frappe-types/deep-modules";
 	export default Grid;
 	export { Grid };

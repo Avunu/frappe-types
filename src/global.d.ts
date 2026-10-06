@@ -97,7 +97,7 @@ declare global {
 	/**
 	 * The desk API root.
 	 *
-	 * `frappe/www/desk.html:52` and `frappe/public/js/frappe/provide.js:5` both
+	 * `frappe/www/desk.html:64` and `frappe/public/js/frappe/provide.js:5` both
 	 * do `if (!window.frappe) window.frappe = {}`, so the object exists before
 	 * any bundle runs; its *members* arrive lazily via `frappe.provide()`.
 	 *
@@ -109,13 +109,13 @@ declare global {
 	/** `frappe/public/js/frappe/translate.js:26` — `window.__ = frappe._;` */
 	var __: TranslateFunction;
 
-	/** `frappe/public/js/frappe/ui/messages.js:317` — `window.msgprint = frappe.msgprint`. */
+	/** `frappe/public/js/frappe/ui/messages.js:333` — `window.msgprint = frappe.msgprint`. */
 	var msgprint: Frappe["msgprint"];
 
 	/** `frappe/public/js/frappe/provide.js:21` — `frappe.provide("locals")`. */
 	var locals: LocalsStore;
 
-	/** `provide.js:50` (as `null`), then `form.js:406` / `pageview.js:106`. */
+	/** `provide.js:50` (as `null`), then `form.js:453` / `pageview.js:99`. */
 	var cur_frm: CurrentForm;
 
 	/** `list_factory.js:6` (as `null`), `:93`, `:96`. Holds a `ReportView` on `/view/report`. */
@@ -217,7 +217,7 @@ declare global {
 		 */
 		frappe?: Frappe;
 
-		/** `ui/messages.js:317`. Optional for the same headless reason as `__`. */
+		/** `ui/messages.js:333`. Optional for the same headless reason as `__`. */
 		msgprint?: Frappe["msgprint"];
 
 		/** See the bare `DataTable` above — non-optional so it can be reassigned. */
@@ -235,7 +235,7 @@ declare global {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:12-26`. Both are installed inside
+	 * `frappe/public/js/frappe/utils/utils.js:13-27`. Both are installed inside
 	 * a single `if (!Array.prototype.uniqBy)` guard, so `move` exists if and
 	 * only if `uniqBy` does. `move` returns `undefined` — see
 	 * {@link FrappeArrayPolyfills}.
@@ -252,7 +252,7 @@ declare global {
 	 * frappe's own jQuery plugins (`add_options`, `set_working`, `done_working`,
 	 * `enterKey`, `datepicker`) and the Bootstrap 4 plugin surface the desk
 	 * bundles load — `frappe/public/js/jquery-bootstrap.js`. `Dialog#show`
-	 * (`ui/dialog.js:297`) calls `.modal("show")` on a plain jQuery handle, so
+	 * (`ui/dialog.js:325`) calls `.modal("show")` on a plain jQuery handle, so
 	 * without this the package's own declarations would not type-check at their
 	 * call sites.
 	 */

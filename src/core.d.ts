@@ -46,7 +46,7 @@ export type FrappeDialog = Dialog;
 /**
  * The jqXHR returned by `$.ajax` and therefore by {@link FrappeRequest.call}
  * and {@link FrappeCore.call}.
- * Source: `frappe/public/js/frappe/request.js:282` (`return $.ajax(ajax_args)…`).
+ * Source: `frappe/public/js/frappe/request.js:276` (`return $.ajax(ajax_args)…`).
  *
  * SEAM — `JQueryXHR` was imported from `./globals`, which does not (and must
  * not) export it. It is an AMBIENT global from `@types/jquery`
@@ -153,32 +153,32 @@ export interface FrappeTranslate {
 
 /**
  * Primary-action block of a {@link FrappeMsgprintOptions}.
- * Source: `frappe/public/js/frappe/ui/messages.js:210-247`.
+ * Source: `frappe/public/js/frappe/ui/messages.js:226-263`.
  */
 export interface FrappeMsgprintPrimaryAction {
-	/** Button label; run through `__()` at messages.js:245. */
+	/** Button label; run through `__()` at messages.js:261. */
 	label?: string;
 	/** Client-side handler. Synthesised from `server_action`/`client_action` when absent. */
 	action?: () => void;
 	/**
-	 * Dotted path of a whitelisted server method. messages.js:211-226 builds an
+	 * Dotted path of a whitelisted server method. messages.js:227-242 builds an
 	 * `action` that `frappe.call`s it with `args`.
 	 */
 	server_action?: string;
 	/**
-	 * Dotted path resolved against `window` (messages.js:232-236 walks
+	 * Dotted path resolved against `window` (messages.js:248-252 walks
 	 * `obj = obj[part]`) and invoked with `args` if it turns out to be a function.
 	 */
 	client_action?: string;
 	/** Passed as `args` to `server_action` / `client_action`. Open by design. */
 	args?: Record<string, unknown>;
-	/** messages.js:220 — close the dialog after a successful `server_action`. */
+	/** messages.js:236 — close the dialog after a successful `server_action`. */
 	hide_on_success?: boolean;
 }
 
 /**
  * Secondary-action block of a {@link FrappeMsgprintOptions}.
- * Source: `frappe/public/js/frappe/ui/messages.js:255-260`.
+ * Source: `frappe/public/js/frappe/ui/messages.js:271-276`.
  */
 export interface FrappeMsgprintSecondaryAction {
 	label?: string;
@@ -188,53 +188,53 @@ export interface FrappeMsgprintSecondaryAction {
 /**
  * Object form of `frappe.msgprint`.
  *
- * Source: `frappe/public/js/frappe/ui/messages.js:117-315`. Detected by
- * `$.isPlainObject(msg)` at messages.js:120; every key below is one the
+ * Source: `frappe/public/js/frappe/ui/messages.js:133-331`. Detected by
+ * `$.isPlainObject(msg)` at messages.js:136; every key below is one the
  * implementation actually reads.
  */
 export interface FrappeMsgprintOptions {
 	/**
 	 * Body. A `string` is the normal case. An **array** is re-entered one element
-	 * at a time (messages.js:150-171) — each element may itself be a JSON string
+	 * at a time (messages.js:166-187) — each element may itself be a JSON string
 	 * of a message object. `as_list` / `as_table` reinterpret the array as list
-	 * rows / table rows before that (messages.js:135-148).
+	 * rows / table rows before that (messages.js:151-164).
 	 */
 	message?: string | readonly unknown[] | null;
 	title?: string;
-	/** Defaults to `"blue"` at messages.js:131-133. */
+	/** Defaults to `"blue"` at messages.js:147-149. */
 	indicator?: FrappeIndicator;
-	/** messages.js:135-138 — render `message` (an array) as a `<ul>`. */
+	/** messages.js:151-154 — render `message` (an array) as a `<ul>`. */
 	as_list?: boolean;
-	/** messages.js:140-148 — render `message` (an array of arrays) as a `<table>`. */
+	/** messages.js:156-164 — render `message` (an array of arrays) as a `<table>`. */
 	as_table?: boolean;
-	/** messages.js:173-176 — divert the whole message to `frappe.show_alert`. */
+	/** messages.js:189-192 — divert the whole message to `frappe.show_alert`. */
 	alert?: boolean;
-	/** messages.js:173-176 — synonym of `alert`. */
+	/** messages.js:189-192 — synonym of `alert`. */
 	toast?: boolean;
-	/** messages.js:178-185 — on hide, route back to the previous route. */
+	/** messages.js:194-201 — on hide, route back to the previous route. */
 	re_route?: boolean;
-	/** messages.js:196 — build the dialog with a minimise control. */
+	/** messages.js:212 — build the dialog with a minimise control. */
 	is_minimizable?: boolean;
-	/** messages.js:271-275 — clear the existing message area instead of appending. */
+	/** messages.js:287-291 — clear the existing message area instead of appending. */
 	clear?: boolean;
 	/**
-	 * messages.js:293-301 — **inverted**: `wide: true` *removes* the
+	 * messages.js:309-317 — **inverted**: `wide: true` *removes* the
 	 * `msgprint-dialog` class (the class is what makes msgprint narrow).
 	 */
 	wide?: boolean;
 	primary_action?: FrappeMsgprintPrimaryAction;
-	/** Fallback label when `primary_action.label` is absent (messages.js:245). */
+	/** Fallback label when `primary_action.label` is absent (messages.js:261). */
 	primary_action_label?: string;
 	secondary_action?: FrappeMsgprintSecondaryAction;
 }
 
 /**
  * Object form of `frappe.throw`.
- * Source: `frappe/public/js/frappe/ui/messages.js:20-27` — a string is widened to
+ * Source: `frappe/public/js/frappe/ui/messages.js:21-28` — a string is widened to
  * `{ message, title: __("Error") }` and `indicator` defaults to `"red"`.
  */
 export interface FrappeThrowOptions extends FrappeMsgprintOptions {
-	/** Required: `throw new Error(msg.message)` at messages.js:26. */
+	/** Required: `throw new Error(msg.message)` at messages.js:27. */
 	message: string;
 }
 
@@ -270,7 +270,7 @@ export type FrappeShowAlertActions = Record<string, (event: unknown) => void>;
 /**
  * The envelope every desk AJAX response is parsed into.
  *
- * Source: `frappe/public/js/frappe/request.js:283-332` (`.done` / `.always`) and
+ * Source: `frappe/public/js/frappe/request.js:277-326` (`.done` / `.always`) and
  * `frappe/public/js/frappe/request.js:422-502` (`frappe.request.cleanup`).
  *
  * The index signature is not a shrug: a whitelisted method may return any
@@ -279,23 +279,23 @@ export type FrappeShowAlertActions = Record<string, (event: unknown) => void>;
 export interface FrappeResponse<T = unknown> {
 	/** Return value of the whitelisted method. What `frappe.xcall` resolves with. */
 	message?: T;
-	/** JSON-encoded traceback (`string[]` or `string`); parsed at request.js:471-482. */
+	/** JSON-encoded traceback (`string[]` or `string`); parsed at request.js:492-503. */
 	exc?: string;
-	/** Exception class name; keyed into `frappe.request.error_handlers` (request.js:444). */
+	/** Exception class name; keyed into `frappe.request.error_handlers` (request.js:459). */
 	exc_type?: string;
-	/** JSON-encoded array of message payloads; parsed at request.js:460. */
+	/** JSON-encoded array of message payloads; parsed at request.js:475. */
 	_server_messages?: string;
-	/** JSON-encoded array; logged at request.js:485-498. */
+	/** JSON-encoded array; logged at request.js:506-519. */
 	_debug_messages?: string;
-	/** v2 API only — request.js:457-458 reads `r.messages` instead. */
+	/** v2 API only — request.js:472-473 reads `r.messages` instead. */
 	messages?: readonly unknown[];
-	/** Merged into `frappe._link_titles` (request.js:298-303). */
+	/** Merged into `frappe._link_titles` (request.js:292-297). */
 	_link_titles?: Record<string, string>;
-	/** Merged into `frappe._messages` (request.js:293-295). */
+	/** Merged into `frappe._messages` (request.js:287-289). */
 	__messages?: Record<string, string>;
-	/** Synced into `locals` via `frappe.model.sync` (request.js:288-290). */
+	/** Synced into `locals` via `frappe.model.sync` (request.js:282-284). */
 	docs?: readonly FrappeDoc[];
-	/** Synced alongside `docs` (request.js:288). */
+	/** Synced alongside `docs` (request.js:282). */
 	docinfo?: Record<string, unknown>;
 	/** Present for background jobs; triggers the realtime subscribe at request.js:76-82. */
 	task_id?: string;
@@ -303,7 +303,7 @@ export interface FrappeResponse<T = unknown> {
 	session_expired?: boolean | FrappeCheck;
 	/** Set on 403 responses; consumed and nulled at request.js:155-163. */
 	_error_message?: string;
-	/** Rendered into the server-error dialog at request.js:630-633. */
+	/** Rendered into the server-error dialog at request.js:651-654. */
 	_exc_source?: string;
 	[key: string]: unknown;
 }
@@ -320,13 +320,13 @@ export interface FrappeCallOptions<TMessage = unknown> {
 	 * `run_doc_method` (request.js:64-70).
 	 */
 	method?: string;
-	/** Server arguments. Nested objects/arrays are JSON-stringified at request.js:404-408. */
+	/** Server arguments. Nested objects/arrays are JSON-stringified at request.js:398-402. */
 	args?: Record<string, unknown>;
 	/** request.js:83-86 — invoked with the parsed body and the raw response text. */
 	callback?: (r: FrappeResponse<TMessage>, response_text?: string) => void;
 	/** request.js:113 — invoked on any unhandled failure; argument shape varies by status code. */
 	error?: (r?: FrappeResponse<TMessage> | unknown) => void;
-	/** request.js:329-331 — invoked with the parsed body (or `null` if unparsable). */
+	/** request.js:323-325 — invoked with the parsed body (or `null` if unparsable). */
 	always?: (r: FrappeResponse<TMessage> | null) => void;
 	/** request.js:80-82 — invoked instead of `callback` when the server queued the job. */
 	queued?: (r: FrappeResponse<TMessage>) => void;
@@ -342,23 +342,23 @@ export interface FrappeCallOptions<TMessage = unknown> {
 	page?: string;
 	/** request.js:64-70 — run a controller method on this document. */
 	doc?: FrappeDoc;
-	/** request.js:398, 424 — disabled for the duration of the request. */
+	/** request.js:392, 424 — disabled for the duration of the request. */
 	btn?: unknown;
-	/** request.js:401 — freeze the page with `frappe.dom.freeze`. */
+	/** request.js:395 — freeze the page with `frappe.dom.freeze`. */
 	freeze?: boolean;
 	freeze_message?: string;
 	/** request.js:51-53 — alias for `no_spinner`. */
 	quiet?: boolean;
 	no_spinner?: boolean;
-	/** request.js:462 — suppress `_server_messages` msgprints. */
+	/** request.js:477 — suppress `_server_messages` msgprints. */
 	silent?: boolean;
 	/** Extra request headers (request.js:118, 265-272). */
 	headers?: Record<string, string>;
-	/** Per-request `exc_type` handlers, merged with the global ones (request.js:444-446). */
+	/** Per-request `exc_type` handlers, merged with the global ones (request.js:459-461). */
 	error_handlers?: Record<string, (r: FrappeResponse) => void>;
 	/** Forwarded to `$.ajax`. `false` makes the call synchronous. */
 	async?: boolean;
-	/** Forwarded to `$.ajax`; forced to `false` when `window.dev_server` (request.js:273). */
+	/** Forwarded to `$.ajax`; forced to `false` when `window.dev_server` (request.js:267). */
 	cache?: boolean;
 	/**
 	 * Milliseconds. When a structurally identical request was sent inside the
@@ -371,7 +371,7 @@ export interface FrappeCallOptions<TMessage = unknown> {
 /**
  * Options accepted by `frappe.request.call` — the lower layer. `frappe.call`
  * builds one of these (request.js:109-125) and `frappe.request.prepare`
- * (request.js:394-420) renames `success`/`error` to `success_callback`/
+ * (request.js:388-414) renames `success`/`error` to `success_callback`/
  * `error_callback` **in place**, which is why both spellings appear here.
  */
 export interface FrappeRequestCallOptions {
@@ -391,9 +391,9 @@ export interface FrappeRequestCallOptions {
 	success?: (data: FrappeResponse, response_text?: string) => void;
 	error?: (r?: unknown) => void;
 	always?: (r: FrappeResponse | null) => void;
-	/** Installed by `frappe.request.prepare` (request.js:416-419). */
+	/** Installed by `frappe.request.prepare` (request.js:410-413). */
 	success_callback?: (data: FrappeResponse, response_text?: string) => void;
-	/** Installed by `frappe.request.prepare` (request.js:416-419). */
+	/** Installed by `frappe.request.prepare` (request.js:410-413). */
 	error_callback?: (r?: unknown, response_text?: string) => void;
 }
 
@@ -413,17 +413,17 @@ export interface FrappeRequest {
 	/** request.js:7, 444 — global handlers keyed by `exc_type`. */
 	error_handlers: Record<string, Array<(r: FrappeResponse) => void>>;
 	call(opts: FrappeRequestCallOptions): FrappeAjaxResult;
-	/** request.js:371 — true when an identical request was sent within `threshold` ms. */
+	/** request.js:365 — true when an identical request was sent within `threshold` ms. */
 	is_fresh(args: Record<string, unknown>, threshold: number): boolean;
-	/** request.js:394 — mutates `opts`; throws the string `"Incomplete Request"` on a missing cmd. */
+	/** request.js:388 — mutates `opts`; throws the string `"Incomplete Request"` on a missing cmd. */
 	prepare(opts: FrappeRequestCallOptions): void;
-	/** request.js:422 — un-freezes, dispatches error handlers, shows server messages. */
+	/** request.js:444 — un-freezes, dispatches error handlers, shows server messages. */
 	cleanup(opts: FrappeRequestCallOptions, r: FrappeResponse | null): void;
-	/** request.js:530 — opens the "Server Error" dialog. */
+	/** request.js:551 — opens the "Server Error" dialog. */
 	report_error(xhr: unknown, request_opts: FrappeRequestCallOptions): void;
-	/** request.js:640 — masks password fields in `args` before the error report. */
+	/** request.js:661 — masks password fields in `args` before the error report. */
 	cleanup_request_opts(opts: FrappeRequestCallOptions): FrappeRequestCallOptions;
-	/** request.js:655 — append a global handler for an `exc_type`. */
+	/** request.js:676 — append a global handler for an `exc_type`. */
 	on_error(error_type: string, handler: (r: FrappeResponse) => void): void;
 }
 
@@ -573,11 +573,11 @@ export interface FrappeGetLoggedUserResponse {
  * Third argument of every formatter and of `frappe.format`.
  * Source: keys read at `frappe/public/js/frappe/form/formatters.js:12, 71, 159,
  * 182, 213`. `frappe.format(value, df, null, doc)` is legal
- * (`frappe/public/js/frappe/list/list_view.js:953`), hence the `| null` on the
+ * (`frappe/public/js/frappe/list/list_view.js:1459`), hence the `| null` on the
  * parameters below.
  *
  * `1` / `0` appear alongside `true` / `false` at real call sites
- * (`{ inline: 1 }` formatters.js:459, `{ only_value: 1 }` filter.js:458), so the
+ * (`{ inline: 1 }` formatters.js:470, `{ only_value: 1 }` filter.js:565), so the
  * flags are widened rather than declared `boolean`.
  */
 export interface FrappeFormatterOptions {
@@ -598,7 +598,7 @@ export interface FrappeFormatterOptions {
 
 /**
  * The call shape `frappe.format` uses to invoke whichever formatter it picked
- * (`frappe/public/js/frappe/form/formatters.js:445`). Every member of
+ * (`frappe/public/js/frappe/form/formatters.js:456`). Every member of
  * {@link FrappeFormatters} is invoked through this shape, which is why the
  * members below are declared as *methods* (bivariant parameters) — a consumer
  * wrapping `formatters.Date` with a `(...args: unknown[])` shim must typecheck.
@@ -613,7 +613,7 @@ export type FrappeFormatter = (
 /**
  * A `frappe.form.link_formatters[doctype]` entry.
  * Source: `frappe/public/js/frappe/form/formatters.js:186-190` (call site) and
- * `formatters.js:466-469` (the built-in `"User"` entry).
+ * `formatters.js:477-480` (the built-in `"User"` entry).
  */
 export type FrappeLinkFormatter = (
 	value: string,
@@ -625,13 +625,13 @@ export type FrappeLinkFormatter = (
  * `frappe.form.formatters` — the fieldtype → renderer table.
  *
  * Source: `frappe/public/js/frappe/form/formatters.js:10-414`. Keys are
- * fieldtypes with spaces stripped (`frappe.form.get_formatter`, formatters.js:423).
+ * fieldtypes with spaces stripped (`frappe.form.get_formatter`, formatters.js:432).
  *
  * Return types are transcribed, not guessed. Several members can return a
  * **number**: `_right` passes its input straight through when
  * `options.inline || options.only_value` (formatters.js:11-17), so `Int`,
  * `Float`, `Percent` and `Currency` inherit that; `FileSize` returns a raw
- * `cint` below 1 KiB (formatters.js:377).
+ * `cint` below 1 KiB (formatters.js:379).
  *
  * `Data` / `Text` / `SmallText` are declared `string` even though
  * `_apply_custom_formatter` (formatters.js:18-35) will hand back whatever a
@@ -664,7 +664,7 @@ export interface FrappeFormatters {
 		docfield: DocField,
 		options?: FrappeFormatterOptions | null
 	): string | number;
-	/** formatters.js:108 — `docfield.options` is the star count (default 5). */
+	/** formatters.js:107 — `docfield.options` is the star count (default 5). */
 	Rating(value: unknown, docfield: DocField): string;
 	Currency(
 		value: unknown,
@@ -672,7 +672,7 @@ export interface FrappeFormatters {
 		options?: FrappeFormatterOptions | null,
 		doc?: FrappeDoc
 	): string | number;
-	/** formatters.js:165 — a disabled `<input type=checkbox>`, never a boolean. */
+	/** formatters.js:164 — a disabled `<input type=checkbox>`, never a boolean. */
 	Check(value: unknown): string;
 	Link(
 		value: unknown,
@@ -714,9 +714,9 @@ export interface FrappeFormatters {
 	/** formatters.js:349 — reads the `Workflow State` doc out of `locals`. */
 	WorkflowState(value: string): string;
 	Email(value: unknown): string;
-	/** formatters.js:370 — returns a raw `cint` below 1 KiB, `"1.23M"`/`"4.56K"` above. */
+	/** formatters.js:372 — returns a raw `cint` below 1 KiB, `"1.23M"`/`"4.56K"` above. */
 	FileSize(value: unknown): string | number;
-	/** formatters.js:379 — `rows` are the child rows of a Table MultiSelect field. */
+	/** formatters.js:381 — `rows` are the child rows of a Table MultiSelect field. */
 	TableMultiSelect(
 		rows: ReadonlyArray<Record<string, unknown>> | null | undefined,
 		df: DocField,
@@ -724,13 +724,13 @@ export interface FrappeFormatters {
 	): string;
 	Color(value: string | null | undefined): string;
 	Icon(value: string | null | undefined): string;
-	/** formatters.js:412-413, 416-419 — both alias the same `format_attachment_url`. */
+	/** formatters.js:414-415, 416-419 — both alias the same `format_attachment_url`. */
 	Attach(url: string | null | undefined): string;
 	AttachImage(url: string | null | undefined): string;
 
 	/**
 	 * Fieldtypes are open: apps register their own by assigning here, and
-	 * `get_formatter` (formatters.js:423) does a plain index lookup. Declared
+	 * `get_formatter` (formatters.js:432) does a plain index lookup. Declared
 	 * members above stay exact; anything else is a formatter or nothing.
 	 */
 	[fieldtype: string]: unknown;
@@ -748,10 +748,10 @@ export interface FrappeFormatters {
 export interface FrappeFormNamespace {
 	/** formatters.js:10. */
 	formatters: FrappeFormatters;
-	/** formatters.js:8, populated at formatters.js:466 for `"User"`. */
+	/** formatters.js:8, populated at formatters.js:477 for `"User"`. */
 	link_formatters: Record<string, FrappeLinkFormatter | undefined>;
 	/**
-	 * formatters.js:421 — strips spaces from `fieldtype` and falls back to
+	 * formatters.js:430 — strips spaces from `fieldtype` and falls back to
 	 * `formatters.Data`. A missing/empty `fieldtype` is coerced to `"Data"`.
 	 */
 	get_formatter(fieldtype?: string | null): FrappeFormatter;
@@ -764,7 +764,7 @@ export interface FrappeFormNamespace {
 /**
  * `frappe.boot.sysdefaults` — the Global Defaults / DefaultValue table, flattened.
  *
- * Source: `frappe/boot.py:51-52`
+ * Source: `frappe/boot.py:49-50`
  * (`bootinfo.sysdefaults = frappe.defaults.get_defaults()`, then
  * `sysdefaults["setup_complete"] = frappe.is_setup_complete()`).
  *
@@ -776,12 +776,12 @@ export interface FrappeFormNamespace {
 export interface FrappeBootSysDefaults {
 	/** ERPNext's default company. Not set on a bare frappe site. */
 	company?: string;
-	/** e.g. `"yyyy-mm-dd"`. Read unguarded at `frappe/public/js/frappe/desk.js:341`. */
+	/** e.g. `"yyyy-mm-dd"`. Read unguarded at `frappe/public/js/frappe/desk.js:376`. */
 	date_format?: string;
 	/** e.g. `"HH:mm:ss"`. formatters.js:251 falls back to that literal. */
 	time_format?: string;
 	country?: string;
-	/** Read back out at `frappe/boot.py:269` (`add_timezone_info`). */
+	/** Read back out at `frappe/boot.py:462` (`add_timezone_info`). */
 	time_zone?: string;
 	/** Digits after the decimal point; read through `cint()` at formatters.js:63. */
 	float_precision?: string;
@@ -791,8 +791,8 @@ export interface FrappeBootSysDefaults {
 	user?: string;
 	owner?: string;
 	/**
-	 * A real `boolean`: `frappe/boot.py:52` assigns `frappe.is_setup_complete()`,
-	 * which returns a Python `bool` (`frappe/__init__.py:1537-1551`) — **not** the
+	 * A real `boolean`: `frappe/boot.py:50` assigns `frappe.is_setup_complete()`,
+	 * which returns a Python `bool` (`frappe/__init__.py:1540-1554`) — **not** the
 	 * `0 | 1` a DocField Check would give.
 	 */
 	setup_complete?: boolean;
@@ -824,11 +824,11 @@ export interface FrappeBootAppEntry {
 /**
  * `frappe.boot.user` — the current user, denormalised.
  * Source: `frappe/utils/user.py:218-281` (`UserPermissions.load_user`), plus
- * `frappe/sessions.py:183` (`impersonated_by`) and
- * `frappe/public/js/frappe/desk.js:346` (`last_selected_values`, set client-side).
+ * `frappe/sessions.py:184` (`impersonated_by`) and
+ * `frappe/public/js/frappe/desk.js:381` (`last_selected_values`, set client-side).
  */
 export interface FrappeBootUser {
-	/** The user id / email. `frappe/utils/user.py:255`. */
+	/** The user id / email. `frappe/utils/user.py:265`. */
 	name: string;
 	email: string;
 	first_name?: string;
@@ -845,13 +845,13 @@ export interface FrappeBootUser {
 	mute_sounds?: FrappeCheck;
 	send_me_a_copy?: FrappeCheck;
 	show_absolute_datetime_in_timeline?: FrappeCheck;
-	/** `frappe/utils/user.py:256` — `frappe.parse_json` of the stored JSON. */
+	/** `frappe/utils/user.py:266` — `frappe.parse_json` of the stored JSON. */
 	onboarding_status?: Record<string, unknown> | null;
-	/** user.py:244-253 — expanded from a name into `{name, public, title}`, or `null`. */
+	/** user.py:254-263 — expanded from a name into `{name, public, title}`, or `null`. */
 	default_workspace?: { name: string; public?: FrappeCheck; title?: string } | null;
-	/** user.py:257 — role names. */
+	/** user.py:267 — role names. */
 	roles: string[];
-	/** user.py:258 — same shape as {@link FrappeBootSysDefaults}, user-scoped. */
+	/** user.py:268 — same shape as {@link FrappeBootSysDefaults}, user-scoped. */
 	defaults: FrappeBootSysDefaults;
 	/** user.py:259-278 — permission caches, each a de-duplicated list of doctype names. */
 	can_select: string[];
@@ -871,11 +871,11 @@ export interface FrappeBootUser {
 	permitted_modules: string[];
 	in_create: string[];
 	all_read: string[];
-	/** user.py:280. */
+	/** user.py:291. */
 	all_reports: Record<string, unknown>;
-	/** `frappe/sessions.py:183` — set only while impersonating. */
+	/** `frappe/sessions.py:184` — set only while impersonating. */
 	impersonated_by?: string | null;
-	/** Created client-side at `frappe/public/js/frappe/desk.js:346`. */
+	/** Created client-side at `frappe/public/js/frappe/desk.js:381`. */
 	last_selected_values?: Record<string, unknown>;
 }
 
@@ -883,12 +883,12 @@ export interface FrappeBootUser {
  * `frappe.boot` — the server-rendered bootstrap blob.
  *
  * Assigned as a raw JSON literal in the desk page itself:
- * `frappe/www/desk.html:54` (`frappe.boot = {{ frappe.utils.orjson_dumps(boot, …) }};`).
+ * `frappe/www/desk.html:66` (`frappe.boot = {{ frappe.utils.orjson_dumps(boot, …) }};`).
  * Built by `frappe/boot.py:36-139` (`get_bootinfo`) and extended by
  * `frappe/sessions.py:148-189`.
  *
- * The index signature is load-bearing, not laziness: `boot.py:99-100` runs every
- * `boot_session` hook and `sessions.py:169-170` every `extend_bootinfo` hook, so
+ * The index signature is load-bearing, not laziness: `boot.py:102-103` runs every
+ * `boot_session` hook and `sessions.py:170-171` every `extend_bootinfo` hook, so
  * any installed app can add top-level keys (ERPNext adds a dozen). Named members
  * stay exact.
  *
@@ -900,53 +900,53 @@ export interface FrappeBootUser {
  * which is exactly what the `&&` guards downstream already assume.
  */
 export interface FrappeBoot {
-	/** boot.py:51. Always present server-side. */
+	/** boot.py:49. Always present server-side. */
 	sysdefaults: FrappeBootSysDefaults;
 	/** boot.py:175, 203. Always an array (possibly empty). */
 	app_data: FrappeBootAppEntry[];
-	/** boot.py:46 → `frappe/utils/user.py:218`. */
+	/** boot.py:44 → `frappe/utils/user.py:227`. */
 	user: FrappeBootUser;
 	/**
-	 * `frappe/boot.py:233` (`bootinfo["lang"] = frappe.lang`) and
-	 * `frappe/sessions.py:172`. Coerced to `str` at boot.py:102-103.
+	 * `frappe/boot.py:426` (`bootinfo["lang"] = frappe.lang`) and
+	 * `frappe/sessions.py:173`. Coerced to `str` at boot.py:105-106.
 	 * Used as an index into the datatable translation table
-	 * (`frappe/public/js/frappe/views/reports/report_view.js:344`).
+	 * (`frappe/public/js/frappe/views/reports/report_view.js:309`).
 	 */
 	lang: string;
-	/** boot.py:110 — `{ language_name: language_code }`. */
+	/** boot.py:113 — `{ language_name: language_code }`. */
 	lang_dict: Record<string, string>;
-	/** boot.py:234 — the translation dictionary; copied to `frappe._messages` (desk.html:55). */
+	/** boot.py:427 — the translation dictionary; copied to `frappe._messages` (desk.html:67). */
 	__messages: Record<string, string>;
-	/** boot.py:50 — `frappe.local.site`. */
+	/** boot.py:48 — `frappe.local.site`. */
 	sitename: string;
-	/** boot.py:54 — `YYYY-MM-DD`. */
+	/** boot.py:52 — `YYYY-MM-DD`. */
 	server_date: string;
-	/** boot.py:104 — `{ app_name: version }`. */
+	/** boot.py:107 — `{ app_name: version }`. */
 	versions: Record<string, string>;
-	/** boot.py:165 — bytes. `frappe/public/js/frappe/request.js:198` falls back to 5242880. */
+	/** boot.py:167 — bytes. `frappe/public/js/frappe/request.js:192` falls back to 5242880. */
 	max_file_size: number;
-	/** sessions.py:166 — merged `assets.json` + `assets-rtl.json`; see {@link FrappeAssetsJson}. */
+	/** sessions.py:167 — merged `assets.json` + `assets-rtl.json`; see {@link FrappeAssetsJson}. */
 	assets_json: FrappeAssetsJson;
-	/** sessions.py:167 — `bool(frappe.flags.read_only)`, a real boolean. */
+	/** sessions.py:168 — `bool(frappe.flags.read_only)`, a real boolean. */
 	read_only: boolean;
-	/** sessions.py:175 — `frappe.is_setup_complete()`, a real boolean. */
+	/** sessions.py:176 — `frappe.is_setup_complete()`, a real boolean. */
 	setup_complete: boolean;
-	/** sessions.py:182 — `"Light"` | `"Dark"` | `"Automatic"`. */
+	/** sessions.py:183 — `"Light"` | `"Dark"` | `"Automatic"`. */
 	desk_theme: string;
-	/** sessions.py:184 — the Navbar Settings single doc. */
+	/** sessions.py:185 — the Navbar Settings single doc. */
 	navbar_settings: Record<string, unknown>;
-	/** sessions.py:161, only present on a live request after a cache clear. */
+	/** sessions.py:162, only present on a live request after a cache clear. */
 	change_log?: unknown[];
-	/** sessions.py:163-165. Compared with `localStorage.metadata_version` at desk.js:325. */
+	/** sessions.py:164-166. Compared with `localStorage.metadata_version` at desk.js:360. */
 	metadata_version: string;
-	/** sessions.py:173 — from site config. */
+	/** sessions.py:174 — from site config. */
 	disable_async?: boolean;
-	/** boot.py:118 — resolved through Navbar Settings. */
+	/** boot.py:121 — resolved through Navbar Settings. */
 	app_logo_url: string;
-	/** boot.py:67-68. */
+	/** boot.py:62-63. */
 	active_domains: string[];
 	all_domains: string[];
-	/** boot.py:72-74 — doctype-name lists. */
+	/** boot.py:75-77 — doctype-name lists. */
 	single_types: string[];
 	nested_set_doctypes: string[];
 	tree_view_doctypes: string[];
@@ -955,37 +955,37 @@ export interface FrappeBoot {
 	/** boot.py:59-60. */
 	modules: Record<string, unknown>;
 	module_list: string[];
-	/** boot.py:75, 265-266 — the landing route name; `"desktop"` when unresolvable. */
+	/** boot.py:78, 265-266 — the landing route name; `"desktop"` when unresolvable. */
 	home_page: string;
-	/** boot.py:95 — `Page` / `Print Settings` / country / currency docs, synced into `locals`. */
+	/** boot.py:98 — `Page` / `Print Settings` / country / currency docs, synced into `locals`. */
 	docs: FrappeDoc[];
-	/** boot.py:66 — `{ letter_head_name: { header, footer } }`. */
+	/** boot.py:61 — `{ letter_head_name: { header, footer } }`. */
 	letter_heads: Record<string, { header?: string; footer?: string }>;
-	/** boot.py:107-108 — hook lists. */
+	/** boot.py:110-111 — hook lists. */
 	calendars: string[];
 	treeviews: string[];
-	/** boot.py:109, 113 — Python `bool(...)`. */
+	/** boot.py:112, 113 — Python `bool(...)`. */
 	has_awesomebar_search: boolean;
 	sms_gateway_enabled: boolean;
-	/** boot.py:124 — Python `bool`. */
+	/** boot.py:126 — Python `bool`. */
 	is_fc_site: boolean;
-	/** boot.py:106 — from site config; absent when unset. */
+	/** boot.py:109 — from site config; absent when unset. */
 	error_report_email?: string;
-	/** boot.py:131-132 — present only when configured. */
+	/** boot.py:132-133 — present only when configured. */
 	sentry_dsn?: string;
-	/** boot.py:115, 119-120 — doctype-name lists. */
+	/** boot.py:118, 119-120 — doctype-name lists. */
 	link_preview_doctypes: string[];
 	link_title_doctypes: string[];
 	translated_doctypes: string[];
-	/** boot.py:134 — app names. */
+	/** boot.py:135 — app names. */
 	setup_wizard_completed_apps: string[];
-	/** boot.py:136 — `get_icon_style()` clamps to these two (`frappe/boot.py:142-146`). */
+	/** boot.py:137 — `get_icon_style()` clamps to these two (`frappe/boot.py:144-148`). */
 	desktop_icon_style: "Subtle" | "Solid";
-	/** boot.py:135. */
+	/** boot.py:136. */
 	desktop_icon_urls: Record<string, unknown>;
 	/** boot.py:65 → `frappe/desk/doctype/desktop_icon/desktop_icon.py:122-213`, permission-filtered and sorted by `idx`. */
 	desktop_icons: FrappeDesktopIconRecord[];
-	/** boot.py:117, 326-329 — the User's desk feature toggles. */
+	/** boot.py:120, 326-329 — the User's desk feature toggles. */
 	desk_settings: FrappeBootDeskSettings;
 	/**
 	 * boot.py:173 → `get_sidebar_items` (boot.py:442-516): every Workspace
@@ -993,63 +993,63 @@ export interface FrappeBoot {
 	 * it through `frappe.app.sidebar` (`ui/sidebar/sidebar.js:14, :31`).
 	 */
 	workspace_sidebar_item: Record<string, FrappeWorkspaceSidebar>;
-	/** boot.py:83-86. */
+	/** boot.py:86-89. */
 	notification_settings: Record<string, unknown>;
 	notification_unread_count: number;
-	/** boot.py:87. */
+	/** boot.py:90. */
 	onboarding_tours: unknown[];
-	/** boot.py:114. */
+	/** boot.py:117. */
 	frequently_visited_links: unknown[];
-	/** boot.py:116. */
+	/** boot.py:119. */
 	additional_filters_config: Record<string, unknown>;
-	/** boot.py:121. */
+	/** boot.py:124. */
 	doctype_ptype_map: Record<string, unknown>;
-	/** boot.py:126. */
+	/** boot.py:127. */
 	cloud_settings: Record<string, unknown>;
 	/** boot.py:123. */
 	marketplace_apps: unknown;
 	/** boot.py:125. */
 	changelog_feed: unknown[];
-	/** boot.py:111 — `Success Action` rows. */
+	/** boot.py:114 — `Success Action` rows. */
 	success_action: unknown[];
-	/** boot.py:69 — `DocType Layout` rows. */
+	/** boot.py:64 — `DocType Layout` rows. */
 	doctype_layouts: Array<{ name: string; route?: string; document_type?: string }>;
-	/** boot.py:77, 269-273. */
+	/** boot.py:80, 269-273. */
 	timezone_info: {
 		zones: Record<string, unknown>;
 		rules: Record<string, unknown>;
 		links: Record<string, unknown>;
 	};
-	/** boot.py:79, 283-289 — the compiled print stylesheet. */
+	/** boot.py:82, 283-289 — the compiled print stylesheet. */
 	print_css: string;
-	/** boot.py:57 — only for a signed-in session. */
+	/** boot.py:55 — only for a signed-in session. */
 	user_info?: Record<string, unknown>;
-	/** boot.py:91-92 — only when the session recorded it. */
+	/** boot.py:94-95 — only when the session recorded it. */
 	ipinfo?: Record<string, unknown>;
-	/** boot.py:127-129. */
+	/** boot.py:128-130. */
 	enable_address_autocompletion?: unknown;
-	/** boot.py:137-138 — Frappe Cloud sites only. */
+	/** boot.py:139-140 — Frappe Cloud sites only. */
 	site_info?: Record<string, unknown>;
-	/** boot.py:166-168 — mirrored from site config only when present. */
+	/** boot.py:169-171 — mirrored from site config only when present. */
 	developer_mode?: number | boolean;
 	socketio_port?: number;
 	file_watcher_port?: number;
 	/**
-	 * Built **client-side** by `frappe/public/js/frappe/desk.js:347-361`
+	 * Built **client-side** by `frappe/public/js/frappe/desk.js:382-396`
 	 * (`sync_pages`), not by the server. Absent on first paint.
 	 */
 	allowed_pages?: string[];
 	/** Server-provided page metadata that `sync_pages` diffs against localStorage. */
 	page_info?: Record<string, { modified?: string; [key: string]: unknown }>;
 	/**
-	 * Open by design — `boot.py:99-100` (`boot_session` hooks) and
-	 * `sessions.py:169-170` (`extend_bootinfo` hooks) let any app add keys.
+	 * Open by design — `boot.py:102-103` (`boot_session` hooks) and
+	 * `sessions.py:170-171` (`extend_bootinfo` hooks) let any app add keys.
 	 */
 	[key: string]: unknown;
 }
 
 /**
- * `frappe.boot.desk_settings` — `frappe/boot.py:326-329` selects exactly the
+ * `frappe.boot.desk_settings` — `frappe/boot.py:519-522` selects exactly the
  * `desk_properties` tuple of `frappe/core/doctype/user/user.py:44-54` off the
  * User doc, `as_dict`. All Check fields, so `0 | 1`; `null` only for a User
  * row that predates a column.
@@ -1073,8 +1073,8 @@ export interface FrappeBootDeskSettings {
 export type FrappeBootPartial = Partial<FrappeBoot>;
 
 /**
- * `frappe.session` — populated at `frappe/public/js/frappe/desk.js:332-335`
- * (`set_globals`) and reset at desk.js:364-366 (`set_as_guest`). The namespace
+ * `frappe.session` — populated at `frappe/public/js/frappe/desk.js:367-370`
+ * (`set_globals`) and reset at desk.js:399-401 (`set_as_guest`). The namespace
  * object itself is created empty by `frappe.provide("frappe.session")`
  * (`frappe/public/js/frappe/provide.js:32`), so on a Guest/website page it may
  * be `{}` — hence every member is optional.
@@ -1084,13 +1084,13 @@ export type FrappeBootPartial = Partial<FrappeBoot>;
  * (request.js:152, 437).
  */
 export interface FrappeSession {
-	/** desk.js:332 / :364 — the user id, or the literal `"Guest"`. */
+	/** desk.js:367 / :399 — the user id, or the literal `"Guest"`. */
 	user?: string;
-	/** desk.js:333 — never reset to `"Guest"` by `set_as_guest`. */
+	/** desk.js:368 — never reset to `"Guest"` by `set_as_guest`. */
 	logged_in_user?: string;
-	/** desk.js:334 / :365. */
+	/** desk.js:369 / :400. */
 	user_email?: string;
-	/** desk.js:335 / :366. */
+	/** desk.js:370 / :401. */
 	user_fullname?: string;
 }
 
@@ -1099,7 +1099,7 @@ export interface FrappeSession {
  * hashed, site-absolute URL. Written by frappe's own esbuild with 4-space
  * indent (`frappe/esbuild/esbuild.js:157`, `JSON.stringify(obj, null, 4)`),
  * merged and served to the client as `frappe.boot.assets_json`
- * (`frappe/utils/__init__.py:950-968`, `frappe/sessions.py:166`).
+ * (`frappe/utils/__init__.py:955-973`, `frappe/sessions.py:167`).
  */
 export type FrappeAssetsJson = Record<string, string>;
 
@@ -1113,7 +1113,7 @@ export type FrappeAssetsJson = Record<string, string>;
 
 /**
  * The per-doctype `listview_settings.button` block.
- * Source: `frappe/public/js/frappe/list/list_view.js:1189-1206`.
+ * Source: `frappe/public/js/frappe/list/list_view.js:1709-1726`.
  */
 export interface FrappeListViewSettingsButton {
 	show(doc: FrappeDoc): boolean;
@@ -1124,12 +1124,12 @@ export interface FrappeListViewSettingsButton {
 
 /**
  * One entry of `listview_settings.dropdown_button.buttons`.
- * Source: `frappe/public/js/frappe/list/list_view.js:1213-1224`.
+ * Source: `frappe/public/js/frappe/list/list_view.js:1733-1744`.
  */
 export interface FrappeListViewSettingsDropdownItem {
-	/** Optional: `if (!button.show || button.show(doc))` (list_view.js:1214). */
+	/** Optional: `if (!button.show || button.show(doc))` (list_view.js:1734). */
 	show?(doc: FrappeDoc): boolean;
-	/** A **string**, interpolated directly (list_view.js:1220). Upstream inconsistency, preserved. */
+	/** A **string**, interpolated directly (list_view.js:1740). Upstream inconsistency, preserved. */
 	get_label: string;
 	get_description?(doc: FrappeDoc): string;
 }
@@ -1139,7 +1139,7 @@ export interface FrappeListViewSettingsDropdownItem {
  * Source: `frappe/public/js/frappe/list/list_view.js:1209-1240`.
  */
 export interface FrappeListViewSettingsDropdown {
-	/** A **string** (list_view.js:1229, :1235), unlike `button.get_label`. */
+	/** A **string** (list_view.js:1749, :1755), unlike `button.get_label`. */
 	get_label: string;
 	buttons: FrappeListViewSettingsDropdownItem[];
 }
@@ -1149,21 +1149,21 @@ export interface FrappeListViewSettingsDropdown {
  *
  * The namespace is created empty by `frappe.provide("frappe.listview_settings")`
  * (`frappe/public/js/frappe/provide.js:37`) and each doctype's
- * `<doctype>_list.js` assigns into it; `frappe/public/js/frappe/list/base_list.js:45`
+ * `<doctype>_list.js` assigns into it; `frappe/public/js/frappe/list/base_list.js:47`
  * reads `frappe.listview_settings[this.doctype] || {}`, so *every* member is
  * optional and a missing doctype is normal.
  */
 export interface FrappeListViewSettings {
-	/** list_view.js:219 — extra fieldnames to fetch. */
+	/** list_view.js:274 — extra fieldnames to fetch. */
 	add_fields?: string[];
-	/** list_view.js:107, :610 — default filters as `[fieldname, operator, value]` triples. */
+	/** list_view.js:138, :816 — default filters as `[fieldname, operator, value]` triples. */
 	filters?: ReadonlyArray<readonly unknown[]>;
 	/** list_view.js:1036-1040, :1349-1350 — per-fieldname cell renderers. */
 	formatters?: Record<
 		string,
 		(value: unknown, df: DocField, doc: FrappeDoc) => string | undefined
 	>;
-	/** list_view.js:1296-1297 — override the row link target. */
+	/** list_view.js:1816-1817 — override the row link target. */
 	get_form_link?(doc: FrappeDoc): string;
 	/**
 	 * `frappe/public/js/frappe/model/indicator.js:7, 37` — `[label, colour, filter?]`.
@@ -1176,17 +1176,17 @@ export interface FrappeListViewSettings {
 	/** list_view.js:484. */
 	hide_name_column?: boolean;
 	hide_name_filter?: boolean;
-	/** list_view.js:366 — called once with the list view instance. */
+	/** list_view.js:420 — called once with the list view instance. */
 	onload?(listview: unknown): void;
-	/** base_list.js:552-553 — called on every refresh with the list view instance. */
+	/** base_list.js:556-557 — called on every refresh with the list view instance. */
 	refresh?(listview: unknown): void;
-	/** list_view.js:658. */
+	/** list_view.js:972. */
 	before_render?(): void;
 	/** list_view.js:292-293, :303-304, :1737-1738 — replaces the primary button action. */
 	primary_action?(): void;
 	button?: FrappeListViewSettingsButton;
 	dropdown_button?: FrappeListViewSettingsDropdown;
-	/** `frappe/public/js/frappe/list/list_settings.js:79`. */
+	/** `frappe/public/js/frappe/list/list_settings.js:110`. */
 	total_fields?: number | string;
 	/** `frappe/public/js/frappe/list/list_settings.js:13` — a JSON string, not an array. */
 	fields?: string;
@@ -1261,9 +1261,9 @@ export interface FrappeDatetime {
 export interface FrappeCore {
 	// -- namespaces ---------------------------------------------------------
 
-	/** `frappe/www/desk.html:54`. */
+	/** `frappe/www/desk.html:66`. */
 	boot: FrappeBoot;
-	/** `frappe/public/js/frappe/provide.js:32` + `desk.js:332-335`. */
+	/** `frappe/public/js/frappe/provide.js:32` + `desk.js:367-370`. */
 	session: FrappeSession;
 	/**
 	 * `frappe/public/js/frappe/desk.js:10-12`. `frappe.provide("frappe.app")`
@@ -1289,30 +1289,30 @@ export interface FrappeCore {
 	form: FrappeFormNamespace;
 	/** `frappe/public/js/frappe/request.js:6`. */
 	request: FrappeRequest;
-	/** `frappe/public/js/frappe/provide.js:37`; indexed by doctype at base_list.js:45. */
+	/** `frappe/public/js/frappe/provide.js:37`; indexed by doctype at base_list.js:47. */
 	listview_settings: Record<string, FrappeListViewSettings | undefined>;
 	/** See {@link FrappeDatetime} — `frappe/public/js/frappe/utils/datetime.js:4, :11`. */
 	datetime: FrappeDatetime;
 
 	// -- scalars ------------------------------------------------------------
 
-	/** `frappe/www/desk.html:56`. Sent as the `X-Frappe-CSRF-Token` header (request.js:267). */
+	/** `frappe/www/desk.html:68`. Sent as the `X-Frappe-CSRF-Token` header (request.js:261). */
 	csrf_token: string;
-	/** `frappe/www/desk.html:55` — `frappe.boot["__messages"]`; also merged into by request.js:293. */
+	/** `frappe/www/desk.html:67` — `frappe.boot["__messages"]`; also merged into by request.js:287. */
 	_messages: Record<string, string>;
-	/** Created lazily at `frappe/public/js/frappe/request.js:299-302`. */
+	/** Created lazily at `frappe/public/js/frappe/request.js:293-296`. */
 	_link_titles?: Record<string, string>;
-	/** `frappe/public/js/frappe/request.js:280` — the last `$.ajax` `data` payload. */
+	/** `frappe/public/js/frappe/request.js:274` — the last `$.ajax` `data` payload. */
 	last_request?: Record<string, unknown>;
-	/** `frappe/public/js/frappe/request.js:501` — the last parsed response, or `null`. */
+	/** `frappe/public/js/frappe/request.js:522` — the last parsed response, or `null`. */
 	last_response?: FrappeResponse | null;
-	/** The singleton msgprint dialog, created on first use (messages.js:186-207). */
+	/** The singleton msgprint dialog, created on first use (messages.js:202-223). */
 	msg_dialog?: FrappeDialog;
-	/** The singleton server-error dialog (request.js:607-611). */
+	/** The singleton server-error dialog (request.js:628-632). */
 	error_dialog?: FrappeDialog;
-	/** The live progress dialog, or `null` after `hide_progress` (messages.js:391, 409). */
+	/** The live progress dialog, or `null` after `hide_progress` (messages.js:407, 409). */
 	cur_progress?: FrappeDialog | null;
-	/** `frappe/public/js/frappe/model/create_new.js:363` — doctype → route override for `new_doc`. */
+	/** `frappe/public/js/frappe/model/create_new.js:406` — doctype → route override for `new_doc`. */
 	create_routes: Record<string, string | readonly string[]>;
 	/** Cached at `frappe/public/js/frappe/translate.js:29-38`. */
 	languages?: Array<{ label: string; value: string }>;
@@ -1381,7 +1381,7 @@ export interface FrappeCore {
 	 *     jqXHR — when an identical request was seen inside the window
 	 *     (request.js:105-107); calling `.fail()` on that result throws;
 	 *  3. the ordinary object form, which returns the `$.ajax` jqXHR
-	 *     (request.js:282). `frappe.db.get_doc` relies on `.fail` being there
+	 *     (request.js:276). `frappe.db.get_doc` relies on `.fail` being there
 	 *     (`frappe/public/js/frappe/db.js:94`).
 	 */
 	call<T = unknown>(
@@ -1396,15 +1396,15 @@ export interface FrappeCore {
 	call<T = unknown>(opts: FrappeCallOptions<T>): FrappeAjaxResult;
 
 	/**
-	 * `frappe/public/js/frappe/request.js:504-514` — resolves once the in-flight
+	 * `frappe/public/js/frappe/request.js:525-535` — resolves once the in-flight
 	 * count drains. Returns **`null`**, not a resolved promise, when nothing is in
 	 * flight; `await null` is fine but `.then()` on it is not.
 	 */
 	after_server_call(): Promise<void> | null;
-	/** `frappe/public/js/frappe/request.js:516-528` — always returns a Promise. */
+	/** `frappe/public/js/frappe/request.js:537-549` — always returns a Promise. */
 	after_ajax<T = void>(fn?: () => T | PromiseLike<T>): Promise<T>;
 	/**
-	 * `frappe/public/js/frappe/dom.js:375-384` — `navigator.onLine`, forced `true`
+	 * `frappe/public/js/frappe/dom.js:386-395` — `navigator.onLine`, forced `true`
 	 * in developer mode.
 	 */
 	is_online(): boolean;
@@ -1412,15 +1412,15 @@ export interface FrappeCore {
 	// -- messages -----------------------------------------------------------
 
 	/**
-	 * Source: `frappe/public/js/frappe/ui/messages.js:117-315`; also aliased as the
-	 * bare global `window.msgprint` (messages.js:317).
+	 * Source: `frappe/public/js/frappe/ui/messages.js:133-331`; also aliased as the
+	 * bare global `window.msgprint` (messages.js:333).
 	 *
-	 * Returns `undefined` on the early-exit paths: falsy `msg` (messages.js:118),
-	 * an array `message` that recursed (messages.js:170), and the
-	 * `alert`/`toast` divert (messages.js:175).
+	 * Returns `undefined` on the early-exit paths: falsy `msg` (messages.js:134),
+	 * an array `message` that recursed (messages.js:186), and the
+	 * `alert`/`toast` divert (messages.js:191).
 	 *
 	 * A `string` beginning with `{` is `JSON.parse`d and treated as an options
-	 * object (messages.js:124-126) — a genuine hazard when printing user data.
+	 * object (messages.js:140-142) — a genuine hazard when printing user data.
 	 */
 	msgprint(
 		msg: string | FrappeMsgprintOptions | readonly unknown[],
@@ -1430,21 +1430,21 @@ export interface FrappeCore {
 	): FrappeDialog | undefined;
 
 	/**
-	 * `frappe/public/js/frappe/ui/messages.js:20-27` — msgprints, then
+	 * `frappe/public/js/frappe/ui/messages.js:21-28` — msgprints, then
 	 * `throw new Error(msg.message)`. Never returns.
 	 */
 	throw(msg: string | FrappeThrowOptions): never;
 
-	/** `frappe/public/js/frappe/ui/messages.js:319-333`. */
+	/** `frappe/public/js/frappe/ui/messages.js:335-349`. */
 	hide_msgprint(instant?: boolean): void;
-	/** `frappe/public/js/frappe/ui/messages.js:336-342` — replaces the body, or opens one. */
+	/** `frappe/public/js/frappe/ui/messages.js:352-358` — replaces the body, or opens one. */
 	update_msgprint(html: string): void;
 
 	/**
-	 * `frappe/public/js/frappe/ui/messages.js:29-63`.
+	 * `frappe/public/js/frappe/ui/messages.js:30-64`.
 	 * `message` is injected raw into `<p class="frappe-confirm-message">` — HTML,
 	 * not text. `reject_action` fires from `onhide` only when the primary action
-	 * was never fulfilled (messages.js:54-60).
+	 * was never fulfilled (messages.js:55-61).
 	 */
 	confirm(
 		message: string,
@@ -1467,10 +1467,10 @@ export interface FrappeCore {
 	): FrappeDialog;
 
 	/**
-	 * `frappe/public/js/frappe/ui/messages.js:86-115`.
+	 * `frappe/public/js/frappe/ui/messages.js:102-131`.
 	 * A `string` `fields` is widened into a single required Data field named
-	 * `"value"` (messages.js:87-96); a lone object is wrapped in an array
-	 * (messages.js:97). `callback` fires only when `d.get_values()` validates.
+	 * `"value"` (messages.js:103-112); a lone object is wrapped in an array
+	 * (messages.js:113). `callback` fires only when `d.get_values()` validates.
 	 */
 	prompt(
 		fields: string | Partial<DocField> | ReadonlyArray<Partial<DocField>>,
@@ -1479,7 +1479,7 @@ export interface FrappeCore {
 		primary_label?: string
 	): FrappeDialog;
 
-	/** `frappe/public/js/frappe/ui/messages.js:344-368` — prompts, verifies server-side, then calls back. */
+	/** `frappe/public/js/frappe/ui/messages.js:360-384` — prompts, verifies server-side, then calls back. */
 	verify_password(callback: () => void): void;
 
 	/**
@@ -1493,7 +1493,7 @@ export interface FrappeCore {
 		seconds?: number,
 		actions?: FrappeShowAlertActions
 	): FrappeJQuery;
-	/** `frappe/public/js/frappe/ui/messages.js:414` — the same function object as `show_alert`. */
+	/** `frappe/public/js/frappe/ui/messages.js:430` — the same function object as `show_alert`. */
 	toast(
 		message: string | FrappeShowAlertOptions,
 		seconds?: number,
@@ -1501,7 +1501,7 @@ export interface FrappeCore {
 	): FrappeJQuery;
 
 	/**
-	 * `frappe/public/js/frappe/ui/messages.js:370-404`. Reuses the live dialog when
+	 * `frappe/public/js/frappe/ui/messages.js:386-420`. Reuses the live dialog when
 	 * `title` matches. `total` defaults to 100, `hide_on_completion` to `false`.
 	 */
 	show_progress(
@@ -1511,7 +1511,7 @@ export interface FrappeCore {
 		description?: string,
 		hide_on_completion?: boolean
 	): FrappeDialog;
-	/** `frappe/public/js/frappe/ui/messages.js:406-411`. */
+	/** `frappe/public/js/frappe/ui/messages.js:422-427`. */
 	hide_progress(): void;
 
 	// -- documents ----------------------------------------------------------
@@ -1524,20 +1524,20 @@ export interface FrappeCore {
 	// was a hard TS2320 and no `Frappe` type could be formed at all.
 	//
 	// `model.d.ts` won: all three are `frappe.model.*` functions that
-	// `frappe/public/js/frappe/model/model.js:869-871` merely aliases onto the
+	// `frappe/public/js/frappe/model/model.js:908-910` merely aliases onto the
 	// root ("// legacy"), so the model group owns them. Nothing was dropped — the
 	// generic parameter and every note from this copy were folded into
 	// {@link FrappeModelMetaGlobals}, which is the only remaining declaration and
 	// is reachable from `Frappe` exactly as before.
 
 	/**
-	 * `frappe/public/js/frappe/model/create_new.js:364-385`.
+	 * `frappe/public/js/frappe/model/create_new.js:407-428`.
 	 *
 	 * Returns `undefined` for `doctype === "File"` (it opens a FileUploader and
-	 * bails, create_new.js:365-370); otherwise a Promise that resolves once the
+	 * bails, create_new.js:408-413); otherwise a Promise that resolves once the
 	 * route change or quick-entry dialog has been set up — it does **not** resolve
 	 * with the new document. A plain-object `opts` is stashed in
-	 * `frappe.route_options` (create_new.js:373-375).
+	 * `frappe.route_options` (create_new.js:416-418).
 	 */
 	new_doc(
 		doctype: string,
@@ -1553,11 +1553,11 @@ export interface FrappeCore {
 	 *
 	 * Notable behaviour the type cannot express: a missing `df`, or a fieldname
 	 * listed in the doctype's `masked_fields`, is replaced by
-	 * `{ fieldtype: "Data" }` (formatters.js:433); `_user_tags` is forced to the
-	 * `Tag` formatter (formatters.js:434); `Dynamic Link` is resolved to `Link`
+	 * `{ fieldtype: "Data" }` (formatters.js:442); `_user_tags` is forced to the
+	 * `Tag` formatter (formatters.js:443); `Dynamic Link` is resolved to `Link`
 	 * and stamps `df._options` **onto the caller's docfield object**
-	 * (formatters.js:438-441). String output is passed through
-	 * `frappe.dom.remove_script_and_style` (formatters.js:447).
+	 * (formatters.js:447-450). String output is passed through
+	 * `frappe.dom.remove_script_and_style` (formatters.js:458).
 	 */
 	format(
 		value: unknown,
@@ -1567,7 +1567,7 @@ export interface FrappeCore {
 	): string | number;
 
 	/**
-	 * `frappe/public/js/frappe/form/formatters.js:452-464` — a shallow copy of
+	 * `frappe/public/js/frappe/form/formatters.js:463-475` — a shallow copy of
 	 * `doc` with an extra `get_formatted(fieldname)`, for print templates.
 	 */
 	get_format_helper<T extends FrappeDoc = FrappeDoc>(
@@ -1591,7 +1591,7 @@ export interface FrappeCore {
  * replaced **only** under four conditions (toolbar.js:9-20) — `boot.read_only`,
  * `boot.user.impersonated_by`, an undismissed announcement widget, or
  * `frappe.is_mobile()`. Otherwise the empty `<header></header>` from
- * `frappe/www/desk.html:39` survives, which is what the Carbon UI Shell mounts
+ * `frappe/www/desk.html:51` survives, which is what the Carbon UI Shell mounts
  * into. `scripts/markup-manifest.mjs:236-240` asserts both halves statically.
  *
  * Declared, not modelled: the class has no constructor parameters and everything
@@ -1613,17 +1613,17 @@ export interface FrappeCore {
 export declare class FrappeApplication {
 	/** desk.js:29-31 — calls `startup()` immediately. */
 	constructor();
-	/** desk.js:89-91 — `new frappe.ui.Sidebar({})`. */
+	/** desk.js:90-92 — `new frappe.ui.Sidebar({})`. */
 	sidebar: FrappeSidebar;
-	/** desk.js:302-311 — fills `frappe.modules` / `frappe.workspaces` from `boot.workspaces.pages`. */
+	/** desk.js:337-346 — fills `frappe.modules` / `frappe.workspaces` from `boot.workspaces.pages`. */
 	setup_workspaces(): void;
-	/** desk.js:387-402 — confirm, then `logout` and {@link redirect_to_login}. */
+	/** desk.js:423-438 — confirm, then `logout` and {@link redirect_to_login}. */
 	logout(): void;
-	/** desk.js:389 — set by `logout()` before the confirm; absent until then. */
+	/** desk.js:425 — set by `logout()` before the confirm; absent until then. */
 	logged_out?: boolean;
 	/** desk.js:403-405. */
 	handle_session_expired(): void;
-	/** desk.js:406-410 — `/login?redirect-to=<current path>`. */
+	/** desk.js:453-457 — `/login?redirect-to=<current path>`. */
 	redirect_to_login(): void;
 }
 
@@ -1641,8 +1641,8 @@ export declare class FrappeToolbar {
  *
  * The contract carbon_frappe depends on: theming is communicated **only** through
  * DOM attributes, with no event and no realtime publish —
- * `toggle_theme` writes `data-theme-mode` (theme_switcher.js:129) and
- * `frappe.ui.set_theme` writes `data-theme` (theme_switcher.js:162) on
+ * `toggle_theme` writes `data-theme-mode` (theme_switcher.js:149) and
+ * `frappe.ui.set_theme` writes `data-theme` (theme_switcher.js:182) on
  * `document.documentElement`. A `MutationObserver` on that attribute is
  * therefore the only available hook, which is exactly what
  * `carbon_charts.bundle.js:154-157` installs.
@@ -1651,13 +1651,13 @@ export declare class FrappeToolbar {
  */
 export declare class FrappeThemeSwitcher {
 	constructor();
-	/** theme_switcher.js:45-51 — re-reads `data-theme-mode` and re-renders. */
+	/** theme_switcher.js:46-52 — re-reads `data-theme-mode` and re-renders. */
 	refresh(): void;
-	/** theme_switcher.js:126-134 — lowercases, writes `data-theme-mode`, persists server-side. */
+	/** theme_switcher.js:146-154 — lowercases, writes `data-theme-mode`, persists server-side. */
 	toggle_theme(theme: string): void;
 	show(): void;
 	hide(): void;
-	/** theme_switcher.js:46 — the current `data-theme-mode`, defaulting to `"light"`. */
+	/** theme_switcher.js:47 — the current `data-theme-mode`, defaulting to `"light"`. */
 	current_theme?: string;
 }
 
@@ -1672,7 +1672,7 @@ export declare class FrappeThemeSwitcher {
  *
  * ```ts
  * declare global {
- *   // desk.html:52 and provide.js:5 both do `if (!window.frappe) window.frappe = {}`.
+ *   // desk.html:64 and provide.js:5 both do `if (!window.frappe) window.frappe = {}`.
  *   // Every carbon_frappe call site probes `window.frappe` and then dereferences
  *   // the BARE identifier, so both spellings must exist and resolve to one type.
  *   var frappe: Frappe;
@@ -1680,7 +1680,7 @@ export declare class FrappeThemeSwitcher {
  *   // translate.js:26 — `window.__ = frappe._`.
  *   var __: FrappeTranslate;
  *
- *   // messages.js:317 — `window.msgprint = frappe.msgprint`.
+ *   // messages.js:333 — `window.msgprint = frappe.msgprint`.
  *   var msgprint: Frappe["msgprint"];
  *
  *   interface Window {
@@ -1690,17 +1690,17 @@ export declare class FrappeThemeSwitcher {
  *     // loaded outside a desk by scripts/dev-table.mjs.
  *     frappe?: Frappe;
  *
- *     // desk.html:50 — `window.dev_server = {{ dev_server }};`. See FrappeDevServer.
+ *     // desk.html:62 — `window.dev_server = {{ dev_server }};`. See FrappeDevServer.
  *     dev_server?: number;
  *
  *     // translate.js:26. Optional for the same headless reason; datatable.js:34-36
  *     // probes it with `typeof window.__ === "function"`.
  *     __?: FrappeTranslate;
  *
- *     // messages.js:317.
+ *     // messages.js:333.
  *     msgprint?: Frappe["msgprint"];
  *
- *     // desk.html:49 / :47.
+ *     // desk.html:61 / :59.
  *     app?: boolean;
  *     _version_number?: string;
  *
@@ -1714,7 +1714,7 @@ export declare class FrappeThemeSwitcher {
  *   var UP_ARROW: number;
  *   var DOWN_ARROW: number;
  *
- *   // utils/utils.js:12-26 — installed together, behind ONE `if (!Array.prototype.uniqBy)`.
+ *   // utils/utils.js:13-27 — installed together, behind ONE `if (!Array.prototype.uniqBy)`.
  *   interface Array<T> {
  *     move(from: number, to: number): void;
  *     uniqBy<K>(key: (item: T) => K): T[];
@@ -1733,29 +1733,29 @@ export type FrappeCoreGlobalWiring = never;
 
 /**
  * `window.dev_server`, emitted raw into the desk page at
- * `frappe/www/desk.html:50` (`window.dev_server = {{ dev_server }};`).
+ * `frappe/www/desk.html:62` (`window.dev_server = {{ dev_server }};`).
  *
  * The value is an **int**, not a bool: `frappe/__init__.py:85` computes
  * `_dev_server = int(sbool(os.environ.get("DEV_SERVER", False)))`, so the page
  * receives the literal `0` or `1`. (A Python bool would have rendered as `True`
  * and been a syntax error in JS.) Declared as `number` rather than `0 | 1` so an
  * app that overrides the template is not made to lie; every reader in frappe and
- * in carbon_frappe uses it for truthiness only (`assets.js:114`,
- * `request.js:273`, `socketio_client.js:122`, `anatomy/patch.js:80`).
+ * in carbon_frappe uses it for truthiness only (`assets.js:110`,
+ * `request.js:267`, `socketio_client.js:122`, `anatomy/patch.js:80`).
  */
 export type FrappeDevServer = number;
 
 /**
  * frappe's two `Array.prototype` additions.
  *
- * Source: `frappe/public/js/frappe/utils/utils.js:12-26`. Both are installed
+ * Source: `frappe/public/js/frappe/utils/utils.js:13-27`. Both are installed
  * inside a single `if (!Array.prototype.uniqBy)` guard, so `move` exists if and
  * only if `uniqBy` does.
  *
  * **`move` returns `undefined`.** The body is `this.splice(to, 0, this.splice(from, 1)[0]);`
- * with no `return` (utils.js:23). A signature of `move(from, to): T[]` — which the
+ * with no `return` (utils.js:24). A signature of `move(from, to): T[]` — which the
  * usage inference proposed — would let a consumer chain off a value that does not
- * exist. `frappe/public/js/frappe/form/grid_row.js:176` correctly uses it for its
+ * exist. `frappe/public/js/frappe/form/grid_row.js:175` correctly uses it for its
  * side effect only.
  */
 export interface FrappeArrayPolyfills<T> {

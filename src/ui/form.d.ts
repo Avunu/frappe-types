@@ -79,7 +79,7 @@ import type {
 /**
  * Field/grid display status. Produced by `frappe.perm.get_field_display_status`
  * and by `BaseControl#get_status`; consumed by `Grid#is_editable`
- * (grid.js:1419) and `BaseControl#can_write` (controls/base_input.js:155).
+ * (grid.js:1567) and `BaseControl#can_write` (controls/base_input.js:143).
  */
 export type DisplayStatus = "Write" | "Read" | "None";
 
@@ -87,8 +87,8 @@ export type DisplayStatus = "Write" | "Read" | "None";
  * A `depends_on` / `mandatory_depends_on` / `read_only_depends_on` /
  * `collapsible_depends_on` expression.
  *
- * Four accepted shapes, all handled in the same block — grid_row.js:867-901 and
- * layout.js:784-824: a boolean, a `(doc) => unknown` function, an `"eval:…"`
+ * Four accepted shapes, all handled in the same block — grid_row.js:841-875 and
+ * layout.js:786-826: a boolean, a `(doc) => unknown` function, an `"eval:…"`
  * string evaluated through `frappe.utils.eval`, an `"fn:…"` string dispatched
  * through `frm.script_manager`, or a bare fieldname whose truthiness is taken
  * (arrays test `.length`).
@@ -110,12 +110,12 @@ export type DependsOnExpression =
 export interface GridViewColumn {
 	fieldname: string;
 	columns: number;
-	/** frappe writes `cint(checkbox.checked)` here — grid_row.js:681. */
+	/** frappe writes `cint(checkbox.checked)` here — grid_row.js:674. */
 	sticky?: 0 | 1;
 }
 
 /*
- * `GridFilter` — one entry of `Grid#filter` (grid_row.js:281-284, :941-944) —
+ * `GridFilter` — one entry of `Grid#filter` (grid_row.js:280-283, :926-929) —
  * was declared here as `{ df: DocField; value: string }` and, more precisely, in
  * `deep-modules.d.ts` as `{ df: GridDocField; value: string }`. It moved with
  * the rest of the Grid family; this file re-exports it below, so
@@ -132,7 +132,7 @@ export interface GridViewColumn {
  * prefer `GridSortable`.
  *
  * Only the two members frappe itself calls are declared:
- * `option()` from the grid search handlers (grid_row.js:297-302, :949-954).
+ * `option()` from the grid search handlers (grid_row.js:296-301, :934-939).
  *
  * Not modelled further on purpose — the real type belongs to `sortablejs`, and
  * frappe loads it as a global rather than importing it.
@@ -153,8 +153,8 @@ export interface ScriptManager {
 }
 
 /**
- * The `frappe.ui.form.Dashboard` handle on a `Form` (form.js:265). Only the
- * members `Form` itself calls are declared (form.js:639, :780, :1247-1271,
+ * The `frappe.ui.form.Dashboard` handle on a `Form` (form.js:312). Only the
+ * members `Form` itself calls are declared (form.js:684, :809, :1291-1315,
  * :1526, :2358).
  */
 export interface Dashboard {
@@ -166,7 +166,7 @@ export interface Dashboard {
 	add_comment(text: string, alert_class?: string, permanent?: boolean): void;
 }
 
-/** `frm.undo_manager` — form/undo_manager.js, constructed at form.js:41. */
+/** `frm.undo_manager` — form/undo_manager.js, constructed at form.js:82. */
 export interface UndoManager {
 	record_change(change: {
 		fieldname: string;
@@ -187,7 +187,7 @@ export interface UndoManager {
 
 /**
  * The `options` bag threaded through every formatter. `frappe.format` forwards
- * it verbatim (formatters.js:445), and callers invent keys freely — hence the
+ * it verbatim (formatters.js:456), and callers invent keys freely — hence the
  * open index signature. The named keys are the ones formatters.js reads.
  *
  * COLLISION RESOLVED — this file and `model.d.ts` each declared a
@@ -203,7 +203,7 @@ export type { FormatterOptions };
 
 /**
  * The call shape `frappe.format` uses for every formatter:
- * `formatter(value, df, options, doc)` — formatters.js:445.
+ * `formatter(value, df, options, doc)` — formatters.js:456.
  *
  * Individual formatters declare fewer parameters (`Date: function (value)` —
  * formatters.js:222) but are always *called* with four, so a uniform signature
@@ -226,7 +226,7 @@ export type FormatterFn = (
  * The index signature is not decoration. frappe itself indexes this object with
  * an arbitrary runtime string — `frappe.form.get_formatter` does
  * `frappe.form.formatters[fieldtype.replace(/ /g, "")] || …`
- * (formatters.js:423) — and `_right` / `_apply_custom_formatter` do not share
+ * (formatters.js:432) — and `_right` / `_apply_custom_formatter` do not share
  * the `FormatterFn` shape, so the index type has to be `unknown` rather than
  * `FormatterFn`. Narrow a dynamic lookup with `typeof f[key] === "function"`
  * before calling it, exactly as frappe and its patchers do.
@@ -239,7 +239,7 @@ export interface Formatters {
 	 * The return type is genuinely open: the early branch returns the *value*
 	 * unchanged (whatever was passed in), the late branch returns a string. It
 	 * is called by Currency, Int, Float, Percent and Duration
-	 * (formatters.js:80, :91, :103, :162).
+	 * (formatters.js:77, :88, :102, :161).
 	 *
 	 * Declared with an explicit `this` because the object literal's other
 	 * members reach it as `frappe.form.formatters._right(…)`, and a wrapper
@@ -267,15 +267,15 @@ export interface Formatters {
 	Select: FormatterFn;
 	/** formatters.js:55-82. Delegates to `Currency` when `df.options` is set. */
 	Float: FormatterFn;
-	/** formatters.js:83-92. Delegates to `FileSize` when `options === "File Size"`. */
+	/** formatters.js:80-89. Delegates to `FileSize` when `options === "File Size"`. */
 	Int: FormatterFn;
 	/** formatters.js:93-107. */
 	Percent: FormatterFn;
-	/** formatters.js:108-126. Returns an SVG star row. */
+	/** formatters.js:107-125. Returns an SVG star row. */
 	Rating: FormatterFn;
-	/** formatters.js:127-164. */
+	/** formatters.js:126-163. */
 	Currency: FormatterFn;
-	/** formatters.js:165-168. Returns a disabled `<input type=checkbox>`. */
+	/** formatters.js:164-167. Returns a disabled `<input type=checkbox>`. */
 	Check: FormatterFn;
 	/** formatters.js:169-221. Honours `frappe.form.link_formatters`. */
 	Link: FormatterFn;
@@ -318,24 +318,24 @@ export interface Formatters {
 	Code: FormatterFn;
 	/** formatters.js:349-366. */
 	WorkflowState: FormatterFn;
-	/** formatters.js:367-369. */
+	/** formatters.js:369-371. */
 	Email: FormatterFn;
-	/** formatters.js:370-378. Returns a number when under 1 KiB. */
+	/** formatters.js:372-380. Returns a number when under 1 KiB. */
 	FileSize: FormatterFn;
-	/** formatters.js:379-390. Takes the child rows, not a scalar. */
+	/** formatters.js:381-392. Takes the child rows, not a scalar. */
 	TableMultiSelect: FormatterFn;
-	/** formatters.js:391-398. */
+	/** formatters.js:393-400. */
 	Color: FormatterFn;
-	/** formatters.js:399-411. */
+	/** formatters.js:401-413. */
 	Icon: FormatterFn;
-	/** formatters.js:412 + :416-419 (`format_attachment_url`). */
+	/** formatters.js:414 + :425-428 (`format_attachment_url`). */
 	Attach: FormatterFn;
-	/** formatters.js:413 + :416-419 (`format_attachment_url`). */
+	/** formatters.js:415 + :425-428 (`format_attachment_url`). */
 	AttachImage: FormatterFn;
 
 	/**
 	 * Open by design: `frappe.form.get_formatter` looks the object up with a
-	 * runtime fieldtype string (formatters.js:423), and apps add entries for
+	 * runtime fieldtype string (formatters.js:432), and apps add entries for
 	 * their own fieldtypes. `unknown` rather than `FormatterFn` because
 	 * `_right` and `_apply_custom_formatter` live in the same namespace with
 	 * different shapes.
@@ -354,7 +354,7 @@ export type LinkFormatters = Record<
 >;
 
 /**
- * `frappe.form.get_formatter` — formatters.js:421-424.
+ * `frappe.form.get_formatter` — formatters.js:430-433.
  * Strips spaces from the fieldtype and falls back to `formatters.Data`.
  */
 export declare function get_formatter(fieldtype?: string): FormatterFn;
@@ -389,7 +389,7 @@ export type { FrappeFormNamespace } from "../core";
  * `BaseControl`'s constructor is `$.extend(this, opts); this.make(); …`
  * (controls/base_control.js:2-8), so *every* key lands on the instance
  * verbatim. The named members below are the ones frappe's own call sites pass
- * (layout.js:259-267, grid_row.js:1238-1250).
+ * (layout.js:261-269, grid_row.js:1154-1166).
  */
 export interface ControlOptions {
 	df: DocField;
@@ -400,9 +400,9 @@ export interface ControlOptions {
 	doc?: FrappeDoc | ChildDoc;
 	frm?: Form;
 	layout?: Layout;
-	/** Set for on-grid-editing controls — grid_row.js:1245. */
+	/** Set for on-grid-editing controls — grid_row.js:1161. */
 	grid?: Grid;
-	/** Set for on-grid-editing controls — grid_row.js:1246. */
+	/** Set for on-grid-editing controls — grid_row.js:1162. */
 	grid_row?: GridRow;
 	/** When true the constructor calls `refresh()` — base_control.js:5-7. */
 	render_input?: boolean;
@@ -471,7 +471,7 @@ export declare class BaseControl {
 	value?: unknown;
 	/** Last value pushed to the model — base_control.js:274. */
 	last_value?: unknown;
-	/** Re-entrancy guard around the change event — base_control.js:218, :231. */
+	/** Re-entrancy guard around the change event — base_control.js:217, :231. */
 	inside_change_event?: boolean;
 
 	/**
@@ -517,28 +517,28 @@ export declare class BaseControl {
 	set_focus(): boolean | undefined;
 
 	// ---- optional subclass hooks the base only calls when present ----
-	/** Defined by `ControlInput` (base_input.js:84). */
+	/** Defined by `ControlInput` (base_input.js:72). */
 	refresh_input?(): void;
-	/** Defined by input controls (controls/data.js:262). */
+	/** Defined by input controls (controls/data.js:268). */
 	set_input?(value: unknown): void;
-	/** Defined by input controls (controls/data.js:272). */
+	/** Defined by input controls (controls/data.js:278). */
 	get_input_value?(): unknown;
 	/** Defined by input controls (controls/data.js:7). */
 	make_input?(): void;
-	/** Defined by numeric/date controls (controls/data.js:281). */
+	/** Defined by numeric/date controls (controls/data.js:287). */
 	parse?(value: unknown): unknown;
-	/** Defined by input controls (controls/data.js:287). */
+	/** Defined by input controls (controls/data.js:293). */
 	validate?(value: unknown): unknown;
-	/** base_input.js:271. */
+	/** base_input.js:259. */
 	set_mandatory?(value: unknown): void;
-	/** base_input.js:280. Writes `grid_row.columns[fieldname].is_invalid`. */
+	/** base_input.js:278. Writes `grid_row.columns[fieldname].is_invalid`. */
 	set_invalid?(): void;
 	/** base_control.js:249 — `me?.after_set_value?.()`. */
 	after_set_value?(): unknown;
 	/** Geolocation/Signature hook, called by `GridRowForm#set_active_tab`. */
 	on_section_collapse?(hide: boolean): void;
 
-	/** Copied from `Grid#get_field(fieldname).get_query` — grid_row.js:1252. */
+	/** Copied from `Grid#get_field(fieldname).get_query` — grid_row.js:1168. */
 	get_query?: unknown;
 	/** Rich-text controls expose an editor with its own focus handling. */
 	editor?: { set_focus(): void };
@@ -581,27 +581,27 @@ export declare class ControlInput extends BaseControl {
 	set_input_areas(): void;
 	/** base_input.js:59-69. Ctrl/Cmd-K opens the navbar search. */
 	setup_shortcut(): void;
-	/** base_input.js:70-74. */
+	/** base_input.js:58-62. */
 	set_max_width(): void;
-	/** base_input.js:76-82. */
+	/** base_input.js:64-70. */
 	read_only_because_of_fetch_from(): unknown;
-	/** base_input.js:84-153. */
+	/** base_input.js:72-141. */
 	refresh_input(): void;
-	/** base_input.js:155-157. */
+	/** base_input.js:143-145. */
 	can_write(): boolean;
-	/** base_input.js:159-188. */
+	/** base_input.js:147-176. */
 	set_disp_area(value: unknown): void;
-	/** base_input.js:189-201. */
+	/** base_input.js:177-189. */
 	set_label(label?: string): void;
-	/** base_input.js:202-210. */
+	/** base_input.js:190-198. */
 	show_description_on_click(): void;
-	/** base_input.js:211-229. */
+	/** base_input.js:199-217. */
 	set_doc_url(): void;
-	/** base_input.js:231-259. */
+	/** base_input.js:219-247. */
 	set_description(description?: string): void;
-	/** base_input.js:260-263. */
+	/** base_input.js:248-251. */
 	set_new_description(description: string): void;
-	/** base_input.js:264-267. */
+	/** base_input.js:252-255. */
 	set_empty_description(): void;
 	/** base_input.js:268-277. */
 	set_mandatory(value: unknown): void;
@@ -623,7 +623,7 @@ export declare class ControlInput extends BaseControl {
  * `ControlTable.prototype.make` is a documented prototype-patch point: the
  * constructor builds no DOM of its own beyond `super.make()`, and `Grid.make()`
  * is lazy (called from `Grid#refresh` via `!this.wrapper && this.make()`,
- * grid.js:502), so a patch that lets the original run and then replaces
+ * grid.js:659), so a patch that lets the original run and then replaces
  * `this.grid` discards nothing. Inside such a patch `this` is a `ControlTable`:
  *
  * ```ts
@@ -675,11 +675,11 @@ export declare class ControlTable extends BaseControl {
 }
 
 /**
- * `frappe.ui.form.make_control` — controls/control.js:47-54.
+ * `frappe.ui.form.make_control` — controls/control.js:48-55.
  *
  * Builds `"Control" + df.fieldtype.replace(/ /g, "")` and news it up. Returns
  * `undefined` (after a `console.log`, not a throw) when no such class exists —
- * `Layout#make_field` explicitly handles that case (layout.js:235-236).
+ * `Layout#make_field` explicitly handles that case (layout.js:237-238).
  */
 export declare function make_control(opts: ControlOptions): BaseControl | undefined;
 
@@ -692,8 +692,8 @@ export declare function make_control(opts: ControlOptions): BaseControl | undefi
  *
  * This union is not defensive typing — `make_section` really does put a
  * `Section` into both collections under its (possibly auto-generated
- * `__section_N`) fieldname (layout.js:333-335), and `make_column` pushes a
- * `Column` into `fields_list` (layout.js:348). Narrow with
+ * `__section_N`) fieldname (layout.js:335-337), and `make_column` pushes a
+ * `Column` into `fields_list` (layout.js:350). Narrow with
  * `instanceof ControlTable` / `instanceof Section` when you need a specific one;
  * that works because these are real classes on `frappe.ui.form`.
  */
@@ -715,7 +715,7 @@ export interface LayoutOptions {
 	grid?: Grid;
 	grid_row?: GridRow;
 	grid_row_form?: GridRowForm;
-	/** Grid row forms set this; it changes tab activation — layout.js:445. */
+	/** Grid row forms set this; it changes tab activation — layout.js:447. */
 	is_child_table?: boolean;
 	/** Dialogs set this; it gates `set_mandatory` — base_input.js:275. */
 	is_dialog?: boolean;
@@ -729,7 +729,7 @@ export interface LayoutOptions {
  * `frappe.ui.form.Layout` — layout.js:5.
  *
  * Note the constructor does **not** build DOM; callers must call `make()`
- * (form.js:242, grid_row_form.js:23).
+ * (form.js:289, grid_row_form.js:23).
  */
 export declare class Layout {
 	constructor(opts: LayoutOptions);
@@ -762,11 +762,11 @@ export declare class Layout {
 	card_layout?: boolean;
 	/**
 	 * Set by `FieldGroup` — and therefore by `Dialog`;
-	 * `evaluate_depends_on_value` falls back to it (layout.js:787).
+	 * `evaluate_depends_on_value` falls back to it (layout.js:789).
 	 *
 	 * Returns **`null`**, not a partial object, when a required field is empty or
-	 * a field is flagged invalid (field_group.js:177, :190) — every caller in
-	 * frappe guards with `if (!values) return;` (dialog.js:244-245).
+	 * a field is flagged invalid (field_group.js:179, :192) — every caller in
+	 * frappe guards with `if (!values) return;` (dialog.js:265-266).
 	 */
 	get_values?: (
 		ignore_errors?: boolean,
@@ -789,7 +789,7 @@ export declare class Layout {
 	section: Section | null;
 	column: Column | null;
 	current_tab?: Tab;
-	/** `.btn-fold` handle — layout.js:294. */
+	/** `.btn-fold` handle — layout.js:296. */
 	fold_btn?: JQuery<HTMLElement>;
 	folded?: boolean;
 
@@ -808,93 +808,93 @@ export declare class Layout {
 	 * Passing a falsy `html` clears the block.
 	 */
 	show_message(html: string | null, color?: string, permanent?: boolean): void;
-	/** layout.js:141-197. */
+	/** layout.js:143-199. */
 	render(new_fields?: DocField[]): void;
-	/** layout.js:200-204. */
+	/** layout.js:202-206. */
 	no_opening_section(): boolean;
-	/** layout.js:205. A no-op in core; subclasses override it. */
+	/** layout.js:207. A no-op in core; subclasses override it. */
 	add_default_tabs(fields?: DocField[]): void;
-	/** layout.js:206-208. */
+	/** layout.js:208-210. */
 	no_opening_tab(): boolean;
 	/**
-	 * layout.js:210-212. Returns the first `Tab Break` **docfield**, not a
+	 * layout.js:212-214. Returns the first `Tab Break` **docfield**, not a
 	 * boolean — every caller uses it for truthiness only.
 	 */
 	is_tabbed_layout(): DocField | undefined;
-	/** layout.js:214-227. */
+	/** layout.js:216-229. */
 	replace_field(fieldname: string, df: DocField, render?: boolean): void;
-	/** layout.js:229-248. */
+	/** layout.js:231-250. */
 	make_field(df: DocField, colspan?: unknown, render?: boolean): void;
-	/** layout.js:250-275. `undefined` when `make_control` rejects the fieldtype. */
+	/** layout.js:252-277. `undefined` when `make_control` rejects the fieldtype. */
 	init_field(
 		df: DocField,
 		parent: HTMLElement,
 		render?: boolean
 	): BaseControl | undefined;
-	/** layout.js:277-279. */
+	/** layout.js:279-281. */
 	make_page_break(): void;
-	/** layout.js:281-309. The "Show more details" fold. */
+	/** layout.js:283-311. The "Show more details" fold. */
 	make_page(df: DocField): void;
-	/** layout.js:311-313. */
+	/** layout.js:313-315. */
 	unfold(): void;
-	/** layout.js:315-338. Mutates `df` to add a `__section_N` fieldname. */
+	/** layout.js:317-340. Mutates `df` to add a `__section_N` fieldname. */
 	make_section(df?: Partial<DocField>): void;
-	/** layout.js:340-351. Mutates `df` to add a `__column_N` fieldname. */
+	/** layout.js:342-353. Mutates `df` to add a `__column_N` fieldname. */
 	make_column(df?: Partial<DocField>): void;
-	/** layout.js:353-360. */
+	/** layout.js:355-362. */
 	make_tab(df: DocField): Tab;
-	/** layout.js:362-392. */
+	/** layout.js:364-394. */
 	refresh(doc?: FrappeDoc | ChildDoc): void;
-	/** layout.js:394-398. */
+	/** layout.js:396-400. */
 	is_numeric_field_active(): boolean;
-	/** layout.js:400-417. */
+	/** layout.js:402-419. */
 	refresh_sections(): void;
-	/** layout.js:419-430. */
+	/** layout.js:421-432. */
 	refresh_tabs(): void;
-	/** layout.js:432-442. Matches on tab label or fieldname, case-insensitively. */
+	/** layout.js:434-444. Matches on tab label or fieldname, case-insensitively. */
 	select_tab(label_or_fieldname: string): void;
 	/** layout.js:444-472. */
 	set_tab_as_active(): void;
-	/** layout.js:474-487. */
+	/** layout.js:476-489. */
 	refresh_fields(fields: DocField[]): void;
-	/** layout.js:489-492. */
+	/** layout.js:491-494. */
 	add_fields(fields: DocField[]): void;
-	/** layout.js:494-514. */
+	/** layout.js:496-516. */
 	refresh_section_collapse(): void;
-	/** layout.js:516-530. */
+	/** layout.js:518-532. */
 	attach_doc_and_docfields(refresh?: boolean): void;
-	/** layout.js:532-567. */
+	/** layout.js:534-569. */
 	setup_events(): void;
-	/** layout.js:569-580. */
+	/** layout.js:571-582. */
 	setup_tab_events(): void;
-	/** layout.js:582-599. */
+	/** layout.js:584-601. */
 	setup_tooltip_events(): void;
-	/** layout.js:601-660. Tab-key navigation between fields and grid rows. */
+	/** layout.js:603-662. Tab-key navigation between fields and grid rows. */
 	handle_tab(doctype: string, fieldname: string, shift?: boolean): void;
-	/** layout.js:662-685. `undefined` when no eligible field follows. */
+	/** layout.js:664-687. `undefined` when no eligible field follows. */
 	focus_on_next_field(
 		start_idx: number,
 		fields: LayoutFieldObject[]
 	): boolean | undefined;
-	/** layout.js:687-691. */
+	/** layout.js:689-693. */
 	is_visible(field: LayoutFieldObject): boolean;
-	/** layout.js:693-709. */
+	/** layout.js:695-711. */
 	set_focus(field: LayoutFieldObject): void;
 	/**
-	 * layout.js:711-713 — `$(".grid-row-open").data("grid_row")`.
-	 * Identical to `frappe.ui.form.get_open_grid_form` (grid.js:7-9); both read
+	 * layout.js:713-715 — `$(".grid-row-open").data("grid_row")`.
+	 * Identical to `frappe.ui.form.get_open_grid_form` (grid.js:38-40); both read
 	 * the same cross-app `.grid-row-open` class contract.
 	 */
 	get_open_grid_row(): GridRow | undefined;
-	/** layout.js:715-752. */
+	/** layout.js:717-754. */
 	refresh_dependency(): void;
-	/** layout.js:754-782. */
+	/** layout.js:756-784. */
 	set_dependant_property(
 		condition: DependsOnExpression,
 		fieldname: string,
 		property: string
 	): void;
-	/** layout.js:784-824. Returns `undefined` when there is no doc to evaluate against. */
+	/** layout.js:786-826. Returns `undefined` when there is no doc to evaluate against. */
 	evaluate_depends_on_value(expression: DependsOnExpression): unknown;
 }
 
@@ -978,11 +978,11 @@ export declare class Tab {
 	doctype?: string;
 	label?: string;
 	hidden: boolean;
-	/** `${scrub(doctype)}-${df.fieldname}` — tab.js:26. */
+	/** `${scrub(doctype)}-${df.fieldname}` — tab.js:27. */
 	id: string;
-	/** The `<li class="nav-item">` — tab.js:30. */
+	/** The `<li class="nav-item">` — tab.js:31. */
 	tab_link: JQuery<HTMLElement>;
-	/** The `.tab-pane` — tab.js:44. */
+	/** The `.tab-pane` — tab.js:45. */
 	wrapper: JQuery<HTMLElement>;
 	fields_list: BaseControl[];
 	sections: Section[];
@@ -1012,7 +1012,7 @@ export declare class Tab {
  *
  * 1. It is the fragment the classes actually belong to. `Grid`, `GridRow`,
  *    `GridRowForm` and `GridPagination` are ES-module DEFAULT exports with no
- *    global alias (`grid.js:21`, `grid_row.js:9`, `grid_row_form.js:1`,
+ *    global alias (`grid.js:52`, `grid_row.js:9`, `grid_row_form.js:1`,
  *    `grid_pagination.js:1`) — there is no `frappe.ui.form.Grid`. The only way
  *    to reach them is the deep import that `deep-modules.d.ts` + `modules.d.ts`
  *    wire up, so that pair has to hold the definitions.
@@ -1020,12 +1020,12 @@ export declare class Tab {
  *    a strict SUPERSET: identical member sets for `GridRowForm` (14) and
  *    `GridPagination` (23), one extra member on `GridRow` (`expression`) and
  *    two extra methods on `Grid` (`_apply_mask_overrides`,
- *    `_apply_column_disp_overrides`, grid.js:721-746). NOTHING DECLARED HERE
+ *    `_apply_column_disp_overrides`, grid.js:878-903). NOTHING DECLARED HERE
  *    WAS LOST — every member this copy had that the other lacked was carried
  *    across with its citation before this block replaced them:
  *    - `GridDocField#fields` and `GridDocField#allow_bulk_edit` are now
  *      INHERITED, from `model.d.ts`'s `DocField` (`fields?: DocField[]` at
- *      model.d.ts:399 citing grid.js:710; `allow_bulk_edit?: FrappeCheck` at
+ *      model.d.ts:399 citing grid.js:867; `allow_bulk_edit?: FrappeCheck` at
  *      model.d.ts:291). Redeclaring them on `GridDocField` is what produced the
  *      TS2430 in the first place — see reason 3.
  *    - `GridFieldInfo#get_query` is declared on the surviving copy.
@@ -1062,8 +1062,8 @@ export type {
 /**
  * The payload `GridRow#set_data` writes onto its wrapper with `.data()`
  * (grid_row.js:67-71). This is the contract behind
- * `$(".grid-row-open").data("grid_row")` (grid.js:8, layout.js:712,
- * ui/keyboard.js:335) and `$(e.target).closest(".grid-row").data("name")`.
+ * `$(".grid-row-open").data("grid_row")` (grid.js:39, layout.js:714,
+ * ui/keyboard.js:337) and `$(e.target).closest(".grid-row").data("name")`.
  *
  * Note `doc` is `""` — not `undefined` — for header and search rows.
  *
@@ -1081,7 +1081,7 @@ export interface GridRowJQueryData {
  * Toolbar (form/toolbar.js)
  * ========================================================================== */
 
-/** The states `Toolbar#get_action_status` can return — toolbar.js:765-786. */
+/** The states `Toolbar#get_action_status` can return — toolbar.js:794-815. */
 export type ToolbarActionStatus =
 	| "Edit"
 	| "Submit"
@@ -1091,10 +1091,10 @@ export type ToolbarActionStatus =
 	| "Amend";
 
 /**
- * `frappe.ui.form.Toolbar` — form/toolbar.js:7.
+ * `frappe.ui.form.Toolbar` — form/toolbar.js:8.
  *
  * Everything on the instance arrives through `$.extend(this, opts)`
- * (toolbar.js:9); the constructor then immediately calls `refresh()`, so a
+ * (toolbar.js:10); the constructor then immediately calls `refresh()`, so a
  * Toolbar is never observed un-refreshed.
  */
 export declare class Toolbar {
@@ -1102,10 +1102,10 @@ export declare class Toolbar {
 
 	frm: Form;
 	page: Page;
-	/** Last status handed to `set_page_actions` — toolbar.js:848, cleared to `null` at :762. */
+	/** Last status handed to `set_page_actions` — toolbar.js:877, cleared to `null` at :762. */
 	current_status: ToolbarActionStatus | null;
 
-	/** toolbar.js:13-41. */
+	/** toolbar.js:14-42. */
 	refresh(): void;
 	/**
 	 * toolbar.js:42-78. Among other things this is what toggles the
@@ -1115,26 +1115,26 @@ export declare class Toolbar {
 	 * the page container becoming visible.
 	 */
 	set_title(): void;
-	/** toolbar.js:80-103. */
+	/** toolbar.js:82-105. */
 	is_title_editable(): boolean;
 	/** toolbar.js:105-107. */
 	can_rename(): boolean;
-	/** toolbar.js:108-113. */
+	/** toolbar.js:115-120. */
 	show_unchanged_document_alert(): void;
-	/** toolbar.js:114-199. */
+	/** toolbar.js:121-206. */
 	rename_document_title(
 		input_name?: string,
 		input_title?: string,
 		merge?: boolean
 	): Promise<unknown>;
 	/**
-	 * toolbar.js:201-217. Adds the sidebar pencil icon to `element` (when the
+	 * toolbar.js:208-224. Adds the sidebar pencil icon to `element` (when the
 	 * document is renameable) and wires it to
 	 * {@link Toolbar.setup_editable_title_click_event}.
 	 */
 	setup_editable_title(element: JQuery): void;
 	/**
-	 * toolbar.js:219-301. Binds the rename dialog to `element` with
+	 * toolbar.js:226-308. Binds the rename dialog to `element` with
 	 * `element.off("click").on("click", …)` — so re-running it on the same
 	 * element is **idempotent**, and it is safe to point a second affordance
 	 * (e.g. the page heading) at the same handler.
@@ -1143,61 +1143,61 @@ export declare class Toolbar {
 	 * on it directly.
 	 */
 	setup_editable_title_click_event(element: JQuery): void;
-	/** toolbar.js:303-305. */
+	/** toolbar.js:310-312. */
 	get_dropdown_menu(label: string): JQuery;
-	/** toolbar.js:306-322. */
+	/** toolbar.js:313-329. */
 	set_indicator(): void;
-	/** toolbar.js:324-333. */
+	/** toolbar.js:331-340. */
 	make_menu(): void;
 	/** toolbar.js:335-355. */
 	make_navigation(): void;
-	/** toolbar.js:357-378. */
+	/** toolbar.js:364-385. */
 	make_menu_items(): void;
-	/** toolbar.js:674-676. */
+	/** toolbar.js:703-705. */
 	can_repeat(): boolean;
-	/** toolbar.js:677-679. */
+	/** toolbar.js:706-708. */
 	can_save(): boolean;
-	/** toolbar.js:680-689. */
+	/** toolbar.js:709-718. */
 	can_submit(): boolean;
-	/** toolbar.js:690-697. */
+	/** toolbar.js:719-726. */
 	can_update(): boolean;
-	/** toolbar.js:698-700. */
+	/** toolbar.js:727-729. */
 	can_cancel(): boolean;
-	/** toolbar.js:701-703. */
+	/** toolbar.js:730-732. */
 	can_amend(): boolean;
-	/** toolbar.js:704-708. */
+	/** toolbar.js:733-737. */
 	has_workflow(): boolean;
-	/** toolbar.js:709-711. */
+	/** toolbar.js:738-740. */
 	get_docstatus(): number;
-	/** toolbar.js:712-719. */
+	/** toolbar.js:741-748. */
 	show_linked_with(): void;
-	/** toolbar.js:720-763. */
+	/** toolbar.js:749-792. */
 	set_primary_action(dirty?: boolean): void;
-	/** toolbar.js:765-786. `null` when no action applies. */
+	/** toolbar.js:794-815. `null` when no action applies. */
 	get_action_status(): ToolbarActionStatus | null;
 	/** toolbar.js:787-849. */
 	set_page_actions(status: ToolbarActionStatus): void;
-	/** toolbar.js:850-863. */
+	/** toolbar.js:879-892. */
 	add_update_button_on_dirty(): void;
-	/** toolbar.js:864-873. */
+	/** toolbar.js:893-902. */
 	show_title_as_dirty(): void;
 	/** toolbar.js:874-914. */
 	show_jump_to_field_dialog(): void;
-	/** toolbar.js:915-958. */
+	/** toolbar.js:956-999. */
 	scroll_to_grid_field(
 		grid_form: GridRowForm,
 		fieldname: string,
 		focus?: boolean
 	): void;
-	/** toolbar.js:959-967. */
+	/** toolbar.js:1000-1008. */
 	setup_sidebar_toggle(sidebar_wrapper: JQuery): void;
-	/** toolbar.js:968-987. */
+	/** toolbar.js:1009-1028. */
 	setup_overlay_sidebar(sidebar_wrapper: JQuery): void;
-	/** toolbar.js:988-1008. */
+	/** toolbar.js:1029-1049. */
 	follow(): void;
-	/** toolbar.js:1009-1015. */
+	/** toolbar.js:1050-1056. */
 	get_follow_text(follow: boolean): string;
-	/** toolbar.js:1016-1019. */
+	/** toolbar.js:1057-1060. */
 	refresh_follow(follow?: boolean): void;
 }
 
@@ -1231,11 +1231,11 @@ export declare class FieldGroup extends Layout {
 	fetch_dict: Record<string, Record<string, Record<string, string>>>;
 	/** From `opts` — applied by `set_values()` in the constructor (field_group.js:16-18). */
 	values?: Record<string, unknown>;
-	/** From `opts` — field_group.js:82 skips {@link FieldGroup.catch_enter_as_submit}. */
+	/** From `opts` — field_group.js:84 skips {@link FieldGroup.catch_enter_as_submit}. */
 	no_submit_on_enter?: boolean;
-	/** From `opts` — field_group.js:104 makes {@link FieldGroup.focus_on_first_input} a no-op. */
+	/** From `opts` — field_group.js:106 makes {@link FieldGroup.focus_on_first_input} a no-op. */
 	no_focus?: boolean;
-	/** Set by `Dialog#set_primary_action` (dialog.js:235); read at field_group.js:119. */
+	/** Set by `Dialog#set_primary_action` (dialog.js:248); read at field_group.js:121. */
 	has_primary_action?: boolean;
 
 	/**
@@ -1265,17 +1265,17 @@ export declare class FieldGroup extends Layout {
 	 */
 	override make(): void;
 
-	/** field_group.js:103-111. Focuses the first non-Date/Datetime/Time/Check control. */
+	/** field_group.js:105-113. Focuses the first non-Date/Datetime/Time/Check control. */
 	focus_on_first_input(): void;
 	/** field_group.js:113-125. Binds Enter on text inputs to the primary button. */
 	catch_enter_as_submit(): void;
 	/**
-	 * field_group.js:127-131 — the control's `txt` element if it has one, else its
+	 * field_group.js:129-133 — the control's `txt` element if it has one, else its
 	 * `input`, wrapped in jQuery. Returns the **empty string** `""`, not a jQuery
-	 * object, for an unknown fieldname (field_group.js:129).
+	 * object, for an unknown fieldname (field_group.js:131).
 	 */
 	get_input(fieldname: string): JQuery | "";
-	/** field_group.js:133-135 — a raw `fields_dict` lookup, so a miss is `undefined`. */
+	/** field_group.js:135-137 — a raw `fields_dict` lookup, so a miss is `undefined`. */
 	get_field(fieldname: string): LayoutFieldObject | undefined;
 	/**
 	 * field_group.js:137-193. Collects every control's `get_value()`.
@@ -1289,38 +1289,38 @@ export declare class FieldGroup extends Layout {
 		ignore_errors?: boolean,
 		check_invalid?: boolean
 	) => Record<string, unknown> | null;
-	/** field_group.js:195-198 — `null` when the field exists but has no `get_value`. */
+	/** field_group.js:197-200 — `null` when the field exists but has no `get_value`. */
 	get_value(key: string): unknown;
-	/** field_group.js:200-213. Resolves immediately when the fieldname is unknown. */
+	/** field_group.js:202-215. Resolves immediately when the fieldname is unknown. */
 	set_value(key: string, val: unknown): Promise<void>;
-	/** field_group.js:215-217. */
+	/** field_group.js:217-219. */
 	has_field(fieldname: string): boolean;
-	/** field_group.js:219-221 — an alias of {@link FieldGroup.set_value}. */
+	/** field_group.js:221-223 — an alias of {@link FieldGroup.set_value}. */
 	set_input(key: string, val: unknown): Promise<void>;
-	/** field_group.js:223-232. Silently skips keys with no matching field. */
+	/** field_group.js:225-234. Silently skips keys with no matching field. */
 	set_values(dict: Record<string, unknown>): Promise<void[]>;
-	/** field_group.js:234-241. Resets every control to its `df.default` or `""`. */
+	/** field_group.js:236-243. Resets every control to its `df.default` or `""`. */
 	clear(): void;
 	/**
-	 * field_group.js:243-250. **Throws** on an unknown fieldname — `get_field`
+	 * field_group.js:245-252. **Throws** on an unknown fieldname — `get_field`
 	 * returns `undefined` and `field.df[prop]` is then a TypeError. A falsy
 	 * `fieldname` returns early (:244-246).
 	 */
 	set_df_property(fieldname: string, prop: string, value: unknown): void;
 	/**
-	 * field_group.js:252-265. Two arities: `(fieldname, query)` on the parent, or
+	 * field_group.js:254-267. Two arities: `(fieldname, query)` on the parent, or
 	 * `(fieldname, parent_fieldname, query)` to reach into a child table's grid.
 	 */
 	set_query(fieldname: string, query: unknown): void;
 	set_query(fieldname: string, parent_fieldname: string, query: unknown): void;
-	/** field_group.js:268-285. `target_doctype` defaults to `"*"`. */
+	/** field_group.js:270-287. `target_doctype` defaults to `"*"`. */
 	add_fetch(
 		link_field: string,
 		source_field: string,
 		target_field: string,
 		target_doctype?: string
 	): void;
-	/** field_group.js:287-289 — `this.doc.__islocal`; throws when there is no `doc`. */
+	/** field_group.js:289-291 — `this.doc.__islocal`; throws when there is no `doc`. */
 	is_new(): boolean | undefined;
 }
 
@@ -1345,7 +1345,7 @@ export interface DialogActions {
  * open index signature, inherited from {@link LayoutOptions}.
  */
 export interface DialogOptions extends LayoutOptions {
-	/** dialog.js:270 — set as the `.modal-title` HTML, not text. */
+	/** dialog.js:298 — set as the `.modal-title` HTML, not text. */
 	title?: string;
 	/**
 	 * dialog.js:44 — when omitted, {@link Dialog.set_modal_size} derives it from
@@ -1365,7 +1365,7 @@ export interface DialogOptions extends LayoutOptions {
 	keep_grid_form_open?: boolean;
 	/** dialog.js:36-42 — `backdrop: "static"`, no keyboard dismiss, close button hidden. */
 	static?: boolean;
-	/** dialog.js:277-283 — an indicator colour class on `.modal-header .indicator`. */
+	/** dialog.js:305-311 — an indicator colour class on `.modal-header .indicator`. */
 	indicator?: string;
 	/** dialog.js:92-99 — shows the minimize button. */
 	minimizable?: boolean;
@@ -1385,7 +1385,7 @@ export interface DialogOptions extends LayoutOptions {
 	on_hide?: () => void;
 	/** dialog.js:131 — fired from `shown.bs.modal`. */
 	on_page_show?: () => void;
-	/** dialog.js:357 — fired by {@link Dialog.toggle_minimize}. */
+	/** dialog.js:385 — fired by {@link Dialog.toggle_minimize}. */
 	on_minimize_toggle?: (is_minimized: boolean) => void;
 }
 
@@ -1413,11 +1413,11 @@ export interface DialogOptions extends LayoutOptions {
  *
  * ### `is_visible` is clobbered at runtime, and is therefore NOT declared here
  *
- * `Layout#is_visible(field)` is a **method** (layout.js:687-691). `Dialog#show`
- * and `Dialog#hide` assign a **boolean** to the same name (dialog.js:310, :316),
+ * `Layout#is_visible(field)` is a **method** (layout.js:689-693). `Dialog#show`
+ * and `Dialog#hide` assign a **boolean** to the same name (dialog.js:338, :344),
  * shadowing it with an own property. That is an upstream defect, not a type
  * modelling choice: once a dialog has been shown, `Layout#set_focus`'s
- * `this.is_visible(field)` call (layout.js:706) throws
+ * `this.is_visible(field)` call (layout.js:708) throws
  * `is_visible is not a function`. A `.d.ts` cannot widen an inherited method to
  * `boolean`, and pretending either half does not exist would be a lie, so this
  * declaration leaves the inherited method visible and says so here.
@@ -1432,7 +1432,7 @@ export declare class Dialog extends FieldGroup {
 	display: boolean;
 	/** dialog.js:14. Read by `base_input.js:275` to skip mandatory styling. */
 	override is_dialog: boolean;
-	/** dialog.js:15, :323 — the element focus returns to on close. */
+	/** dialog.js:15, :351 — the element focus returns to on close. */
 	last_focus: HTMLElement | null;
 	/** dialog.js:20. */
 	animate: boolean;
@@ -1477,13 +1477,13 @@ export declare class Dialog extends FieldGroup {
 	standard_actions: JQuery<HTMLElement>;
 	/** dialog.js:60 — `.custom-actions` inside the footer. */
 	custom_actions: JQuery<HTMLElement>;
-	/** dialog.js:205 — present only between `set_alert` and `clear_alert`. */
+	/** dialog.js:218 — present only between `set_alert` and `clear_alert`. */
 	$alert?: JQuery<HTMLElement>;
 
 	// ---- runtime flags ----
-	/** dialog.js:105, :303, :354. */
+	/** dialog.js:105, :331, :382. */
 	is_minimized?: boolean;
-	/** dialog.js:240, reset at :309 — gates `frappe.confirm`'s reject action. */
+	/** dialog.js:261, reset at :309 — gates `frappe.confirm`'s reject action. */
 	primary_action_fulfilled?: boolean;
 
 	/** dialog.js:33-168. Builds the modal and binds every Bootstrap event. */
@@ -1492,32 +1492,32 @@ export declare class Dialog extends FieldGroup {
 	set_modal_size(): void;
 	/** dialog.js:195-197 — `.btn-primary` inside `.standard-actions`. */
 	get_primary_btn(): JQuery<HTMLElement>;
-	/** dialog.js:199-201 — `.btn-modal-minimize`. */
+	/** dialog.js:212-214 — `.btn-modal-minimize`. */
 	get_minimize_btn(): JQuery<HTMLElement>;
-	/** dialog.js:334-336 — `.btn-modal-close`. */
+	/** dialog.js:362-364 — `.btn-modal-close`. */
 	get_close_btn(): JQuery<HTMLElement>;
-	/** dialog.js:338-340 — `.btn-modal-secondary`. */
+	/** dialog.js:366-368 — `.btn-modal-secondary`. */
 	get_secondary_btn(): JQuery<HTMLElement>;
-	/** dialog.js:203-209. `text` is injected as raw HTML into the alert div. */
+	/** dialog.js:216-222. `text` is injected as raw HTML into the alert div. */
 	set_alert(text: string, alert_class?: string): void;
-	/** dialog.js:211-215. */
+	/** dialog.js:224-228. */
 	clear_alert(): void;
-	/** dialog.js:217-221. Hides the form body and shows the message instead. */
+	/** dialog.js:230-234. Hides the form body and shows the message instead. */
 	set_message(text: string): void;
-	/** dialog.js:223-226. */
+	/** dialog.js:236-239. */
 	clear_message(): void;
-	/** dialog.js:228-231 — `super.clear()` plus {@link Dialog.clear_message}. */
+	/** dialog.js:241-244 — `super.clear()` plus {@link Dialog.clear_message}. */
 	override clear(): void;
 	/**
 	 * dialog.js:233-250. Returns the button. `click` is invoked with
 	 * `[values]` from `get_values()` and **skipped entirely when that is falsy**
-	 * (dialog.js:244-245); `label` is set as HTML.
+	 * (dialog.js:265-266); `label` is set as HTML.
 	 */
 	set_primary_action(
 		label: string,
 		click?: (values: Record<string, unknown>) => void
 	): JQuery<HTMLElement>;
-	/** dialog.js:252-255. */
+	/** dialog.js:279-282. */
 	set_secondary_action(click: (event: JQuery.ClickEvent) => void): JQuery<HTMLElement>;
 	/** dialog.js:257-259. `label` is set as HTML. */
 	set_secondary_action_label(label: string): void;
@@ -1525,25 +1525,25 @@ export declare class Dialog extends FieldGroup {
 	disable_primary_action(): void;
 	/** dialog.js:265-267. */
 	enable_primary_action(): void;
-	/** dialog.js:269-271. */
+	/** dialog.js:297-299. */
 	make_head(): void;
-	/** dialog.js:273-275 — sets `.modal-title` as **HTML**, not text. */
+	/** dialog.js:301-303 — sets `.modal-title` as **HTML**, not text. */
 	set_title(t: string): void;
-	/** dialog.js:277-284. */
+	/** dialog.js:305-312. */
 	set_indicator(): void;
-	/** dialog.js:286-312. Returns `this`, so `new frappe.ui.Dialog(o).show()` chains. */
+	/** dialog.js:314-340. Returns `this`, so `new frappe.ui.Dialog(o).show()` chains. */
 	show(): this;
-	/** dialog.js:314-317. */
+	/** dialog.js:342-345. */
 	hide(): void;
-	/** dialog.js:319-332. Remembers `document.activeElement` on a Form route. */
+	/** dialog.js:347-360. Remembers `document.activeElement` on a Form route. */
 	handle_focus(): void;
-	/** dialog.js:342-344 — hides the close button. */
+	/** dialog.js:370-372 — hides the close button. */
 	no_cancel(): void;
-	/** dialog.js:346-348 — clicks the close button. */
+	/** dialog.js:374-376 — clicks the close button. */
 	cancel(): void;
-	/** dialog.js:350-360. */
+	/** dialog.js:378-388. */
 	toggle_minimize(): void;
-	/** dialog.js:362-364 — toggles `overflow` on `<body>`. */
+	/** dialog.js:390-392 — toggles `overflow` on `<body>`. */
 	hide_scrollbar(bool: boolean): void;
 	/** dialog.js:366-376. `label` is injected as raw HTML. */
 	add_custom_action(
@@ -1551,7 +1551,7 @@ export declare class Dialog extends FieldGroup {
 		action?: (event: JQuery.ClickEvent) => void,
 		css_class?: string | null
 	): void;
-	/** dialog.js:378 — declared and deliberately empty upstream. */
+	/** dialog.js:405 — declared and deliberately empty upstream. */
 	add_custom_button(): void;
 }
 
@@ -1563,16 +1563,16 @@ export declare class Dialog extends FieldGroup {
 export declare class FormController {
 	constructor(opts: { frm: Form; [option: string]: unknown });
 	frm: Form;
-	/** Set while `onload` is running; suppresses mandatory styling (base_input.js:270). */
+	/** Set while `onload` is running; suppresses mandatory styling (base_input.js:258). */
 	is_onload?: boolean;
 	[key: string]: unknown;
 }
 
 /**
- * `frappe.ui.form.Form` (class name `FrappeForm`) — form.js:24.
+ * `frappe.ui.form.Form` (class name `FrappeForm`) — form.js:64.
  *
  * Unusually for this slice the constructor takes **positional** arguments, not
- * an options bag (form.js:25).
+ * an options bag (form.js:65).
  */
 export declare class Form {
 	constructor(
@@ -1592,9 +1592,9 @@ export declare class Form {
 	opendocs: Record<string, boolean>;
 	custom_buttons: Record<string, JQuery<HTMLElement>>;
 	sections: Section[];
-	/** Every `ControlTable` on the form — form.js:35, filled at controls/table.js:16. */
+	/** Every `ControlTable` on the form — form.js:76, filled at controls/table.js:16. */
 	grids: ControlTable[];
-	/** The client-script controller instance — form.js:36. */
+	/** The client-script controller instance — form.js:77. */
 	cscript: FormController;
 	events: Record<string, unknown>;
 	fetch_dict: Record<string, unknown>;
@@ -1604,15 +1604,15 @@ export declare class Form {
 	debounced_reload_doc: () => void;
 	beforeUnloadListener: (event: BeforeUnloadEvent) => string;
 
-	// ---- setup_meta() (form.js:54-72) ----
+	// ---- setup_meta() (form.js:95-113) ----
 	meta: DocTypeMeta;
-	/** `frappe.perm.get_perm(doctype)`, indexed by permlevel — form.js:60. */
+	/** `frappe.perm.get_perm(doctype)`, indexed by permlevel — form.js:101. */
 	perm: Permission[];
 	action_perm_type_map: Record<string, string>;
 
 	// ---- setup() (form.js:74-137) ----
 	fields: LayoutFieldObject[];
-	/** Shared with `layout.fields_dict` — form.js:246. See {@link LayoutFieldObject}. */
+	/** Shared with `layout.fields_dict` — form.js:293. See {@link LayoutFieldObject}. */
 	fields_dict: Record<string, LayoutFieldObject>;
 	state_fieldname?: string;
 	wrapper: HTMLElement;
@@ -1620,7 +1620,7 @@ export declare class Form {
 	page: Page;
 	layout_main: HTMLElement;
 	/**
-	 * form.js:97. Read defensively by app code because it does not exist until
+	 * form.js:144. Read defensively by app code because it does not exist until
 	 * `setup()` has run — hence optional.
 	 */
 	toolbar?: Toolbar;
@@ -1632,7 +1632,7 @@ export declare class Form {
 	tour?: unknown;
 	states?: unknown;
 	form_wrapper?: JQuery<HTMLElement>;
-	/** `.std-form-layout` — form.js:227. */
+	/** `.std-form-layout` — form.js:274. */
 	body?: JQuery<HTMLElement>;
 
 	// ---- per-document state ----
@@ -1645,30 +1645,30 @@ export declare class Form {
 	 */
 	cur_grid?: GridRow | null;
 	/**
-	 * Set around `Layout#set_dependant_property` (layout.js:766-770) and read by
-	 * `Grid#refresh` (grid.js:497) to suppress a re-render mid-dependency-pass.
+	 * Set around `Layout#set_dependant_property` (layout.js:768-772) and read by
+	 * `Grid#refresh` (grid.js:654) to suppress a re-render mid-dependency-pass.
 	 */
 	setting_dependency?: boolean;
 	footnote_area?: JQuery<HTMLElement>;
 	__rename_queue?: string;
 
 	// ---- methods (only the stable public surface) ----
-	/** form.js:54-72. */
+	/** form.js:95-113. */
 	setup_meta(): void;
 	/** form.js:74-137. Builds the page, layout, toolbar and script manager. */
 	setup(): void;
-	/** form.js:397-477. `docname` switches document first. Also sets `cur_frm = this` (:406). */
+	/** form.js:444-524. `docname` switches document first. Also sets `cur_frm = this` (:406). */
 	refresh(docname?: string): void;
 	/**
-	 * form.js:533-546. Nulls every grid's `visible_columns` and re-renders its
+	 * form.js:580-593. Nulls every grid's `visible_columns` and re-renders its
 	 * rows BEFORE `docname` changes (:535-540) — see `Grid#visible_columns`.
 	 */
 	switch_doc(docname: string): void;
-	/** form.js:716-727. */
+	/** form.js:745-756. */
 	refresh_fields(): void;
-	/** form.js:1462-1469. Refreshes one control plus layout dependencies/sections. */
+	/** form.js:1513-1520. Refreshes one control plus layout dependencies/sections. */
 	refresh_field(fname: string): void;
-	/** form.js:792-801. */
+	/** form.js:821-830. */
 	save_or_update(): void;
 	/** form.js:802-816. */
 	save(
@@ -1677,59 +1677,59 @@ export declare class Form {
 		btn?: HTMLElement | JQuery,
 		on_error?: (...args: unknown[]) => void
 	): Promise<unknown>;
-	/** form.js:1122-1128. */
+	/** form.js:1166-1172. */
 	savetrash(): void;
-	/** form.js:1451-1460. */
+	/** form.js:1502-1511. */
 	reload_doc(): Promise<unknown> | undefined;
-	/** form.js:1471-1489. */
+	/** form.js:1522-1540. */
 	add_fetch(
 		link_field: string,
 		source_field: string,
 		target_field: string,
 		target_doctype?: string
 	): void;
-	/** form.js:1490-1492. */
+	/** form.js:1541-1543. */
 	has_perm(ptype: string): boolean;
-	/** form.js:1494-1500. Marks `doc.__unsaved` and fires the `dirty` event. */
+	/** form.js:1545-1551. Marks `doc.__unsaved` and fires the `dirty` event. */
 	dirty(): void;
-	/** form.js:1502-1504. */
+	/** form.js:1553-1555. */
 	get_docinfo(): unknown;
-	/** form.js:1506-1508. */
+	/** form.js:1557-1559. */
 	is_dirty(): boolean;
-	/** form.js:1510-1512. Returns `doc.__islocal`, which is `1 | undefined`. */
+	/** form.js:1561-1563. Returns `doc.__islocal`, which is `1 | undefined`. */
 	is_new(): 1 | undefined;
 	/**
-	 * form.js:1521-1523. `this.perm[permlevel]?.[access_type] ?? null` —
+	 * form.js:1572-1574. `this.perm[permlevel]?.[access_type] ?? null` —
 	 * returns `null` (not `false`) for an unknown permlevel.
 	 */
 	get_perm(permlevel: number, access_type: string): boolean | 0 | 1 | null;
 	/** form.js:1525-1527. */
 	set_intro(txt: string, color?: string): void;
-	/** form.js:1529-1531. */
+	/** form.js:1586-1588. */
 	set_footnote(txt: string): void;
-	/** form.js:1533-1542. `group` creates/uses a dropdown. */
+	/** form.js:1590-1599. `group` creates/uses a dropdown. */
 	add_custom_button(
 		label: string,
 		fn: () => void,
 		group?: string
 	): JQuery<HTMLElement> | undefined;
-	/** form.js:1544-1546. */
+	/** form.js:1601-1603. */
 	change_custom_button_type(label: string, group: string | null, type: string): void;
-	/** form.js:1548-1553. */
+	/** form.js:1605-1610. */
 	clear_custom_buttons(): void;
-	/** form.js:1555-1577. */
+	/** form.js:1612-1634. */
 	remove_custom_button(label: string, group?: string): void;
-	/** form.js:1607-1609. */
+	/** form.js:1665-1667. */
 	get_doc(): FrappeDoc;
-	/** form.js:1678-1694. `"*"` maps every field in `fields_dict`. */
+	/** form.js:1736-1752. `"*"` maps every field in `fields_dict`. */
 	field_map(fnames: string | string[], fn: (df: DocField) => void): void;
 	/**
-	 * form.js:1696-1705. One argument reads a parent field; two read a child
+	 * form.js:1754-1763. One argument reads a parent field; two read a child
 	 * field of the Table named by the first.
 	 */
 	get_docfield(fieldname1: string, fieldname2?: string): DocField;
 	/**
-	 * form.js:1707-1739. Passing `docname` + `table_field` targets a child
+	 * form.js:1765-1797. Passing `docname` + `table_field` targets a child
 	 * docfield; `table_row_name` narrows it to a single row.
 	 */
 	set_df_property(
@@ -1740,65 +1740,65 @@ export declare class Form {
 		table_field?: string,
 		table_row_name?: string | null
 	): void;
-	/** form.js:1741-1745. Writes `read_only` as `0 | 1`. */
+	/** form.js:1799-1803. Writes `read_only` as `0 | 1`. */
 	toggle_enable(fnames: string | string[], enable: boolean): void;
-	/** form.js:1747-1751. Writes `reqd` as a **boolean**, not `0 | 1`. */
+	/** form.js:1805-1809. Writes `reqd` as a **boolean**, not `0 | 1`. */
 	toggle_reqd(fnames: string | string[], mandatory: boolean): void;
-	/** form.js:1753-1757. Writes `hidden` as `0 | 1`. */
+	/** form.js:1811-1815. Writes `hidden` as `0 | 1`. */
 	toggle_display(fnames: string | string[], show: boolean): void;
-	/** form.js:1765-1777. */
+	/** form.js:1823-1835. */
 	set_query(fieldname: string, opt1: unknown, opt2?: unknown): void;
-	/** form.js:1779-1781. */
+	/** form.js:1837-1839. */
 	clear_table(fieldname: string): void;
 	/**
-	 * form.js:1783-1804. Appends a child row and returns it. `values` is merged
+	 * form.js:1841-1862. Appends a child row and returns it. `values` is merged
 	 * with `$.extend` **minus** `idx` and `name`, which are never overridden.
 	 */
 	add_child(fieldname: string, values?: Record<string, unknown>): ChildDoc;
-	/** form.js:1805-1870. */
+	/** form.js:1863-1928. */
 	set_value(
 		field: string | Record<string, unknown>,
 		value?: unknown,
 		if_missing?: boolean,
 		skip_dirty_trigger?: boolean
 	): Promise<unknown>;
-	/** form.js:1871-1921. */
+	/** form.js:1929-1979. */
 	call(
 		opts: string | Record<string, unknown>,
 		args?: Record<string, unknown>,
 		callback?: (r: unknown) => void
 	): Promise<unknown>;
-	/** form.js:1922-1924. Same map as `fields_dict`. */
+	/** form.js:1980-1982. Same map as `fields_dict`. */
 	get_field(field: string): LayoutFieldObject;
-	/** form.js:1941-1943. Delegates to `script_manager.trigger`. */
+	/** form.js:1999-2001. Delegates to `script_manager.trigger`. */
 	trigger(event: string, doctype?: string, docname?: string): Promise<unknown>;
-	/** form.js:1945-1952. */
+	/** form.js:2003-2010. */
 	get_formatted(fieldname: string): string;
-	/** form.js:1954-1956. Delegates to `frappe.ui.form.get_open_grid_form`. */
+	/** form.js:2012-2014. Delegates to `frappe.ui.form.get_open_grid_form`. */
 	open_grid_row(): GridRow | undefined;
-	/** form.js:1958-1960. */
+	/** form.js:2016-2018. */
 	get_title(): string;
-	/** form.js:1962-1980. `[parentfield, name]` pairs of checked child rows. */
+	/** form.js:2020-2038. `[parentfield, name]` pairs of checked child rows. */
 	get_selected(): Record<string, string[]>;
-	/** form.js:2091-2104. */
+	/** form.js:2160-2173. */
 	update_in_all_rows(
 		table_fieldname: string,
 		fieldname: string,
 		value: unknown
 	): void;
-	/** form.js:2105-2112. */
+	/** form.js:2174-2181. */
 	get_sum(table_fieldname: string, fieldname: string): number;
 	/** form.js:2113-2150. */
 	scroll_to_field(fieldname: string, focus?: boolean): void;
-	/** form.js:2223-2260. */
+	/** form.js:2292-2329. */
 	set_active_tab(tab: Tab): void;
-	/** form.js:2261-2264. */
+	/** form.js:2330-2333. */
 	get_active_tab(): Tab | undefined;
-	/** form.js:1192-1196. */
+	/** form.js:1236-1240. */
 	enable_save(): void;
-	/** form.js:1197-1205. */
+	/** form.js:1241-1249. */
 	disable_save(set_dirty?: boolean): void;
-	/** form.js:1206-1213. */
+	/** form.js:1250-1257. */
 	disable_form(): void;
 }
 
@@ -1806,8 +1806,8 @@ export declare class Form {
  * The desk-global "form currently on screen".
  *
  * `window.cur_frm = null` at provide.js:50, set to the active form at
- * form.js:406 (`cur_frm = this;` — a bare assignment to the global), and reset
- * to `null` when leaving a form route (views/pageview.js:106). frappe uses both
+ * form.js:453 (`cur_frm = this;` — a bare assignment to the global), and reset
+ * to `null` when leaving a form route (views/pageview.js:99). frappe uses both
  * `cur_frm` and `window.cur_frm` interchangeably, so the globals module should
  * declare **both** a `var cur_frm` and a `Window["cur_frm"]` member with this
  * type.
@@ -1842,7 +1842,7 @@ export type CurFrm = Form | null;
  *   `controls/table.js`, `controls/multicheck.js`, `controls/image.js`, which
  *   are the six direct subclasses; the other 44 descend through those. This is
  *   also exactly how `make_control` resolves a fieldtype to a class
- *   (`controls/control.js:47`).
+ *   (`controls/control.js:48`).
  * - The remaining members are `unknown`. Their shapes are NOT declared by this
  *   package, and `unknown` says so rather than guessing. This is no worse than
  *   the index signature it replaces — those names resolved to `unknown` under it
@@ -1872,19 +1872,19 @@ export interface FrappeUiFormNamespace {
 	ControlTable: typeof ControlTable;
 	/** layout.js:5. */
 	Layout: typeof Layout;
-	/** form.js:24. */
+	/** form.js:64. */
 	Form: typeof Form;
 	/** form.js:18. */
 	Controller: typeof FormController;
-	/** toolbar.js:7. */
+	/** toolbar.js:8. */
 	Toolbar: typeof Toolbar;
-	/** controls/control.js:47. */
+	/** controls/control.js:48. */
 	make_control: typeof make_control;
 	/**
-	 * grid.js:7-9 — `$(".grid-row-open").data("grid_row")`.
+	 * grid.js:38-40 — `$(".grid-row-open").data("grid_row")`.
 	 * A DOM query, not a registry: the open row is identified purely by the
 	 * `.grid-row-open` class, which makes that class a cross-app contract
-	 * (also read at layout.js:712 and ui/keyboard.js:335).
+	 * (also read at layout.js:714 and ui/keyboard.js:337).
 	 */
 	get_open_grid_form(): GridRow | undefined;
 	/**
@@ -1893,13 +1893,13 @@ export interface FrappeUiFormNamespace {
 	 */
 	close_grid_form(): void;
 	/**
-	 * grid.js:16, grid_row.js:1110/:1182-1195/:1228 — the single row currently in
+	 * grid.js:47, grid_row.js:1034/:1182-1195/:1228 — the single row currently in
 	 * on-grid-editing mode, desk-wide. `null` when none.
 	 */
 	editable_row: GridRow | null;
 	/* -- Control classes, by fieldtype name (`controls/*.js`). All extend
 	 * `frappe.ui.form.Control` = BaseControl; this is the registry
-	 * `make_control` reads (controls/control.js:47). -------------------- */
+	 * `make_control` reads (controls/control.js:48). -------------------- */
 	ControlAttach: typeof BaseControl;
 	ControlAttachImage: typeof BaseControl;
 	ControlAttachmentGallery: typeof BaseControl;
@@ -2042,7 +2042,7 @@ export interface FrappeUiFormNamespace {
  * — which is why they are enumerated rather than left as `string`.
  *
  * The button classes double as `data-action` targets bound by
- * `frappe.utils.bind_actions_with_object(this.wrapper, this)` (grid.js:134).
+ * `frappe.utils.bind_actions_with_object(this.wrapper, this)` (grid.js:178).
  * Because that binds handlers to the **elements**, those buttons keep working
  * after being moved elsewhere in the DOM.
  */
@@ -2088,10 +2088,10 @@ export type GridRowElementClass =
 	| "btn-open-row"
 	| "template-row-index"
 	| "template-row"
-	/** Added by `toggle_editable_row(true)` — grid_row.js:1187. */
+	/** Added by `toggle_editable_row(true)` — grid_row.js:1109. */
 	| "editable-row"
 	/**
-	 * Added by `show_form()` (grid_row.js:1500), removed by `hide_form()`
+	 * Added by `show_form()` (grid_row.js:1405), removed by `hide_form()`
 	 * (:1531). The cross-app "this row is open" contract — see
 	 * {@link FrappeUiFormNamespace.get_open_grid_form}.
 	 */
@@ -2143,7 +2143,7 @@ export type ControlElementClass =
 
 /**
  * Class the `Toolbar` puts on `page.$title_area` when the document can be
- * renamed — toolbar.js:72-75, inside `set_title()`.
+ * renamed — toolbar.js:74-77, inside `set_title()`.
  *
  * Timing matters: it is applied from `frm.refresh() → toolbar.refresh() →
  * set_title()`, which can land **after** the page container becomes visible.

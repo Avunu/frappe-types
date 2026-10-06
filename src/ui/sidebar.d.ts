@@ -30,7 +30,7 @@
  *
  * 2. **The `sidebar_setup` event fires BEFORE the state changes.**
  *    `setup()` triggers `$(document).trigger("sidebar_setup", { sidebar })` at
- *    sidebar.js:283 and only then assigns `sidebar_title` (:284), runs
+ *    sidebar.js:229 and only then assigns `sidebar_title` (:284), runs
  *    `prepare()` (:288) and renders (:291). A handler bound to that event sees
  *    the *previous* workspace. Code that needs the new state hooks
  *    {@link FrappeSidebar.make_sidebar} instead, which is the last step of
@@ -55,7 +55,7 @@ import type { FrappeRouter } from "../utils";
  * `Workspace Sidebar Item.type` —
  * `frappe/desk/doctype/workspace_sidebar_item/workspace_sidebar_item.json`
  * (Select options; default `"Link"`). Rendering picks the class
- * `frappe.ui.sidebar_item.Type<TitleCased>` from it (sidebar.js:573-577).
+ * `frappe.ui.sidebar_item.Type<TitleCased>` from it (sidebar.js:682-686).
  */
 export type FrappeWorkspaceSidebarItemType = "Link" | "Section Break" | "Spacer" | "Sidebar Item Group";
 
@@ -75,7 +75,7 @@ export type FrappeWorkspaceSidebarLinkType = "DocType" | "Page" | "Report" | "Wo
  *
  * `report` is added at boot.py:486-492 only for an enabled, existing Report
  * link. `nested_items` and `parent` are **client-side** additions made by
- * `find_nested_items()` (sidebar.js:264, :270): a `Section Break` row collects
+ * `find_nested_items()` (sidebar.js:214, :220): a `Section Break` row collects
  * the `child` rows that follow it into `nested_items`, and each of those gets
  * `parent`. The nesting is exactly one level deep (:258-277).
  */
@@ -94,7 +94,7 @@ export interface FrappeWorkspaceSidebarItem {
 	child: FrappeCheck;
 	/** boot.py:471 — Section Break only; default `1`. */
 	collapsible: FrappeCheck;
-	/** boot.py:472 — Section Break only: rendered as a collapsible group rather than a labelled divider (sidebar_item.html:10-16). */
+	/** boot.py:472 — Section Break only: rendered as a collapsible group rather than a labelled divider (sidebar_item.html:7-13). */
 	indent: FrappeCheck;
 	/** boot.py:473 — Section Break only. */
 	keep_closed: FrappeCheck;
@@ -110,9 +110,9 @@ export interface FrappeWorkspaceSidebarItem {
 	tab: string | null;
 	/** boot.py:486-492 — only for an existing, enabled Report link. */
 	report?: { report_type: string; ref_doctype: string | null };
-	/** Client-side, sidebar.js:264. Populated on Section Breaks; `[]` elsewhere. */
+	/** Client-side, sidebar.js:214. Populated on Section Breaks; `[]` elsewhere. */
 	nested_items?: FrappeWorkspaceSidebarItem[];
-	/** Client-side, sidebar.js:270. Set on `child` rows only. */
+	/** Client-side, sidebar.js:220. Set on `child` rows only. */
 	parent?: FrappeWorkspaceSidebarItem;
 }
 
@@ -124,7 +124,7 @@ export interface FrappeWorkspaceSidebarItem {
  * user suffix on the client.
  */
 export interface FrappeWorkspaceSidebar {
-	/** boot.py:508 — the sidebar title, **untranslated** (templates apply `__()`; sidebar_header.html:11). */
+	/** boot.py:508 — the sidebar title, **untranslated** (templates apply `__()`; sidebar_header.html:5). */
 	label: string;
 	/** boot.py:509. */
 	items: FrappeWorkspaceSidebarItem[];
@@ -176,7 +176,7 @@ export declare class FrappeSidebarHeader {
 	drop_down_expanded: boolean;
 	/** sidebar_header.js:6 — a copy of `sidebar.sidebar_title` at construction. */
 	title: string | undefined;
-	/** sidebar_header.js:294 — `$(".sidebar-header")`, assigned by `make()`. */
+	/** sidebar_header.js:342 — `$(".sidebar-header")`, assigned by `make()`. */
 	wrapper: JQuery<HTMLElement>;
 	/** sidebar_header.js:295. */
 	dropdown_menu: JQuery<HTMLElement>;
@@ -187,16 +187,16 @@ export declare class FrappeSidebarHeader {
 }
 
 /**
- * `frappe.ui.Sidebar` — `sidebar.js:3`. The single instance is
- * `frappe.app.sidebar` (`frappe/public/js/frappe/desk.js:90`).
+ * `frappe.ui.Sidebar` — `sidebar.js:56`. The single instance is
+ * `frappe.app.sidebar` (`frappe/public/js/frappe/desk.js:91`).
  *
  * `$sidebar` is assigned twice: `make_dom()` sets it to `.sidebar-items`
- * (sidebar.js:372) and the constructor then overwrites it with
+ * (sidebar.js:391) and the constructor then overwrites it with
  * `.body-sidebar` (:20), which is the value every later read sees.
  */
 export declare class FrappeSidebar {
 	/**
-	 * sidebar.js:4-26. The argument is ignored (desk.js:90 passes `{}`).
+	 * sidebar.js:4-26. The argument is ignored (desk.js:91 passes `{}`).
 	 * **Returns early when `!frappe.boot.setup_complete`** (:5-8), leaving
 	 * every field below unassigned.
 	 */
@@ -206,9 +206,9 @@ export declare class FrappeSidebar {
 
 	/** sidebar.js:365-371 — the rendered `sidebar.html` root, `.body-sidebar-container`, prepended to `<body>`. */
 	wrapper?: JQuery<HTMLElement>;
-	/** sidebar.js:20 — `.body-sidebar` (see the class note on the double assignment). */
+	/** sidebar.js:68 — `.body-sidebar` (see the class note on the double assignment). */
 	$sidebar?: JQuery<HTMLElement>;
-	/** sidebar.js:18 — `.sidebar-items`, emptied by `empty()` (:463-467) on every render. */
+	/** sidebar.js:66 — `.sidebar-items`, emptied by `empty()` (:463-467) on every render. */
 	$items_container?: JQuery<HTMLElement>;
 	/** sidebar.js:19 — `.standard-items-sections`, host of the Search / Notification buttons (:503-543). */
 	$standard_items_sections?: JQuery<HTMLElement>;
@@ -223,13 +223,13 @@ export declare class FrappeSidebar {
 	/** sidebar.js:17, :276 — the current sidebar's top-level rows after `find_nested_items()`. */
 	workspace_sidebar_items?: FrappeWorkspaceSidebarItem[];
 	/**
-	 * sidebar.js:21, :566. Every `sidebar_item` object ever created — the
+	 * sidebar.js:69, :675. Every `sidebar_item` object ever created — the
 	 * array is only initialised in the constructor and grows across workspace
 	 * switches, and it also holds the standard Search / Notification buttons.
 	 * Not a tree of the current sidebar; typed opaque for that reason.
 	 */
 	items?: unknown[];
-	/** sidebar.js:24, :542 — `add_standard_items()` runs once per instance. */
+	/** sidebar.js:72, :667 — `add_standard_items()` runs once per instance. */
 	standard_items_setup?: boolean;
 	/** sidebar.js:25, :711 — candidate sidebar titles from the last `resolve_sidebar()`. */
 	preferred_sidebars?: string[];
@@ -278,7 +278,7 @@ export declare class FrappeSidebar {
 	make_sidebar(): void;
 	/** sidebar.js:485-502. */
 	create_sidebar(items: FrappeWorkspaceSidebarItem[] | undefined): void;
-	/** sidebar.js:463-467. */
+	/** sidebar.js:609-613. */
 	empty(): void;
 	/** sidebar.js:347-355 — hides the wrapper on a `hide_sidebar` page, else shows it and re-resolves the route. */
 	refresh(): void;
@@ -287,7 +287,7 @@ export declare class FrappeSidebar {
 
 	// -- width ------------------------------------------------------------------
 
-	/** sidebar.js:582-588 — `open()` / `close()` by current state. Also bound to `Ctrl+/` (:336-340). */
+	/** sidebar.js:709-715 — `open()` / `close()` by current state. Also bound to `Ctrl+/` (:336-340). */
 	toggle_width(): void;
 	/**
 	 * sidebar.js:590-626. Applies `sidebar_expanded` to the DOM, persists it,

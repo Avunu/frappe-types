@@ -93,7 +93,7 @@ export type FrappeChartPresetColor =
  *
  * Deliberately widened to `string`: the accepted set is a runtime regex, and
  * `frappe.utils.make_chart` (`frappe/public/js/frappe/utils/utils.js:1499-1502`)
- * passes the preset name `"light-blue"` while `report_view.js:654` passes a mix
+ * passes the preset name `"light-blue"` while `report_view.js:634` passes a mix
  * of a raw hex and three preset names in one array.
  */
 export type FrappeChartColor = FrappeChartPresetColor | (string & {});
@@ -176,21 +176,21 @@ export type FrappeChartData = FrappeAxisChartData | FrappeHeatmapData;
 
 /** `options.axisOptions` — read once in `AxisChart.configure()` (AxisChart.js:37-47). Ignored by every non-axis chart. */
 export interface FrappeChartAxisOptions {
-	/** Default `'span'` (AxisChart.js:40). frappe passes `"tick"` in `make_chart` (utils.js:1506). */
+	/** Default `'span'` (AxisChart.js:40). frappe passes `"tick"` in `make_chart` (utils.js:1586). */
 	xAxisMode?: "span" | "tick";
 	/** Default `'span'` (AxisChart.js:41). */
 	yAxisMode?: "span" | "tick";
-	/** Truthy = treat x labels as a continuous series when shortening them (AxisChart.js:42, utils/axis-chart-utils.js:100-110). frappe passes the `0 | 1` Dashboard Chart `timeseries` field (chart_widget.js:648). */
+	/** Truthy = treat x labels as a continuous series when shortening them (AxisChart.js:42, utils/axis-chart-utils.js:100-110). frappe passes the `0 | 1` Dashboard Chart `timeseries` field (chart_widget.js:718). */
 	xIsSeries?: number | boolean;
 	/** Truthy = abbreviate y-axis labels; REQUIRED for `numberFormatter` to run (utils/draw.js:327-333). */
 	shortenYAxisNumbers?: number | boolean;
 	/**
 	 * Overrides the built-in `shortenLargeNumber` for y-axis labels.
 	 * Only consulted when `shortenYAxisNumbers` is truthy (utils/draw.js:327-332).
-	 * frappe passes `frappe.utils.format_chart_axis_number` (utils.js:1508).
+	 * frappe passes `frappe.utils.format_chart_axis_number` (utils.js:1588).
 	 */
 	numberFormatter?: (value: number) => string | number;
-	/** Fraction of the per-label slot a series label may occupy; default `SERIES_LABEL_SPACE_RATIO = 0.6` (utils/constants.js:69). frappe raises it to `0.9` past 10 labels (utils.js:1526-1528). */
+	/** Fraction of the per-label slot a series label may occupy; default `SERIES_LABEL_SPACE_RATIO = 0.6` (utils/constants.js:69). frappe raises it to `0.9` past 10 labels (utils.js:1615-1617). */
 	seriesLabelSpaceRatio?: number;
 	/** Clamps the computed y interval range; `utils/intervals.js:85-91` only ever WIDENS the data-derived extremes. Defaults to `{}`. */
 	yAxisRange?: { min?: number; max?: number };
@@ -243,11 +243,11 @@ export interface FrappeChartLineOptions {
  *
  * The index signature is deliberate, not a shrug. Frappe genuinely funnels
  * arbitrary keys through here:
- * - `chart_widget.js:700-708` merges a Dashboard Chart's `custom_options` JSON
+ * - `chart_widget.js:770-778` merges a Dashboard Chart's `custom_options` JSON
  *   blob straight into the args;
- * - `query_report.js:1186-1205` leaves report-only keys (`fieldtype`,
+ * - `query_report.js:1276-1295` leaves report-only keys (`fieldtype`,
  *   `options`) on the same object it hands to the constructor;
- * - `form/dashboard.js:523-530` passes `start` / `count_label` at the TOP level
+ * - `form/dashboard.js:539-546` passes `start` / `count_label` at the TOP level
  *   even though frappe-charts reads `data.start` and `options.countLabel`
  *   (those two are therefore silently ignored — see the group notes).
  *
@@ -307,9 +307,9 @@ export interface FrappeChartOptions {
 	countLabel?: string;
 	/** Default `'Sunday'`; anything other than `'Sunday'`/`'Monday'` falls back to `'Sunday'` (Heatmap.js:25-28). */
 	startSubDomain?: "Sunday" | "Monday";
-	/** Gap between month blocks. Only an explicit `0` disables it (Heatmap.js:35). frappe passes `1` (form/dashboard.js:527). */
+	/** Gap between month blocks. Only an explicit `0` disables it (Heatmap.js:35). frappe passes `1` (form/dashboard.js:543). */
 	discreteDomains?: number | boolean;
-	/** Corner radius of a heatmap square; default `0` (Heatmap.js:105, 182). frappe passes `3` (form/dashboard.js:528). */
+	/** Corner radius of a heatmap square; default `0` (Heatmap.js:105, 182). frappe passes `3` (form/dashboard.js:544). */
 	radius?: number;
 
 	/**
@@ -856,7 +856,7 @@ export declare class FrappeHeatmap extends FrappeBaseChart {
 	 * Heatmap's own update path — one argument only, and it calls `draw()` and
 	 * `bindTooltip()` itself instead of `calc()` + `render()` (Heatmap.js:141-149).
 	 * This is what `frappe.ui.form.Dashboard.update_heatmap` calls
-	 * (`frappe/public/js/frappe/form/dashboard.js:515-519`).
+	 * (`frappe/public/js/frappe/form/dashboard.js:531-535`).
 	 */
 	update(data: FrappeHeatmapData): void;
 	getDomains(startDate: Date, endDate: Date): unknown[];
@@ -905,7 +905,7 @@ export type FrappeChartInstance =
  *    constructor returning a non-object yields `this` per [[Construct]] — so
  *    `new frappe.Chart(el, { type: "nope" })` produces an EMPTY, truthy `Chart`
  *    instance with no `parent`, `colors` or `draw`. (Frappe's own falsy guard
- *    at `frappe/public/js/frappe/form/dashboard.js:619-621` is therefore dead
+ *    at `frappe/public/js/frappe/form/dashboard.js:635-637` is therefore dead
  *    code.) The construct signature below returns {@link FrappeBaseChart}
  *    because TypeScript cannot express "a class whose constructor returns
  *    something else"; treat that as accurate for every valid `type` and as an

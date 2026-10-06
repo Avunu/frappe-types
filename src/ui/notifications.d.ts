@@ -27,34 +27,34 @@
 
 /** notifications.js:202-220 — the base every tab view extends. */
 export interface FrappeNotificationsTab {
-	/** notifications.js:205 — the panel element the view renders into (`el` at :69, :75, :81). */
+	/** notifications.js:249 — the panel element the view renders into (`el` at :69, :75, :81). */
 	wrapper: JQuery<HTMLElement>;
-	/** notifications.js:206 — the `.dropdown-notifications` element (:126). */
+	/** notifications.js:250 — the `.dropdown-notifications` element (:126). */
 	parent: JQuery<HTMLElement>;
-	/** notifications.js:209 — the `<div>` appended to `wrapper` that `show()` / `hide()` toggle. */
+	/** notifications.js:253 — the `<div>` appended to `wrapper` that `show()` / `hide()` toggle. */
 	container: JQuery<HTMLElement>;
-	/** notifications.js:213-215. */
+	/** notifications.js:257-259. */
 	show(): void;
-	/** notifications.js:217-219. */
+	/** notifications.js:261-263. */
 	hide(): void;
 }
 
 /**
  * The `"notifications"` tab — `NotificationsView`, notifications.js:222-460.
- * Reachable only as `frappe.ui.Notifications#tabs.notifications` (:67, :127).
+ * Reachable only as `frappe.ui.Notifications#tabs.notifications` (:151, :186).
  */
 export interface FrappeNotificationsView extends FrappeNotificationsTab {
 	/**
 	 * notifications.js:229-234 — the element that gets `indicator blue`
 	 * toggled by {@link toggle_notification_icon}. Resolved once, in `make()`
-	 * (which the base constructor calls, :210), via
+	 * (which the base constructor calls, :254), via
 	 * `parent.closest(".body-sidebar")`; an **empty** jQuery set — never
 	 * `undefined` — when the dropdown is not inside `.body-sidebar` (the
 	 * optional chain at :232 only guards `closest()` returning nothing, which
 	 * jQuery never does). Writable: re-point it after moving the bell.
 	 */
 	bell_indicator: JQuery<HTMLElement>;
-	/** notifications.js:238, :415 — seeded from `frappe.boot.notification_unread_count`. */
+	/** notifications.js:278, :424 — seeded from `frappe.boot.notification_unread_count`. */
 	unread_count: number;
 	/**
 	 * notifications.js:414-429. Stores `count`, then writes it (`"99+"` past
@@ -74,7 +74,7 @@ export interface FrappeNotificationsView extends FrappeNotificationsTab {
 export declare class FrappeNotifications {
 	/** notifications.js:4-11. `wrapper` defaults to `$(".standard-items-sections")` (:9), found globally. */
 	constructor(opts?: { full_height?: boolean; wrapper?: JQuery<HTMLElement> });
-	/** notifications.js:5, :127 — tab views keyed by category id (:67, :73, :79). */
+	/** notifications.js:5, :186 — tab views keyed by category id (:67, :73, :79). */
 	tabs: {
 		notifications?: FrappeNotificationsView;
 		todays_events?: FrappeNotificationsTab;
@@ -88,7 +88,7 @@ export declare class FrappeNotifications {
 	dropdown: JQuery<HTMLElement>;
 	/** notifications.js:16 — `.notifications-list`. */
 	dropdown_list: JQuery<HTMLElement>;
-	/** notifications.js:24 — `frappe.session.user` at construction. */
+	/** notifications.js:18 — `frappe.session.user` at construction. */
 	user: string | undefined;
 	/** notifications.js:13-28. */
 	make(): void;
