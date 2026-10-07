@@ -50,7 +50,7 @@ Each frappe major lives on its own branch (`version-16`, `version-15`), mirrorin
 
 **It is** the browser-side desk API: `frappe.call`, the `frappe.ui.form.*` class hierarchy, the `frappe.views.*` list/report views, `frappe.model` / `frappe.meta` and the `DocField` / doc shapes, `frappe.utils` / `frappe.dom` / `frappe.router`, `frappe.DataTable`, `frappe.Chart`, the `__()` translator, and ambient declarations for the deep imports desk apps rely on (`import Grid from "frappe/public/js/frappe/form/grid"`).
 
-**It is not** types for frappe's Python API, for [frappe-ui](https://github.com/frappe/frappe-ui), or for the REST/`frappe.client` payload shapes of your own doctypes — generate those from your app's doctype JSON.
+**It is not** types for frappe's Python API, for [frappe-ui](https://github.com/frappe/frappe-ui), or a hand-written model of your own doctypes — generate those from your app's doctype JSON with the bundled [`frappe-types gen-doctypes`](#typing-your-doctypes).
 
 **It is not official.** It is not affiliated with or endorsed by Frappe Technologies. When frappe publishes its own types, use those.
 
@@ -65,6 +65,104 @@ So the rules here are:
 -   **Coverage is measured, not claimed** — see below — and CI ratchets it so it can only go up.
 
 If something you need is missing, that is expected at this stage. [Open an issue](https://github.com/Avunu/frappe-types/issues) with the symbol and how you call it, or send a PR — the contribution bar is "cite the frappe source".
+
+## Typing your DocTypes
+
+The package ships one command, `frappe-types gen-doctypes`. It reads the DocType JSON your app (and, if you ask, its sibling apps) commits, plus the Custom Fields and Property Setters the app ships, and writes one `.d.ts` with an interface per DocType, registered by name in a global `FrappeDocTypes` interface:
+
+```bash
+npx frappe-types gen-doctypes --bench ~/frappe-bench --app my_app --out types/doctypes.d.ts
+npx frappe-types gen-doctypes --bench ~/frappe-bench --app my_app --include-siblings erpnext,hrms --out types/doctypes.d.ts
+```
+
+```ts
+// types/doctypes.d.ts — an excerpt of test/fixtures/gen-doctypes/expected/my_app.d.ts
+import type * as $ft from "frappe-types";
+
+declare global {
+	interface FrappeDocTypes {
+		"Sales Order": SalesOrder;
+		"Sales Order Item": SalesOrderItem;
+	}
+}
+
+export interface SalesOrder extends $ft.FrappeDoc {
+	doctype: "Sales Order";
+	/** Status · Select */
+	status?: "Draft" | "On Hold" | "Completed" | "" | null;
+	/** Date · Date */
+	transaction_date?: string | null;
+	/** Is Return · Check */
+	is_return?: 0 | 1;
+	/** Grand Total · Currency */
+	grand_total?: number;
+	/** Items · Table → Sales Order Item */
+	items: SalesOrderItem[];
+	/** Delivery Run · Link → Delivery Run · Custom Field, my_app/my_app/my_app/custom/sales_order.json */
+	custom_delivery_run?: string | null;
+}
+```
+
+Include the file in the program and index the registry by DocType name. That works the same from TypeScript and from JSDoc in uncompiled desk JS (doctype, list, report and page scripts), because the registry is global:
+
+```jsonc
+// tsconfig.json
+{
+  "compilerOptions": { "types": ["frappe-types/global"], "allowJs": true, "checkJs": true, "noEmit": true, "strict": true },
+  "include": ["types/doctypes.d.ts", "my_app/public/js/**/*.js", "my_app/**/doctype/**/*.js"]
+}
+```
+
+```js
+/** @param {FrappeDocTypes["Sales Order"]} doc */
+function billable(doc) {
+	return doc.items.filter((row) => (row.qty ?? 0) > 0); // row: SalesOrderItem
+}
+```
+
+The per-DocType interfaces are also exported, for `import type { SalesOrder } from "./types/doctypes"`.
+
+| option | |
+| --- | --- |
+| `--bench` | a bench (the folder holding `apps/`) or an apps directory |
+| `--app` | the app to type: its DocTypes, and the customisations it ships |
+| `--include-siblings` | more apps to type in full and take customisations from, comma-separated |
+| `--out` | write here instead of stdout |
+| `--check` | write nothing; exit 1 if `--out` is missing or differs (for CI) |
+| `--strict` | exit 1 if anything had to be typed loosely (see below) |
+| `--quiet` | do not print warnings |
+
+**What it reads** is what `bench migrate` reads, found the same way: the modules in `<app>/modules.txt`, every `<module>/doctype/<name>/<name>.json` in them, Custom Fields and Property Setters from `<module>/custom/*.json`, and `Custom Field` / `Property Setter` records in `<app>/fixtures/*.json`. A DocType the app customises, or a child DocType any emitted DocType's table names, is pulled in from whichever app on the bench defines it, so `--app my_app` alone types `custom_*` fields on erpnext's Customer without typing all of erpnext.
+
+**How fields are typed.** Each rule is checked against the pinned frappe's own lists by `test/gen-doctypes.test.mjs`, which runs in CI, so a frappe release that adds or reclassifies a fieldtype fails the build instead of being typed wrong. Citations for each rule are in the header of [`bin/gen-doctypes.mjs`](bin/gen-doctypes.mjs).
+
+| fieldtype | type | why |
+| --- | --- | --- |
+| Section/Column/Tab Break, HTML, Button, Image, Fold, Heading, Attachment Gallery | not emitted | `no_value_fields`: no column, no value |
+| Table, Table MultiSelect | `Child[]`, required | initialised to `[]` on a new doc and on load |
+| Check | `0 \| 1` | a tinyint, coerced to 0/1 on save |
+| Int, Float, Currency, Percent | `number` | NOT NULL columns (`NOT_NULL_TYPES`) |
+| Long Int, Rating, Duration | `number \| null` | nullable numeric columns |
+| Select | `"A" \| "B" \| ""` (+ `\| null`) | the options after Property Setters; `""` skips validation. `naming_series` and option-less Selects are `string` |
+| JSON | `unknown` | a string from MariaDB, a parsed value from Postgres |
+| everything else (Data, Link, Date, Datetime, Text, ...) | `string \| null` | varchar/text/date columns |
+
+Every value field is optional (`?:`): a doc created in the browser carries only the fields that had a default. `null` is dropped only where the column is NOT NULL (the numeric types above, or a field with `not_nullable`). That is stricter than frappe's own Python type exporter, which also drops it for `reqd` fields: `reqd` is enforced on save, not by the column, so old rows and `ignore_mandatory` inserts still read back NULL. Each interface extends `FrappeDoc` (`ChildDoc` for child DocTypes), so `name`, `owner`, `creation`, `modified`, `docstatus`, `idx` and, on rows, `parent`/`parenttype`/`parentfield` come from this package, and the registry fits anything that takes a `FrappeDoc`.
+
+**Limits.**
+
+- **Customisations made in the database** (Customize Form, a Custom Field created in the UI) are in no file and cannot be seen. They fall through to `FrappeDoc`'s index signature and read as `unknown`, which compiles but must be narrowed. Export them as fixtures to type them.
+- **`autoname: autoincrement`** DocTypes have a numeric `name` on the wire; `FrappeDoc` types it `string`. The interface's doc comment says so.
+- **One generated file per program.** Two files that both register `"Customer"` with different custom fields will conflict. Generate once for the app, with its siblings.
+- **Loose spots are warnings**: a fieldtype the generator does not know (typed `unknown`), a table whose child DocType is on no app on the bench (typed `ChildDoc[]`), a Custom Field on a DocType nothing defines (its custom fields only). `--strict` turns them into a non-zero exit.
+
+Keep the file in version control and check it in CI so it cannot drift from the JSON:
+
+```bash
+npx frappe-types gen-doctypes --bench ../.. --app my_app --out types/doctypes.d.ts --check
+```
+
+The output is deterministic (sorted, no timestamps, no absolute paths), so `--check` is a byte comparison. The command is plain JavaScript with no dependencies, so it runs from `node_modules` with the node you already have (node refuses to strip TypeScript types under `node_modules`, which rules out shipping it as `.ts`); its JSDoc is type-checked by `tsconfig.bin.json` as part of `npm run check`.
 
 ## Maintaining it across frappe versions
 
@@ -82,7 +180,7 @@ nix develop -c npm run coverage -- --update-baseline
 
 Before the pin, the audit went looking for a checkout: `../frappe` is tried before the bench, so on a machine that also has a `develop` clone it silently measured the v16 typeset against frappe 17.0.0-dev and reported a three-path "regression" that did not exist. Outside Nix the scripts still resolve a checkout and still take `--frappe`/`FRAPPE_PATH`, and they now refuse a cross-major one outright rather than reporting it as a regression — see `--cross-major` under _Upgrading to a new frappe major_. Inside `nix develop`, `FRAPPE_PATH` is already the pin, so the question does not arise.
 
-`nix flake check` runs four checks, each its own derivation so a failure names itself:
+`nix flake check` runs six checks, each its own derivation so a failure names itself:
 
 | check | asserts |
 | --- | --- |
@@ -90,6 +188,8 @@ Before the pin, the audit went looking for a checkout: `../frappe` is tried befo
 | coverage | the ratchet against the pinned frappe |
 | frappe-major | the package major is the frappe major |
 | verified-against | package.json's frappe.verifiedAgainst matches the pin |
+| unit | `npm run test:unit`, including the doctype generator's rules against the pinned frappe |
+| drift | `audit:drift --strict` against the pinned frappe and drift-baseline.json (below) |
 
 `nix build` produces the tarball npm would publish — the cheapest way to check that `files` still ships the right set and nothing else. It is not how a release is published: `publish.yml` runs `npm publish` so that OIDC trusted publishing and the provenance attestation apply.
 
@@ -112,13 +212,13 @@ node scripts/audit-drift.mjs --at v16.33.1 --update-baseline   # re-record the b
 
 Exit status is 0 unless `--strict` is given and there is drift: a surface that differs from the baseline, or a cited file that is gone. Line anchors that now read differently are reported and never fail a run — after a few hundred frappe commits most of them will, and that list is the triage queue, not a gate. Two limits are worth knowing before trusting a clean run: only citations written as a full `frappe/<path>` are checked (a relative `grid.js:412` takes its base from prose in the file's header, so it is counted as "not checked" and never guessed at), and only the `@import`s written directly in each entry file are compared, not what `./desk/index` pulls in.
 
-To make drift a CI signal rather than something to remember, add a check next to the other four in `flake.nix`, against the pinned tree. The flake's frappe input has no git history, so this compares with the baseline — which is what the baseline is for:
+Drift is a CI signal, not something to remember: `checks.drift` in `flake.nix` runs it against the pinned tree with `--strict`. The flake's frappe input has no git history, so this compares with the baseline — which is what the baseline is for — and it needs nothing beyond the pin and the repository, so it is deterministic and offline:
 
 ```nix
 drift = mkCheck "drift" "node scripts/audit-drift.mjs --frappe ${frappe} --strict";
 ```
 
-That is a recommendation; `flake.nix` and the workflows are unchanged in this repository. Expect it to go red whenever the pin moves past something that mattered, and to stay red until the affected frappe files have been re-read, `frappe.verifiedAgainst` bumped and the baseline re-recorded. The unit tests for the extractors (`npm run test:unit`, also part of `npm test`) need no frappe checkout; the ones that build a throwaway git repository skip themselves when `git` is not on `PATH` (the flake's checks provide only `nodejs` and the npm config hook).
+Expect it to go red whenever the pin moves past something that mattered — typically a dependabot bump of the `frappe` input — and to stay red until the affected frappe files have been re-read, `frappe.verifiedAgainst` bumped and the baseline re-recorded, all in that same pull request. The unit tests (`npm run test:unit`, also part of `npm test`, and `checks.unit`) need no frappe checkout; the generator's tests against frappe itself run when `FRAPPE_PATH` names one of this branch's major (the flake sets it to the pin), and the ones that build a throwaway git repository skip themselves when `git` is not on `PATH` (the flake's checks provide only `nodejs` and the npm config hook).
 
 **Can the citations be moved rather than re-read?** Mostly. Between two tags most cited lines did not change, they only moved: frappe inserted lines above them. `scripts/remap-citations.mjs` asks `git diff -U0` what became of each cited line and separates the two cases exactly. A line no hunk touches is the same text at a computable number, and the tool re-reads both blobs to check that before it reports the mapping as exact. A line inside a hunk was modified or deleted; the tool gives it no number, and lists it with its old text and, labelled as guesses, the nearest lines of the new file.
 
@@ -184,6 +284,7 @@ The dist-tag is derived at publish time from the version and the registry's curr
 -   `npm run check` must pass with `skipLibCheck: false`. A typeset that needs `skipLibCheck` isn't one.
 -   Classes that consumers subclass or prototype-patch must be `declare class`, not `interface` — `extends` and `super()` need a real class declaration.
 -   Frappe uses `0 | 1` for booleans on doc fields. Model it that way where the source does.
+-   The `frappe-types` command lives in `bin/` and ships as plain JavaScript with JSDoc types and no dependencies, because node will not strip TypeScript types under `node_modules`. `npm run check` type-checks it through `tsconfig.bin.json`; its fieldtype rules cite frappe in the file header and are tested against the pinned frappe (`test/gen-doctypes.test.mjs`).
 -   Commit subjects are [conventional commits](https://www.conventionalcommits.org/) — they are the changelog and they choose the version. Never `!` or `BREAKING CHANGE:`: see [Releasing](#releasing).
 
 ## License
