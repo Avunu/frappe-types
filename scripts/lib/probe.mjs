@@ -10,6 +10,7 @@
 // path the checker rejected. A path is "covered" iff tsc accepts reading it.
 
 import { execFile } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -65,6 +66,49 @@ function assertedPath(p) {
 }
 
 /**
+ * The package's own entry points, from package.json `exports`: `[subpath, target]`
+ * pairs such as `["global", "src/global.d.ts"]`, with `""` for the root entry.
+ */
+function typeEntries() {
+	const pkg = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8"));
+	const entries = [];
+	for (const [key, value] of Object.entries(pkg.exports ?? {})) {
+		const target = typeof value === "object" && value !== null ? value.types : undefined;
+		if (typeof target !== "string") continue;
+		entries.push([key === "." ? "" : key.replace(/^\.\//, ""), target.replace(/^\.\//, "")]);
+	}
+	return entries;
+}
+
+/**
+ * Makes `/// <reference types="frappe-types/…" />` in an app's type file resolve
+ * to this checkout too.
+ *
+ * `compilerOptions.paths` maps import specifiers only; TypeScript does not apply
+ * it to triple-slash type references. Those resolve through `typeRoots` first and
+ * then up the `node_modules` of the file that holds them, which for an app's
+ * types is the app's own installed frappe-types: a second copy of every
+ * declaration next to ../src, or nothing at all when the app has none
+ * installed. So the probe gets a type root of its own, holding a `frappe-types`
+ * shim per entry in package.json `exports` that points at the file under src/.
+ * A type root is searched before any `node_modules`, so the app's copy is never
+ * reached.
+ *
+ * @returns {Promise<string>} the type root, relative to PROBE_DIR
+ */
+async function writeTypeRoot() {
+	const pkgDir = path.join(PROBE_DIR, "types", "frappe-types");
+	await mkdir(pkgDir, { recursive: true });
+	for (const [sub, target] of typeEntries()) {
+		const shim = path.join(pkgDir, `${sub || "index"}.d.ts`);
+		await mkdir(path.dirname(shim), { recursive: true });
+		const ref = path.relative(path.dirname(shim), path.join(ROOT, target)).split(path.sep).join("/");
+		await writeFile(shim, `/// <reference path="${ref}" />\n`);
+	}
+	return "./types";
+}
+
+/**
  * @param {string[]} paths dotted API paths, e.g. ["frappe.call", "frappe.ui.form.Grid"]
  * @param {{ untyped?: boolean, extraTypes?: string[] }} [opts]
  *   `untyped`: also report the covered paths whose declared type is `unknown`
@@ -94,6 +138,7 @@ export async function probePaths(paths, { untyped = false, extraTypes = [] } = {
 		body += "\n" + paths.map((p, i) => `const __probe_u${i}: "typed" = __probe_known(${assertedPath(p)});`).join("\n");
 	}
 	await writeFile(path.join(PROBE_DIR, "probe.ts"), header + body + "\n");
+	const typeRoot = await writeTypeRoot();
 
 	await writeFile(
 		path.join(PROBE_DIR, "tsconfig.json"),
@@ -106,6 +151,9 @@ export async function probePaths(paths, { untyped = false, extraTypes = [] } = {
 					// An app's own declarations import the package by name. Point that
 					// name at this checkout, not at whatever version the app installed.
 					paths: { "frappe-types": ["../src/index.d.ts"], "frappe-types/*": ["../src/*"] },
+					// ...and `/// <reference types="frappe-types/…" />` too (writeTypeRoot).
+					// @types stays a root so `types: ["jquery"]` resolves as before.
+					typeRoots: [typeRoot, "../node_modules/@types"],
 				},
 				include: ["../src/**/*.d.ts", "probe.ts", ...extraTypes],
 			},
