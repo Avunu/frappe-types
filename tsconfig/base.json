@@ -1,0 +1,42 @@
+{
+	// frappe-types/tsconfig/base.json: the strict preset for TypeScript that
+	// targets the frappe desk and is compiled by something other than tsc
+	// (frappe's esbuild, Vite, Node's type stripping). tsc only checks.
+	//
+	//   { "extends": "frappe-types/tsconfig/base.json",
+	//     "compilerOptions": { "types": ["frappe-types/global"] },
+	//     "include": ["myapp/public/js/**/*.ts"] }
+	//
+	// `types` is left to the consumer: a browser bundle wants
+	// "frappe-types/global", a build script wants "node". `include` has to be
+	// the consumer's too, because paths in an extended config resolve against
+	// the config that declares them.
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"compilerOptions": {
+		"target": "ES2022",
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"moduleDetection": "force",
+		"noEmit": true,
+
+		// The bundlers erase types one file at a time, without type information.
+		// These reject the syntax that kind of erasure gets wrong: enums,
+		// runtime namespaces, parameter properties, and imports that are
+		// ambiguous between a type and a value.
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"erasableSyntaxOnly": true,
+
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"exactOptionalPropertyTypes": true,
+		"noImplicitOverride": true,
+		"noFallthroughCasesInSwitch": true,
+
+		// frappe-types is authored to check with this off. Turning it on would
+		// hide errors in the declarations your code depends on.
+		"skipLibCheck": false,
+		"forceConsistentCasingInFileNames": true
+	}
+}

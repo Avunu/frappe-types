@@ -1,0 +1,27 @@
+{
+	// frappe-types/tsconfig/desk-js.json: type-checks the plain JavaScript a
+	// frappe app ships uncompiled: doctype scripts (`<doctype>.js`), list and
+	// tree settings (`<doctype>_list.js`), query report scripts, page scripts
+	// and `doctype_js` overrides. Annotate with JSDoc:
+	//
+	//   /** @type {frappe.ui.form.FormEvents<"Customer">} */
+	//
+	//   { "extends": "frappe-types/tsconfig/desk-js.json",
+	//     "include": ["myapp/**/doctype/**/*.js", "myapp/**/report/**/*.js", "types/**/*.d.ts"] }
+	//
+	// frappe evaluates each of these files in its own function scope: a doctype
+	// script through `new Function(client_script)()`
+	// (frappe/public/js/frappe/form/script_manager.js:190), a report script
+	// through `frappe.dom.eval` (frappe/public/js/frappe/views/reports/query_report.js:508,
+	// frappe/public/js/frappe/dom.js:28-31), which does the same. So
+	// `moduleDetection: "force"` from the base preset is right here as well: one
+	// file's top-level names are not visible in another.
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"extends": "./base.json",
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": true,
+		"noEmit": true,
+		"types": ["frappe-types/global"]
+	}
+}

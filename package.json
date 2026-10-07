@@ -36,10 +36,12 @@
     "./deep-modules": {
       "types": "./src/deep-modules.d.ts"
     },
+    "./tsconfig/*": "./tsconfig/*",
     "./package.json": "./package.json"
   },
   "files": [
     "src",
+    "tsconfig",
     "README.md",
     "CHANGELOG.md",
     "DRIFT.md",
