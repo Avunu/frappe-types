@@ -1,10 +1,10 @@
-// Unit tests for bin/gen-doctypes.mjs (`frappe-types gen-doctypes`).
+// Unit tests for bin/gen-registry.mjs (`frappe-types gen-registry`).
 //
 // Three layers:
-//   - the fixture bench in test/fixtures/gen-doctypes/apps against a golden file
+//   - the fixture bench in test/fixtures/gen-registry/apps against a golden file
 //     (regenerate with `UPDATE_GOLDEN=1 npm run test:unit` and review the diff);
 //   - the golden file compiled with tsc under the options consumers use. What consumer
-//     code can and cannot do with it is asserted by test/types/gen-doctypes, which
+//     code can and cannot do with it is asserted by test/types/gen-registry, which
 //     scripts/test-types.mjs generates with the PACKED command and compiles against the
 //     packed package (`npm run test:types`, checks.types);
 //   - the generator's fieldtype rules against a frappe source tree — the pinned one in
@@ -21,12 +21,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, test } from "node:test";
 import { promisify } from "node:util";
-import { FIELDTYPES, fieldType, generate, interfaceName, ruleOf, scrub, selectUnion } from "../bin/gen-doctypes.mjs";
+import { FIELDTYPES, fieldType, generate, interfaceName, ruleOf, scrub, selectUnion } from "../bin/gen-registry.mjs";
 import { resolveFrappe } from "../scripts/lib/resolve-frappe.mjs";
 
 const execFileAsync = promisify(execFile);
 const ROOT = path.resolve(import.meta.dirname, "..");
-const FIXTURES = path.join(ROOT, "test", "fixtures", "gen-doctypes");
+const FIXTURES = path.join(ROOT, "test", "fixtures", "gen-registry");
 const APPS = path.join(FIXTURES, "apps");
 const GOLDEN = path.join(FIXTURES, "expected", "my_app.d.ts");
 const CLI = path.join(ROOT, "bin", "frappe-types.mjs");
@@ -208,9 +208,9 @@ describe("fixture bench", () => {
 		}
 	});
 
-	test("test/types/gen-doctypes generates from this fixture bench", () => {
+	test("test/types/gen-registry generates from this fixture bench", () => {
 		// scripts/test-types.mjs reads this file; keep it pointing at the bench above.
-		const spec = JSON.parse(readFileSync(path.join(ROOT, "test", "types", "gen-doctypes", "gen-doctypes.json"), "utf8"));
+		const spec = JSON.parse(readFileSync(path.join(ROOT, "test", "types", "gen-registry", "gen-registry.json"), "utf8"));
 		assert.equal(path.resolve(ROOT, spec.bench), APPS);
 		assert.equal(spec.app, "my_app");
 	});
@@ -219,7 +219,7 @@ describe("fixture bench", () => {
 describe("field typing", () => {
 	/** @type {string[]} */
 	const warnings = [];
-	/** @param {Partial<import("../bin/gen-doctypes.mjs").FieldSpec>} f */
+	/** @param {Partial<import("../bin/gen-registry.mjs").FieldSpec>} f */
 	const type = (f) =>
 		fieldType({ fieldname: "f", fieldtype: "Data", options: undefined, label: undefined, notNullable: false, customFrom: null, ...f }, (c) => interfaceName(c), warnings, "test");
 
@@ -274,7 +274,7 @@ describe("field typing", () => {
 
 describe("CLI", () => {
 	test("writes to stdout without --out", () => {
-		const r = cli(["gen-doctypes", "--bench", APPS, "--app", "my_app", "--quiet"]);
+		const r = cli(["gen-registry", "--bench", APPS, "--app", "my_app", "--quiet"]);
 		assert.equal(r.status, 0, r.stderr);
 		assert.equal(r.stdout, readFileSync(GOLDEN, "utf8"));
 		assert.equal(r.stderr, "");
@@ -284,7 +284,7 @@ describe("CLI", () => {
 		const bench = mkdtempSync(path.join(tmpdir(), "ft-gen-bench-"));
 		try {
 			symlinkSync(APPS, path.join(bench, "apps"), "dir");
-			const r = cli(["gen-doctypes", "--bench", bench, "--app", "my_app", "--quiet"]);
+			const r = cli(["gen-registry", "--bench", bench, "--app", "my_app", "--quiet"]);
 			assert.equal(r.status, 0, r.stderr);
 			assert.equal(r.stdout, readFileSync(GOLDEN, "utf8"));
 		} finally {
@@ -296,25 +296,25 @@ describe("CLI", () => {
 		const dir = mkdtempSync(path.join(tmpdir(), "ft-gen-out-"));
 		const out = path.join(dir, "types", "doctypes.d.ts");
 		try {
-			let r = cli(["gen-doctypes", "--bench", APPS, "--app", "my_app", "--check", "--out", out]);
+			let r = cli(["gen-registry", "--bench", APPS, "--app", "my_app", "--check", "--out", out]);
 			assert.equal(r.status, 1, "a missing file is out of date");
 			assert.match(r.stderr, /is missing/);
 
-			r = cli(["gen-doctypes", "--bench", APPS, "--app", "my_app", "--out", out]);
+			r = cli(["gen-registry", "--bench", APPS, "--app", "my_app", "--out", out]);
 			assert.equal(r.status, 0, r.stderr);
 			assert.equal(readFileSync(out, "utf8"), readFileSync(GOLDEN, "utf8"));
 			assert.match(r.stderr, /warning: .*Fancy Widget/);
 			assert.match(r.stderr, /wrote .* \(7 DocTypes\)/);
 
-			r = cli(["gen-doctypes", "--bench", APPS, "--app", "my_app", "--check", "--out", out, "--quiet"]);
+			r = cli(["gen-registry", "--bench", APPS, "--app", "my_app", "--check", "--out", out, "--quiet"]);
 			assert.equal(r.status, 0, r.stderr);
 
 			writeFileSync(out, "// stale\n");
-			r = cli(["gen-doctypes", "--bench", APPS, "--app", "my_app", "--check", "--out", out, "--quiet"]);
+			r = cli(["gen-registry", "--bench", APPS, "--app", "my_app", "--check", "--out", out, "--quiet"]);
 			assert.equal(r.status, 1);
 			assert.match(r.stderr, /out of date/);
 
-			r = cli(["gen-doctypes", "--bench", APPS, "--app", "my_app", "--out", out, "--strict"]);
+			r = cli(["gen-registry", "--bench", APPS, "--app", "my_app", "--out", out, "--strict"]);
 			assert.equal(r.status, 1);
 			assert.match(r.stderr, /--strict: 3 warning\(s\)/);
 		} finally {
@@ -323,16 +323,16 @@ describe("CLI", () => {
 	});
 
 	test("usage errors exit 2", () => {
-		assert.equal(cli(["gen-doctypes", "--app", "my_app"]).status, 2);
-		assert.equal(cli(["gen-doctypes", "--bench", APPS, "--app", "my_app", "--bogus"]).status, 2);
-		assert.equal(cli(["gen-doctypes", "--bench", APPS, "--app", "my_app", "--check"]).status, 2);
-		assert.equal(cli(["gen-doctypes", "--bench", APPS, "--app", "nope"]).status, 2);
+		assert.equal(cli(["gen-registry", "--app", "my_app"]).status, 2);
+		assert.equal(cli(["gen-registry", "--bench", APPS, "--app", "my_app", "--bogus"]).status, 2);
+		assert.equal(cli(["gen-registry", "--bench", APPS, "--app", "my_app", "--check"]).status, 2);
+		assert.equal(cli(["gen-registry", "--bench", APPS, "--app", "nope"]).status, 2);
 		assert.equal(cli(["no-such-command"]).status, 2);
 	});
 
 	test("--help and --version", () => {
-		assert.match(cli(["--help"]).stdout, /gen-doctypes/);
-		assert.match(cli(["gen-doctypes", "--help"]).stdout, /--include-siblings/);
+		assert.match(cli(["--help"]).stdout, /gen-registry/);
+		assert.match(cli(["gen-registry", "--help"]).stdout, /--include-siblings/);
 		const pkg = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8"));
 		assert.equal(cli(["--version"]).stdout.trim(), pkg.version);
 	});

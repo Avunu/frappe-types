@@ -16,7 +16,7 @@
 // the scratch tree links the repo's own `node_modules/@types` so they resolve
 // the way an install would place them. Nothing is fetched.
 //
-// A project with a `gen-doctypes.json` first runs the PACKED `frappe-types` command —
+// A project with a `gen-registry.json` first runs the PACKED `frappe-types` command —
 // the `bin` entry of the copied package.json, from the copied files — to write its
 // doctypes file (one run per entry, when the file holds an array), so the generator
 // is tested as a consumer runs it: shipped by `files`, started through `bin`, and its
@@ -109,7 +109,7 @@ try {
 		mkdirSync(path.dirname(dest), { recursive: true });
 		cpSync(path.join(ROOT, rel), dest);
 	}
-	for (const required of ["tsconfig/base.json", "tsconfig/desk-js.json", "src/web.d.ts", "bin/frappe-types.mjs", "bin/gen-doctypes.mjs"]) {
+	for (const required of ["tsconfig/base.json", "tsconfig/desk-js.json", "src/web.d.ts", "bin/frappe-types.mjs", "bin/gen-registry.mjs"]) {
 		if (!files.includes(required)) {
 			console.error(`npm pack would not ship ${required}; check "files" in package.json`);
 			failed++;
@@ -120,7 +120,7 @@ try {
 	for (const name of projects) {
 		const dir = path.join(scratch, name);
 		cpSync(path.join(FIXTURES, name), dir, { recursive: true });
-		const gen = path.join(dir, "gen-doctypes.json");
+		const gen = path.join(dir, "gen-registry.json");
 		if (existsSync(gen)) {
 			// One run, or an array of runs (several generated files in one program).
 			const parsed = JSON.parse(readFileSync(gen, "utf8"));
@@ -130,12 +130,12 @@ try {
 				const res = typeof bin === "string" && existsSync(path.join(pkgDir, bin))
 					? spawnSync(
 							process.execPath,
-							[path.join(pkgDir, bin), "gen-doctypes", "--bench", path.resolve(ROOT, spec.bench), "--app", spec.app, "--out", path.join(dir, spec.out), "--quiet"],
+							[path.join(pkgDir, bin), "gen-registry", "--bench", path.resolve(ROOT, spec.bench), "--app", spec.app, "--out", path.join(dir, spec.out), "--quiet"],
 							{ cwd: dir, encoding: "utf8" },
 						)
 					: null;
 				if (!res || res.status !== 0) {
-					console.log(`FAIL ${name}: the packed \`frappe-types gen-doctypes\` did not run (--app ${spec.app})`);
+					console.log(`FAIL ${name}: the packed \`frappe-types gen-registry\` did not run (--app ${spec.app})`);
 					console.log(`${res ? `${res.stdout}${res.stderr}` : `package.json bin "frappe-types" is ${JSON.stringify(bin)}, which the pack does not ship`}`.trim().replace(/^/gm, "     "));
 					ran = false;
 					break;

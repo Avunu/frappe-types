@@ -13,13 +13,13 @@ publish it: the script copies the packed file list into a scratch
 | `desk-js-empty/` | `desk-js.json`, no registry | an app that registers no doctypes: `Form<"Customer">` is accepted wherever the plain `Form` is, and `set_value` keeps its open 16.4 signature |
 | `web/` | `desk-js.json` + `types: ["frappe-types/web"]` | web form client scripts |
 | `module/` | `base.json`, no `types` entry | the module entry alone: named types, the shared registry, and no `frappe` global |
-| `gen-doctypes/` | `base.json` + `types: ["frappe-types/global"]`; `gen-doctypes.json` | the PACKED `frappe-types gen-doctypes` runs (through `bin`, from the packed files) on `test/fixtures/gen-doctypes/apps`, and compiled TypeScript uses its output: closed documents, nullable numbers, Select unions, `FrappeChildRow` tables, `parenttype` from every parent, augmenting `FrappeDocTypeFields` for database-only fields |
-| `gen-doctypes-desk-js/` | `desk-js.json`; `gen-doctypes.json` | the same generated file from JSDoc-checked desk scripts, including child-table events on the parent form |
-| `gen-doctypes-two-apps/` | `base.json` + `types: ["frappe-types/global"]`; `gen-doctypes.json` with two runs | two apps' generated files in one program: both register the same DocType, each with its own Custom Field, and the fields merge |
+| `gen-registry/` | `base.json` + `types: ["frappe-types/global"]`; `gen-registry.json` | the PACKED `frappe-types gen-registry` runs (through `bin`, from the packed files) on `test/fixtures/gen-registry/apps`, and compiled TypeScript uses its output: closed documents, nullable numbers, Select unions, `FrappeChildRow` tables, `parenttype` from every parent, augmenting `FrappeDocTypeFields` for database-only fields |
+| `gen-registry-desk-js/` | `desk-js.json`; `gen-registry.json` | the same generated file from JSDoc-checked desk scripts, including child-table events on the parent form |
+| `gen-registry-two-apps/` | `base.json` + `types: ["frappe-types/global"]`; `gen-registry.json` with two runs | two apps' generated files in one program: both register the same DocType, each with its own Custom Field, and the fields merge |
 
 Every project runs under each compiler in `COMPILERS` (`scripts/test-types.mjs`): the repo's own TypeScript and TypeScript 5.8 (the aliased devDependency `typescript-5.8`), the oldest release the README supports. TypeScript 5.x measures generic variance differently from 7, so a declaration can pass on one and not the other. `--tsc=5.8` or `--tsc=current` runs just one.
 
-A project with a `gen-doctypes.json` gets its generated file written by the packed command before it is compiled (one run per entry when the file holds an array); the output is not committed.
+A project with a `gen-registry.json` gets its generated file written by the packed command before it is compiled (one run per entry when the file holds an array); the output is not committed.
 
 A project passes when `tsc -p` exits 0 under every compiler. Negative cases are written inline with
 `// @ts-expect-error`, so each one fails the run if the error it expects stops

@@ -1,5 +1,5 @@
 // Uncompiled desk JS under the desk-js preset, against the output of
-// `frappe-types gen-doctypes` (./doctypes.d.ts, written by scripts/test-types.mjs).
+// `frappe-types gen-registry` (./doctypes.d.ts, written by scripts/test-types.mjs).
 
 frappe.ui.form.on("Sales Order", {
 	refresh(frm) {

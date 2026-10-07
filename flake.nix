@@ -120,17 +120,17 @@
           # as surely as too-strict ones (scripts/test-types.mjs). Each project runs
           # under the repo's TypeScript and under 5.8, the oldest release the README
           # supports (the `typescript-5.8` alias in package-lock.json, fetched by
-          # importNpmLock like every other dependency). The gen-doctypes projects first
-          # run the PACKED `frappe-types gen-doctypes` (from the copied files, through
-          # package.json `bin`) against test/fixtures/gen-doctypes/apps, so a `files`
-          # list that drops bin/gen-doctypes.mjs fails here too.
+          # importNpmLock like every other dependency). The gen-registry projects first
+          # run the PACKED `frappe-types gen-registry` (from the copied files, through
+          # package.json `bin`) against test/fixtures/gen-registry/apps, so a `files`
+          # list that drops bin/gen-registry.mjs fails here too.
           types = mkCheck "types" "npm run test:types";
 
           # The package major must be the frappe major (scripts/check-frappe-major.mjs).
           frappe-major = mkCheck "frappe-major" "npm run check:major";
 
           # The script unit tests, including the doctype generator's. With FRAPPE_PATH set
-          # (mkCheck sets it to the pin), test/gen-doctypes.test.mjs also checks the
+          # (mkCheck sets it to the pin), test/gen-registry.test.mjs also checks the
           # generator's fieldtype rules against the pinned frappe's own lists, and
           # generates and compiles frappe's DocTypes. Because FRAPPE_PATH is set, a pin
           # that is not a usable frappe tree of this major FAILS that layer instead of

@@ -1,4 +1,4 @@
-// The output of `frappe-types gen-doctypes` for test/fixtures/gen-doctypes/apps
+// The output of `frappe-types gen-registry` for test/fixtures/gen-registry/apps
 // (written to ./doctypes.d.ts by scripts/test-types.mjs, with the packed command),
 // used from compiled TypeScript under the base preset.
 // Its first registry entry, "Delivery Run", has FrappeChildRow fields: the shape that
