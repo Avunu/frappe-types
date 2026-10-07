@@ -16,6 +16,12 @@
 // the scratch tree links the repo's own `node_modules/@types` so they resolve
 // the way an install would place them. Nothing is fetched.
 //
+// A project with a `gen-doctypes.json` first runs the PACKED `frappe-types` command —
+// the `bin` entry of the copied package.json, from the copied files — to write its
+// doctypes file, so the generator is tested as a consumer runs it: shipped by `files`,
+// started through `bin`, and its output compiled against `frappe-types` resolved
+// through `node_modules` and the `exports` map, with no path alias.
+//
 // Every project must exit 0. Negative cases live inside the fixtures as
 // `// @ts-expect-error`, which tsc reports when the expected error does not
 // occur — so this one exit code covers both directions.
@@ -34,7 +40,7 @@
 //   node scripts/test-types.mjs --tsc=5.8  # just one compiler (by COMPILERS key)
 
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -102,7 +108,7 @@ try {
 		mkdirSync(path.dirname(dest), { recursive: true });
 		cpSync(path.join(ROOT, rel), dest);
 	}
-	for (const required of ["tsconfig/base.json", "tsconfig/desk-js.json", "src/web.d.ts"]) {
+	for (const required of ["tsconfig/base.json", "tsconfig/desk-js.json", "src/web.d.ts", "bin/frappe-types.mjs", "bin/gen-doctypes.mjs"]) {
 		if (!files.includes(required)) {
 			console.error(`npm pack would not ship ${required}; check "files" in package.json`);
 			failed++;
@@ -113,6 +119,24 @@ try {
 	for (const name of projects) {
 		const dir = path.join(scratch, name);
 		cpSync(path.join(FIXTURES, name), dir, { recursive: true });
+		const gen = path.join(dir, "gen-doctypes.json");
+		if (existsSync(gen)) {
+			const spec = JSON.parse(readFileSync(gen, "utf8"));
+			const bin = JSON.parse(readFileSync(path.join(pkgDir, "package.json"), "utf8")).bin?.["frappe-types"];
+			const res = typeof bin === "string" && existsSync(path.join(pkgDir, bin))
+				? spawnSync(
+						process.execPath,
+						[path.join(pkgDir, bin), "gen-doctypes", "--bench", path.resolve(ROOT, spec.bench), "--app", spec.app, "--out", path.join(dir, spec.out), "--quiet"],
+						{ cwd: dir, encoding: "utf8" },
+					)
+				: null;
+			if (!res || res.status !== 0) {
+				failed++;
+				console.log(`FAIL ${name}: the packed \`frappe-types gen-doctypes\` did not run`);
+				console.log(`${res ? `${res.stdout}${res.stderr}` : `package.json bin "frappe-types" is ${JSON.stringify(bin)}, which the pack does not ship`}`.trim().replace(/^/gm, "     "));
+				continue;
+			}
+		}
 		for (const [label, tsc] of compilers) {
 			const version = execFileSync(process.execPath, [tsc, "-v"], { encoding: "utf8" }).trim().replace(/^Version /, "");
 			const res = spawnSync(process.execPath, [tsc, "-p", path.join(dir, "tsconfig.json"), "--pretty", "false"], {

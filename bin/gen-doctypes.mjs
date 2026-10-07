@@ -28,25 +28,53 @@
 // and any child DocType a `Table` field names, are looked up across every app in the
 // bench when they are not among those, so `--app myapp` alone types `frm.doc.custom_x`
 // on erpnext's Customer. Customisations made in the database (Customize Form) are not in
-// any file and cannot be seen; the open index signature every interface inherits from
-// `FrappeDoc` is where they land, typed `unknown`.
+// any file and cannot be seen; a registered document is closed, so code that reads one
+// has to add it (see the README, "Generating the registry").
+//
+// WHICH CUSTOMISATION WINS when two set the same thing: the one frappe syncs last. Apps
+// are taken in install order — the `--include-siblings` apps as listed, then the target
+// app, which depends on them — and within that, frappe's own sequence:
+//   1. `custom/*.json` WITHOUT `sync_on_migrate`: synced only when its app is installed
+//      (frappe/installer.py:381-382; frappe/modules/utils.py:125-145, :143-144);
+//   2. `fixtures/*.json`: re-imported for every installed app on every migrate
+//      (frappe/migrate.py:177-179; frappe/utils/fixtures.py:16-28, sorted by file name
+//      at :37);
+//   3. `custom/*.json` WITH `sync_on_migrate`: re-synced for every installed app after
+//      the fixtures (frappe/migrate.py:187-188; frappe/modules/utils.py:141-142).
+// A later Property Setter replaces an earlier one for the same DocType, field and
+// property (frappe/custom/doctype/property_setter/property_setter.py:42-43), and a later
+// Custom Field updates the earlier one with the same name
+// (frappe/modules/utils.py:168-178).
 //
 // HOW A FIELD IS TYPED — every rule below is checked against the pinned frappe source by
-// test/gen-doctypes.test.mjs ("classification agrees with frappe"), so a frappe release
-// that adds or reclassifies a fieldtype fails CI instead of silently typing it wrong.
+// test/gen-doctypes.test.mjs ("against frappe"), so a frappe release that adds or
+// reclassifies a fieldtype fails CI instead of silently typing it wrong.
 //
 //   no value     `no_value_fields` minus `table_fields` (frappe/model/__init__.py:53-65,
 //                :101) have no column and no value; they are not emitted.
-//   tables       `Table` / `Table MultiSelect` (:101) are `Child[]`, and REQUIRED: the
-//                client initialises every table field to `[]` on a new doc
+//   tables       `Table` / `Table MultiSelect` (:101) are `FrappeChildRow<Child>[]`, and
+//                REQUIRED: the client initialises every table field to `[]` on a new doc
 //                (frappe/public/js/frappe/model/create_new.js:227-229) and the server
 //                does the same on load (frappe/model/base_document.py:588-601).
 //   values       everything in `data_fieldtypes` (frappe/model/__init__.py:8-43), OPTIONAL
 //                (`?:`): a doc created in the browser has only the fields that had a
 //                default (create_new.js:82-116).
-//   null         a column is NOT NULL only for `NOT_NULL_TYPES`
-//                (frappe/database/schema.py:182, :226-227) or a field with `not_nullable`
-//                (:242-247); everything else can read back `null` and is typed `| null`.
+//   null         These types describe `frm.doc` in the browser as well as a row read
+//                from the database, so a field drops `| null` only when NEITHER can hold
+//                null. The database: a column is NOT NULL only for `NOT_NULL_TYPES`
+//                (frappe/database/schema.py:182, :226-227) or a field with
+//                `not_nullable` (:242-247). The browser: the numeric controls write null
+//                into the doc when the input is cleared — ControlInt.parse is
+//                `cint(..., null)` (frappe/public/js/frappe/form/controls/int.js:23-24,
+//                Long Int is the same class at :28), ControlFloat.parse returns null for
+//                NaN (form/controls/float.js:3-5), and Currency, Percent and Rating
+//                extend ControlFloat without overriding it (currency.js:1, percent.js:1,
+//                rating.js:1) — and frappe.model.set_value stores the value as is
+//                (frappe/public/js/frappe/model/model.js:561) until the server
+//                coerces it on save (frappe/model/base_document.py:551-561). So Int,
+//                Long Int, Float, Currency, Percent and Rating keep `| null` although
+//                most of their columns are NOT NULL. Check does not: its control always
+//                runs `cint(value)` with no null default (form/controls/check.js:32-33).
 //                This is stricter than frappe's own Python exporter
 //                (frappe/types/exporter.py:175-184), which also drops `None` for `reqd`
 //                fields and for Select/Rating/Long Int (:41-52). `reqd` is enforced on
@@ -65,20 +93,36 @@
 //                                         (frappe/model/base_document.py:1106). `string`
 //                                         for `naming_series` (also skipped there) and for
 //                                         a Select with no options (exporter.py:198-200).
+//                                         The union is what a SAVE accepts, not what the
+//                                         column can hold: `_validate_selects` returns
+//                                         early under `frappe.flags.in_import`
+//                                         (base_document.py:1102-1103), which the Data
+//                                         Import tool sets for every row
+//                                         (frappe/core/doctype/data_import/importer.py:122),
+//                                         `db_set` and `frappe.db.set_value` do not
+//                                         validate at all, and rows saved before an
+//                                         options change keep their old value. Kept as a
+//                                         closed union anyway — it is what every value
+//                                         the app writes must be — and documented as such.
 //   JSON                        unknown   a string from MariaDB (mariadb/database.py:209),
 //                                         a parsed value from Postgres, whose `json`
 //                                         column (postgres/database.py:167) psycopg2 decodes
 //   everything else             string    Data, Link, Date, Datetime, Time, Text, ... —
 //                                         varchar/text/date columns, all strings on the wire
 //
-// WHAT IS EMITTED: one module. Each DocType is an `export interface` named the way frappe
-// names its controller class — spaces and hyphens removed (frappe/model/base_document.py:113)
-// — extending `FrappeDoc` (or `ChildDoc` for `istable`), so the standard fields (name,
-// owner, creation, modified, modified_by, docstatus, idx, and parent/parenttype/
-// parentfield on child rows; frappe/model/__init__.py:84-96) come from frappe-types rather
-// than being re-declared. A `declare global { interface FrappeDocTypes { ... } }` block
-// registers each one under its DocType name. Output is byte-for-byte deterministic: no
-// timestamps, no absolute paths, everything sorted.
+// WHAT IS EMITTED: one module, written against the `FrappeDocTypes` registry contract
+// (src/registry.d.ts). Each DocType is an `export interface` named the way frappe names
+// its controller class — spaces and hyphens removed (frappe/model/base_document.py:113) —
+// that lists the DocType's DATA fields and nothing else: no index signature and no
+// standard fields, which `DocOf` / `RegisteredDoc` (src/model.d.ts) add, so a registered
+// document is closed and a misspelt fieldname is a compile error. A child DocType's
+// interface declares `parenttype` as the literal names of every DocType on the bench with
+// a Table of it, which is how `FormEvents<"Child">` finds the parent form. A
+// `declare global { interface FrappeDocTypes { ... } }` block registers each one under
+// its DocType name. A program holds ONE such file: two that register the same DocType
+// are conflicting declarations of one property (TS2717); type several apps with one
+// `--include-siblings` run. Output is byte-for-byte deterministic: no timestamps, no
+// absolute paths, everything sorted.
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
@@ -94,7 +138,10 @@ import path from "node:path";
  * (frappe/core/doctype/docfield/docfield.json). The test suite asserts that equality
  * against the pinned frappe tree.
  *
- * @typedef {{ kind: "none" } | { kind: "table" } | { kind: "value", ts: string, notNull: boolean }} FieldtypeRule
+ * `notNull`: the column is NOT NULL (`NOT_NULL_TYPES`). `clientNull`: the desk control
+ * writes `null` into `frm.doc` when its input is cleared (see "null" in the header).
+ *
+ * @typedef {{ kind: "none" } | { kind: "table" } | { kind: "value", ts: string, notNull: boolean, clientNull: boolean }} FieldtypeRule
  * @type {Readonly<Record<string, FieldtypeRule>>}
  */
 export const FIELDTYPES = Object.freeze({
@@ -114,49 +161,56 @@ export const FIELDTYPES = Object.freeze({
 	"Table MultiSelect": { kind: "table" },
 
 	// data_fieldtypes — frappe/model/__init__.py:8-43. `notNull` is NOT_NULL_TYPES,
-	// frappe/database/schema.py:182.
-	Currency: { kind: "value", ts: "number", notNull: true },
-	Int: { kind: "value", ts: "number", notNull: true },
-	"Long Int": { kind: "value", ts: "number", notNull: false },
-	Float: { kind: "value", ts: "number", notNull: true },
-	Percent: { kind: "value", ts: "number", notNull: true },
-	Check: { kind: "value", ts: "0 | 1", notNull: true },
-	"Small Text": { kind: "value", ts: "string", notNull: false },
-	"Long Text": { kind: "value", ts: "string", notNull: false },
-	Code: { kind: "value", ts: "string", notNull: false },
-	"Text Editor": { kind: "value", ts: "string", notNull: false },
-	"Markdown Editor": { kind: "value", ts: "string", notNull: false },
-	"HTML Editor": { kind: "value", ts: "string", notNull: false },
-	Date: { kind: "value", ts: "string", notNull: false },
-	Datetime: { kind: "value", ts: "string", notNull: false },
-	Time: { kind: "value", ts: "string", notNull: false },
-	Text: { kind: "value", ts: "string", notNull: false },
-	Data: { kind: "value", ts: "string", notNull: false },
-	Link: { kind: "value", ts: "string", notNull: false },
-	"Dynamic Link": { kind: "value", ts: "string", notNull: false },
-	Password: { kind: "value", ts: "string", notNull: false },
+	// frappe/database/schema.py:182. `clientNull` is ControlInt / ControlFloat's
+	// null-returning parse (frappe/public/js/frappe/form/controls/int.js:23-24, :28,
+	// float.js:3-5) and the controls that inherit it unchanged (currency.js:1,
+	// percent.js:1, rating.js:1).
+	Currency: { kind: "value", ts: "number", notNull: true, clientNull: true },
+	Int: { kind: "value", ts: "number", notNull: true, clientNull: true },
+	"Long Int": { kind: "value", ts: "number", notNull: false, clientNull: true },
+	Float: { kind: "value", ts: "number", notNull: true, clientNull: true },
+	Percent: { kind: "value", ts: "number", notNull: true, clientNull: true },
+	Check: { kind: "value", ts: "0 | 1", notNull: true, clientNull: false },
+	"Small Text": { kind: "value", ts: "string", notNull: false, clientNull: false },
+	"Long Text": { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Code: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	"Text Editor": { kind: "value", ts: "string", notNull: false, clientNull: false },
+	"Markdown Editor": { kind: "value", ts: "string", notNull: false, clientNull: false },
+	"HTML Editor": { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Date: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Datetime: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Time: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Text: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Data: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Link: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	"Dynamic Link": { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Password: { kind: "value", ts: "string", notNull: false, clientNull: false },
 	// `ts` is the fallback; a Select with options is typed as their union.
-	Select: { kind: "value", ts: "string", notNull: false },
-	Rating: { kind: "value", ts: "number", notNull: false },
-	"Read Only": { kind: "value", ts: "string", notNull: false },
-	Attach: { kind: "value", ts: "string", notNull: false },
-	"Attach Image": { kind: "value", ts: "string", notNull: false },
-	Signature: { kind: "value", ts: "string", notNull: false },
-	Color: { kind: "value", ts: "string", notNull: false },
-	Barcode: { kind: "value", ts: "string", notNull: false },
-	Geolocation: { kind: "value", ts: "string", notNull: false },
-	Duration: { kind: "value", ts: "number", notNull: false },
-	Icon: { kind: "value", ts: "string", notNull: false },
-	Phone: { kind: "value", ts: "string", notNull: false },
-	Autocomplete: { kind: "value", ts: "string", notNull: false },
+	Select: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Rating: { kind: "value", ts: "number", notNull: false, clientNull: true },
+	"Read Only": { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Attach: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	"Attach Image": { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Signature: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Color: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Barcode: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Geolocation: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Duration: { kind: "value", ts: "number", notNull: false, clientNull: false },
+	Icon: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Phone: { kind: "value", ts: "string", notNull: false, clientNull: false },
+	Autocomplete: { kind: "value", ts: "string", notNull: false, clientNull: false },
 	// `unknown` already admits null.
-	JSON: { kind: "value", ts: "unknown", notNull: false },
+	JSON: { kind: "value", ts: "unknown", notNull: false, clientNull: false },
 });
 
 /**
- * Members `FrappeDocBase` / `ChildDoc` (src/model.d.ts) already declare. A DocType field
- * with one of these names (frappe's own Communication declares `_user_tags`, Web Page
- * `idx`) is left to the base type: re-declaring it with `| null` would conflict with it.
+ * The standard fields: `name` and the named members of `FrappeDocFields`
+ * (src/model.d.ts), which `RegisteredDoc` adds to every registered document. A DocType
+ * field with one of these names (frappe's own Communication declares `_user_tags`, Web
+ * Page `idx`) is left to that declaration rather than redeclared with `| null`; they are
+ * never settable through `frm.set_value` either (`FormFieldName` excludes them).
+ * `__*` client flags are skipped by prefix. A child entry's `parenttype` and a Single's
+ * `name` are emitted on purpose, as literals.
  */
 const BASE_MEMBERS = new Set([
 	"doctype",
@@ -175,7 +229,6 @@ const BASE_MEMBERS = new Set([
 	"_assign",
 	"_liked_by",
 	"localname",
-	"_sortable",
 ]);
 
 /* -------------------------------------------------------------------------- */
@@ -222,13 +275,30 @@ const BASE_MEMBERS = new Set([
  * @property {string} property
  * @property {string} value
  * @property {string} from
+ * @property {SyncPhase} phase
+ */
+
+/**
+ * When frappe syncs a customisation file, in the order it does (see "WHICH CUSTOMISATION
+ * WINS" in the header): 0 = a `custom/` file without `sync_on_migrate`, applied only at
+ * install; 1 = `fixtures/`; 2 = a `custom/` file with `sync_on_migrate`.
+ * @typedef {0 | 1 | 2} SyncPhase
+ */
+
+/**
+ * @typedef {object} CustomField
+ * @property {string} dt
+ * @property {RawField} field
+ * @property {string} from
+ * @property {SyncPhase} phase
  */
 
 /**
  * @typedef {object} GenerateOptions
  * @property {string} appsDir directory holding one folder per app (a bench's `apps/`)
  * @property {string} app the app whose DocTypes are emitted
- * @property {string[]} [siblings] further apps whose DocTypes and customisations are emitted
+ * @property {string[]} [siblings] further apps whose DocTypes and customisations are
+ *   emitted, in the order they are installed (the target app is taken as installed last)
  */
 
 /**
@@ -374,23 +444,28 @@ class AppReader {
 	 * @param {string} app
 	 */
 	customisations(app) {
-		/** @type {{ dt: string, field: RawField, from: string }[]} */
+		/** @type {CustomField[]} */
 		const fields = [];
 		/** @type {PropertySetter[]} */
 		const setters = [];
-		/** @param {unknown} record @param {string} from */
-		const take = (record, from, kind = str(isRecord(record) ? record.doctype : undefined)) => {
+		/**
+		 * @param {unknown} record
+		 * @param {string} from
+		 * @param {SyncPhase} phase
+		 * @param {string | undefined} [kind]
+		 */
+		const take = (record, from, phase, kind = str(isRecord(record) ? record.doctype : undefined)) => {
 			if (!isRecord(record)) return;
 			if (kind === "Custom Field") {
 				const dt = str(record.dt);
 				const field = toRawField(record);
-				if (dt && field) fields.push({ dt, field, from });
+				if (dt && field) fields.push({ dt, field, from, phase });
 			} else if (kind === "Property Setter") {
 				const doc_type = str(record.doc_type);
 				const field_name = str(record.field_name);
 				const property = str(record.property);
 				const value = record.value == null ? "" : String(record.value);
-				if (doc_type && field_name && property) setters.push({ doc_type, field_name, property, value, from });
+				if (doc_type && field_name && property) setters.push({ doc_type, field_name, property, value, from, phase });
 			}
 		};
 		/** @param {string} dir @param {(file: string, data: unknown) => void} each */
@@ -409,12 +484,14 @@ class AppReader {
 		for (const { dir } of moduleDirs(this.appsDir, app)) {
 			readFolder(path.join(this.appsDir, app, app, dir, "custom"), (from, data) => {
 				if (!isRecord(data)) return;
-				for (const r of Array.isArray(data.custom_fields) ? data.custom_fields : []) take(r, from, "Custom Field");
-				for (const r of Array.isArray(data.property_setters) ? data.property_setters : []) take(r, from, "Property Setter");
+				// frappe/modules/utils.py:141-144
+				const phase = flag(data.sync_on_migrate) ? 2 : 0;
+				for (const r of Array.isArray(data.custom_fields) ? data.custom_fields : []) take(r, from, phase, "Custom Field");
+				for (const r of Array.isArray(data.property_setters) ? data.property_setters : []) take(r, from, phase, "Property Setter");
 			});
 		}
 		readFolder(path.join(this.appsDir, app, app, "fixtures"), (from, data) => {
-			for (const r of Array.isArray(data) ? data : []) take(r, from);
+			for (const r of Array.isArray(data) ? data : []) take(r, from, 1);
 		});
 		return { fields, setters };
 	}
@@ -530,12 +607,12 @@ export function selectUnion(options) {
 
 /**
  * @param {FieldSpec} field
- * @param {(child: string) => string} childType
+ * @param {(child: string) => string} rowType the type of one row of a child DocType
  * @param {string[]} warnings
  * @param {string} where
  * @returns {{ type: string, optional: boolean } | null} null: the fieldtype has no value
  */
-export function fieldType(field, childType, warnings, where) {
+export function fieldType(field, rowType, warnings, where) {
 	const rule = ruleOf(field.fieldtype);
 	if (!rule) {
 		warnings.push(`${where}: unknown fieldtype "${field.fieldtype}" for ${field.fieldname}; typed unknown`);
@@ -545,18 +622,22 @@ export function fieldType(field, childType, warnings, where) {
 	if (rule.kind === "table") {
 		const child = (field.options ?? "").trim();
 		if (child === "") {
-			warnings.push(`${where}: ${field.fieldtype} field ${field.fieldname} names no child DocType; typed $ft.ChildDoc[]`);
-			return { type: "$ft.ChildDoc[]", optional: false };
+			warnings.push(`${where}: ${field.fieldtype} field ${field.fieldname} names no child DocType; typed ${UNKNOWN_ROW}[]`);
+			return { type: `${UNKNOWN_ROW}[]`, optional: false };
 		}
-		return { type: `${childType(child)}[]`, optional: false };
+		return { type: `${rowType(child)}[]`, optional: false };
 	}
 	let type = rule.ts;
 	if (field.fieldtype === "Select" && field.fieldname !== "naming_series" && (field.options ?? "").trim() !== "") {
 		type = selectUnion(field.options ?? "");
 	}
-	if (!rule.notNull && !field.notNullable && type !== "unknown") type += " | null";
+	const nullable = rule.clientNull || (!rule.notNull && !field.notNullable);
+	if (nullable && type !== "unknown") type += " | null";
 	return { type, optional: true };
 }
+
+/** The row type of a table whose child DocType is on no app of the bench. */
+const UNKNOWN_ROW = "$ft.ChildDoc";
 
 /**
  * Read the apps and render the module.
@@ -567,13 +648,16 @@ export function generate({ appsDir, app, siblings = [] }) {
 	const reader = new AppReader(appsDir);
 	const warnings = reader.warnings;
 	const allApps = listApps(appsDir);
-	const primary = [app, ...siblings.filter((s) => s !== app)];
-	for (const a of primary) {
+	const others = siblings.filter((s, i) => s !== app && siblings.indexOf(s) === i);
+	for (const a of [app, ...others]) {
 		if (!allApps.includes(a)) throw new Error(`no app "${a}" in ${appsDir} (looked for ${a}/${a}/modules.txt)`);
 	}
-	// Lookup order for a DocType that is referenced but not emitted by name: the requested
-	// apps first, then the rest of the bench alphabetically.
-	const searchOrder = [...primary, ...allApps.filter((a) => !primary.includes(a))];
+	// Install order, which decides which customisation frappe applies last: the siblings
+	// as listed, then the target app, which is installed on top of them.
+	const installed = [...others, app];
+	// Lookup order for a DocType that is referenced but not emitted by name: the target
+	// app, the siblings, then the rest of the bench alphabetically.
+	const searchOrder = [app, ...others, ...allApps.filter((a) => a !== app && !others.includes(a))];
 
 	/** @type {Map<string, DocTypeSpec>} */
 	const emitted = new Map();
@@ -604,16 +688,22 @@ export function generate({ appsDir, app, siblings = [] }) {
 		return true;
 	};
 
-	for (const a of primary) for (const spec of reader.doctypes(a).values()) emit(spec);
+	for (const a of [app, ...others]) for (const spec of reader.doctypes(a).values()) emit(spec);
 
-	/** @type {{ dt: string, field: RawField, from: string }[]} */
+	// Every customisation, in the order frappe syncs them; the last one to touch a thing wins.
+	/** @type {CustomField[]} */
 	const customFields = [];
 	/** @type {PropertySetter[]} */
 	const setters = [];
-	for (const a of primary) {
-		const c = reader.customisations(a);
-		customFields.push(...c.fields);
-		setters.push(...c.setters);
+	/** @type {Set<string>} */
+	const customisedBy = new Set();
+	for (const phase of [0, 1, 2]) {
+		for (const a of installed) {
+			const c = reader.customisations(a);
+			customFields.push(...c.fields.filter((f) => f.phase === phase));
+			setters.push(...c.setters.filter((ps) => ps.phase === phase));
+			if (c.fields.length > 0 || c.setters.length > 0) customisedBy.add(a);
+		}
 	}
 
 	// Custom Fields are appended to their DocType, pulling it in from wherever it lives.
@@ -626,11 +716,11 @@ export function generate({ appsDir, app, siblings = [] }) {
 		}
 		const spec = emitted.get(dt);
 		if (!spec) continue;
-		if (spec.fields.some((f) => f.fieldname === field.fieldname)) {
-			warnings.push(`${from}: Custom Field ${dt}.${field.fieldname} duplicates an existing field; keeping the first`);
-			continue;
-		}
-		spec.fields.push(toFieldSpec(field, from));
+		const at = spec.fields.findIndex((f) => f.fieldname === field.fieldname);
+		if (at === -1) spec.fields.push(toFieldSpec(field, from));
+		// A later Custom Field of the same name updates the earlier one (frappe/modules/utils.py:168-178).
+		else if (spec.fields[at]?.customFrom) spec.fields[at] = toFieldSpec(field, from);
+		else warnings.push(`${from}: Custom Field ${dt}.${field.fieldname} duplicates a standard field; keeping the standard one`);
 	}
 
 	// Property Setters on `options`, `fieldtype` and `not_nullable` change the field they
@@ -653,10 +743,39 @@ export function generate({ appsDir, app, siblings = [] }) {
 				if (ensure(child, `a child table of ${spec.name}.${f.fieldname}`)) grew = true;
 				else {
 					missing.push(child);
-					warnings.push(`${spec.file || spec.name}: ${spec.name}.${f.fieldname} is a table of "${child}", which no app on this bench defines; typed $ft.ChildDoc[]`);
+					warnings.push(`${spec.file || spec.name}: ${spec.name}.${f.fieldname} is a table of "${child}", which no app on this bench defines; typed ${UNKNOWN_ROW}[]`);
 				}
 			}
 		}
+	}
+
+	// The parents of each child DocType: every DocType on the bench with a Table of it — the
+	// emitted ones as customised, the rest as their JSON declares them. The whole bench, not
+	// just what is emitted: a handler registered on a child DocType runs on the form of ANY
+	// parent (frappe/public/js/frappe/form/script_manager.js:109), so a parent left out
+	// would be a wrong type, while one that is not installed only widens the union.
+	// Reading apps that are not otherwise needed must not add warnings, so theirs are dropped.
+	/** @type {Map<string, Set<string>>} */
+	const parents = new Map();
+	{
+		const before = warnings.length;
+		/** @type {Set<string>} */
+		const seen = new Set();
+		/** @param {DocTypeSpec} spec */
+		const scan = (spec) => {
+			if (seen.has(spec.name)) return;
+			seen.add(spec.name);
+			for (const f of spec.fields) {
+				const child = (f.options ?? "").trim();
+				if (ruleOf(f.fieldtype)?.kind !== "table" || child === "") continue;
+				const set = parents.get(child) ?? new Set();
+				set.add(spec.name);
+				parents.set(child, set);
+			}
+		};
+		for (const spec of emitted.values()) scan(spec);
+		for (const a of searchOrder) for (const spec of reader.doctypes(a).values()) scan(spec);
+		warnings.length = before;
 	}
 
 	/** @type {Map<string, string>} */
@@ -677,21 +796,31 @@ export function generate({ appsDir, app, siblings = [] }) {
 	const ordered = [...emitted.values()].sort((a, b) => cmp(a.name, b.name));
 	for (const spec of ordered) nameOf(spec.name);
 	/** @param {string} child */
-	const childType = (child) => (emitted.has(child) ? nameOf(child) : "$ft.ChildDoc");
+	const rowType = (child) => (emitted.has(child) ? `FrappeChildRow<${JSON.stringify(child)}>` : UNKNOWN_ROW);
+	const sources = [...new Set(ordered.map((spec) => spec.app).filter((a) => a !== ""))].sort(cmp);
 
 	const lines = [
 		"// Generated by `frappe-types gen-doctypes`. Do not edit; re-run the generator.",
-		`//   --app ${app}${siblings.length ? ` --include-siblings ${siblings.join(",")}` : ""}`,
+		`//   --app ${app}${others.length ? ` --include-siblings ${others.join(",")}` : ""}`,
+		`//   DocType JSON read from: ${sources.join(", ") || "(none)"}`,
+		`//   customisations read from: ${installed.filter((a) => customisedBy.has(a)).join(", ") || "(none)"}`,
 		"//",
-		"// Each interface is one DocType as its JSON files declare it, plus the Custom Fields",
-		"// and Property Setters the apps above ship. Fields added in the database (Customize",
-		"// Form) are not in any file; they fall through to FrappeDoc's index signature as",
-		"// `unknown`. See the frappe-types README, \"Typing your DocTypes\".",
+		"// Each interface lists one DocType's data fields as its JSON files declare them, plus",
+		"// the Custom Fields and Property Setters of the apps above. `DocOf<DocType>` adds the",
+		"// standard fields. Fields added in the database (Customize Form) are in no file and",
+		"// so are not here: a registered document is closed, so add any your code reads by",
+		"// augmenting this module. A program holds ONE generated file. See the frappe-types",
+		'// README, "Generating the registry".',
 		"",
+		// Also puts frappe-types, and with it the registry and FrappeChildRow, in the program.
 		'import type * as $ft from "frappe-types";',
 		"",
 		"declare global {",
-		"\t/** DocType name -> document shape. Augmented by every generated doctypes file. */",
+		"\t/**",
+		"\t * DocType name -> its data fields. One generated file per program: a second file that",
+		"\t * registers the same DocType is a conflicting declaration (TS2717). Type several apps",
+		"\t * with one `--include-siblings` run instead.",
+		"\t */",
 		"\tinterface FrappeDocTypes {",
 		...ordered.map((spec) => `\t\t${JSON.stringify(spec.name)}: ${nameOf(spec.name)};`),
 		"\t}",
@@ -706,22 +835,29 @@ export function generate({ appsDir, app, siblings = [] }) {
 		if (why) doc.push(`Included because it is ${why}.`);
 		if (spec.issingle) doc.push("Single: its one document is named after the DocType.");
 		if (spec.autoname === "autoincrement") {
-			doc.push("`autoname: autoincrement`: the server sends `name` as a number (frappe/model/naming.py:161-162), though `FrappeDoc` types it string.");
+			doc.push("`autoname: autoincrement`: the server sends `name` as a number (frappe/model/naming.py:161-162), though the registry types it string.");
 		}
 		lines.push("/**", ...doc.map((d) => ` * ${commentText(d)}`), " */");
-		const base = spec.istable ? "$ft.ChildDoc" : "$ft.FrappeDoc";
-		lines.push(`export interface ${nameOf(spec.name)} extends ${base} {`);
-		lines.push(`\tdoctype: ${JSON.stringify(spec.name)};`);
+		lines.push(`export interface ${nameOf(spec.name)} {`);
 		if (spec.issingle) lines.push(`\tname: ${JSON.stringify(spec.name)};`);
+		if (spec.istable) {
+			const of = [...(parents.get(spec.name) ?? [])].sort(cmp);
+			lines.push(
+				of.length > 0
+					? `\t/** The DocTypes on this bench with a Table of ${commentText(spec.name)}: the forms its events run on. */`
+					: `\t/** No DocType on this bench has a Table of ${commentText(spec.name)}. */`,
+			);
+			lines.push(`\tparenttype: ${of.length > 0 ? of.map((p) => JSON.stringify(p)).join(" | ") : "string"};`);
+		}
 		const seen = new Set();
 		for (const f of spec.fields) {
 			if (seen.has(f.fieldname)) continue;
 			seen.add(f.fieldname);
 			const where = f.customFrom ?? (spec.file || spec.name);
-			const t = fieldType(f, childType, warnings, where);
+			const t = fieldType(f, rowType, warnings, where);
 			if (!t) continue;
 			if (BASE_MEMBERS.has(f.fieldname) || f.fieldname.startsWith("__")) {
-				lines.push(`\t// ${f.fieldname} (${commentText(f.fieldtype)}) — typed by ${base}`);
+				lines.push(`\t// ${f.fieldname} (${commentText(f.fieldtype)}) — a standard field, typed by frappe-types`);
 				continue;
 			}
 			const label = f.label ? `${commentText(f.label)} · ` : "";

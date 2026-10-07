@@ -3,16 +3,20 @@
 // Three layers:
 //   - the fixture bench in test/fixtures/gen-doctypes/apps against a golden file
 //     (regenerate with `UPDATE_GOLDEN=1 npm run test:unit` and review the diff);
-//   - the golden file compiled with tsc under the options consumers use, together with
-//     consumer code whose `@ts-expect-error`s assert what must NOT compile;
+//   - the golden file compiled with tsc under the options consumers use. What consumer
+//     code can and cannot do with it is asserted by test/types/gen-doctypes, which
+//     scripts/test-types.mjs generates with the PACKED command and compiles against the
+//     packed package (`npm run test:types`, checks.types);
 //   - the generator's fieldtype rules against a frappe source tree — the pinned one in
 //     `nix flake check`, where FRAPPE_PATH is set — so a frappe release that adds or
 //     reclassifies a fieldtype fails here instead of being typed wrong.
-// The last layer skips itself when no frappe checkout of this branch's major is found.
+// The last layer skips itself when no frappe checkout of this branch's major is found,
+// unless FRAPPE_PATH is set: then that path must BE one, or the layer fails. A typo'd or
+// cross-major FRAPPE_PATH in CI is a red build, not a silently skipped check.
 
 import assert from "node:assert/strict";
 import { execFile, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, test } from "node:test";
@@ -117,20 +121,59 @@ describe("fixture bench", () => {
 		assert.doesNotMatch(both.text, /Ghost|Unrelated/);
 		// Customisations still apply.
 		assert.match(both.text, /custom_priority\?: "Low" \| "High" \| "" \| null;/);
+		assert.match(both.text, /^\/\/   customisations read from: base_app, my_app$/m);
+	});
+
+	test("customisations apply in the order frappe syncs them, so the last one synced wins", () => {
+		const alone = generate({ appsDir: APPS, app: "my_app" }).text;
+		const both = generate({ appsDir: APPS, app: "my_app", siblings: ["base_app"] }).text;
+		// Both apps' custom/sales_order.json have sync_on_migrate. They are synced after
+		// every fixture, in install order, and the target app is installed after its
+		// siblings: my_app's options for status, and its custom_priority, win over base_app's.
+		for (const text of [alone, both]) {
+			assert.match(text, /\tstatus\?: "Draft" \| "On Hold" \| "Completed" \| "" \| null;/);
+			assert.match(text, /\tcustom_priority\?: "Low" \| "High" \| "" \| null;/);
+		}
+		assert.doesNotMatch(both, /BaseOnly|Priority \(base_app\)/);
+		// my_app's FIXTURE makes customer not_nullable; base_app's sync_on_migrate custom
+		// file, synced after all fixtures, sets it back. Only when base_app is requested.
+		assert.match(alone, /\tcustomer\?: string;/);
+		assert.match(both, /\tcustomer\?: string \| null;/);
+		// my_app's custom/selling_settings.json has no sync_on_migrate, so frappe applied it
+		// only when my_app was installed; base_app's fixture is re-imported on every
+		// migrate and overrides it, although base_app was installed first.
+		assert.match(alone, /\tso_required\?: "No" \| "Yes" \| "Only On Install" \| "" \| null;/);
+		assert.match(both, /\tso_required\?: "Never" \| "Always" \| "" \| null;/);
+	});
+
+	test("a child DocType's parenttype names every DocType on the bench with a Table of it", () => {
+		// Sales Order Item is pulled in through Delivery Run.lines; Sales Order (base_app,
+		// customised) has a Table of it too.
+		assert.match(result.text, /export interface SalesOrderItem \{\n\t\/\*\*[^\n]*\*\/\n\tparenttype: "Delivery Run" \| "Sales Order";/);
+		assert.match(result.text, /export interface SalesOrderTag \{\n\t\/\*\*[^\n]*\*\/\n\tparenttype: "Sales Order";/);
+		// Entries list data fields only: no base interface, no index signature, no doctype.
+		assert.doesNotMatch(result.text, / extends |\[fieldname: string\]|\tdoctype: /);
+		assert.match(result.text, /\titems: FrappeChildRow<"Sales Order Item">\[\];/);
+	});
+
+	test("the header names the apps the output depends on", () => {
+		assert.match(result.text, /^\/\/   DocType JSON read from: base_app, my_app$/m);
+		assert.match(result.text, /^\/\/   customisations read from: my_app$/m);
 	});
 
 	test("an app that is not on the bench is an error", () => {
 		assert.throws(() => generate({ appsDir: APPS, app: "nope" }), /no app "nope"/);
 	});
 
-	test("the golden file compiles under strict consumer options, and rejects what it should", async () => {
-		const diagnostics = await tsc([GOLDEN, path.join(FIXTURES, "consumer", "usage.ts")]);
-		assert.equal(diagnostics, "");
+	test("the golden file compiles under strict consumer options", async () => {
+		assert.equal(await tsc([GOLDEN]), "");
 	});
 
-	test("the registry is reachable from JSDoc in checked desk JS", async () => {
-		const diagnostics = await tsc([GOLDEN, path.join(FIXTURES, "consumer", "desk.js")], { allowJs: true, checkJs: true });
-		assert.equal(diagnostics, "");
+	test("test/types/gen-doctypes generates from this fixture bench", () => {
+		// scripts/test-types.mjs reads this file; keep it pointing at the bench above.
+		const spec = JSON.parse(readFileSync(path.join(ROOT, "test", "types", "gen-doctypes", "gen-doctypes.json"), "utf8"));
+		assert.equal(path.resolve(ROOT, spec.bench), APPS);
+		assert.equal(spec.app, "my_app");
 	});
 });
 
@@ -152,9 +195,13 @@ describe("field typing", () => {
 		assert.deepEqual(type({ fieldtype: "Table MultiSelect", options: "Has Role" }), { type: "HasRole[]", optional: false });
 	});
 
-	test("NOT NULL columns drop null, the rest keep it", () => {
+	test("null is dropped only where neither the column nor the desk control can hold it", () => {
 		assert.deepEqual(type({ fieldtype: "Check" }), { type: "0 | 1", optional: true });
-		assert.deepEqual(type({ fieldtype: "Int" }), { type: "number", optional: true });
+		// NOT NULL columns, but a cleared input writes null into frm.doc.
+		for (const ft of ["Int", "Float", "Currency", "Percent"]) {
+			assert.deepEqual(type({ fieldtype: ft }), { type: "number | null", optional: true }, ft);
+			assert.deepEqual(type({ fieldtype: ft, notNullable: true }), { type: "number | null", optional: true }, ft);
+		}
 		assert.deepEqual(type({ fieldtype: "Long Int" }), { type: "number | null", optional: true });
 		assert.deepEqual(type({ fieldtype: "Rating" }), { type: "number | null", optional: true });
 		assert.deepEqual(type({ fieldtype: "Data" }), { type: "string | null", optional: true });
@@ -254,14 +301,28 @@ describe("CLI", () => {
 
 // ------------------------------------------------------------------ against frappe itself
 
-/** @returns {{ path: string } | { skip: string }} */
+/**
+ * The frappe tree to check against. With FRAPPE_PATH set (nix flake check sets it to the
+ * pin) that path and nothing else, and anything wrong with it is an `error` — the layer
+ * then fails rather than skips. Without it, the first checkout resolveFrappe finds, and
+ * a missing or cross-major one is a `skip`.
+ * @returns {{ path: string } | { skip: string } | { error: string }}
+ */
 function frappeOfThisMajor() {
-	const found = resolveFrappe(undefined);
-	if (!found) return { skip: "no frappe checkout (set FRAPPE_PATH; nix flake check does)" };
+	const explicit = process.env.FRAPPE_PATH;
+	const problem = explicit ? (/** @type {string} */ reason) => ({ error: `FRAPPE_PATH=${explicit}: ${reason}` }) : (/** @type {string} */ reason) => ({ skip: reason });
+	let found;
+	if (explicit) {
+		if (!existsSync(path.join(explicit, "frappe", "public", "js"))) return problem("not a frappe checkout (no frappe/public/js)");
+		found = path.resolve(explicit);
+	} else {
+		found = resolveFrappe(undefined);
+		if (!found) return problem("no frappe checkout (set FRAPPE_PATH; nix flake check does)");
+	}
 	const pkg = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8"));
 	const init = readFileSync(path.join(found, "frappe", "__init__.py"), "utf8");
 	const version = /^__version__ = "([^"]+)"/m.exec(init)?.[1] ?? "";
-	if (version.split(".")[0] !== pkg.frappe.major) return { skip: `${found} is frappe ${version}, not ${pkg.frappe.major}.x` };
+	if (version.split(".")[0] !== pkg.frappe.major) return problem(`${found} is frappe ${version}, not ${pkg.frappe.major}.x`);
 	return { path: found };
 }
 
@@ -283,7 +344,13 @@ describe("against frappe", { skip: "skip" in frappe ? frappe.skip : false }, () 
 	/** @param {string} rel */
 	const read = (rel) => readFileSync(path.join(root, rel), "utf8");
 
-	test("classification agrees with frappe", () => {
+	test("FRAPPE_PATH, when set, is a frappe checkout of this major", () => {
+		assert.ok(!("error" in frappe), "error" in frappe ? frappe.error : "");
+	});
+
+	const ok = { skip: "error" in frappe ? "FRAPPE_PATH is unusable (see above)" : false };
+
+	test("classification agrees with frappe", ok, () => {
 		const model = read("frappe/model/__init__.py");
 		const data = pythonTuple(model, "data_fieldtypes");
 		const noValue = pythonTuple(model, "no_value_fields");
@@ -305,7 +372,7 @@ describe("against frappe", { skip: "skip" in frappe ? frappe.skip : false }, () 
 		}
 	});
 
-	test("value types agree with the MariaDB column types", () => {
+	test("value types agree with the MariaDB column types", ok, () => {
 		const db = read("frappe/database/mariadb/database.py");
 		const map = /self\.type_map = \{([\s\S]*?)\n\t\t\}/.exec(db)?.[1];
 		assert.ok(map, "type_map not found in frappe/database/mariadb/database.py");
@@ -321,7 +388,29 @@ describe("against frappe", { skip: "skip" in frappe ? frappe.skip : false }, () 
 		}
 	});
 
-	test("frappe's own DocTypes generate cleanly and compile under strict consumer options", async () => {
+	test("the desk controls that write null are the ones marked clientNull", ok, () => {
+		const controls = "frappe/public/js/frappe/form/controls";
+		// ControlInt.parse falls back to null, and Long Int is the same class.
+		const int = read(`${controls}/int.js`);
+		assert.match(int, /parse\(value\) \{\n\t\treturn cint\(this\.eval_expression\(value\), null\);/);
+		assert.match(int, /^frappe\.ui\.form\.ControlLongInt = frappe\.ui\.form\.ControlInt;$/m);
+		// ControlFloat.parse returns null for NaN.
+		assert.match(read(`${controls}/float.js`), /return isNaN\(parseFloat\(value\)\) \? null : flt\(/);
+		/** @type {Record<string, string>} control file -> the class it must extend unchanged */
+		const inherits = { "currency.js": "ControlFloat", "percent.js": "ControlFloat", "rating.js": "ControlFloat", "float.js": "ControlInt" };
+		for (const [file, base] of Object.entries(inherits)) {
+			const src = read(`${controls}/${file}`);
+			assert.match(src, new RegExp(`^frappe\\.ui\\.form\\.Control\\w+ = class Control\\w+ extends frappe\\.ui\\.form\\.${base} \\{`, "m"), file);
+			if (file !== "float.js") assert.doesNotMatch(src, /^\tparse\(/m, `${file} overrides parse`);
+		}
+		// Check never does: validate is cint(value), whose default is 0.
+		assert.match(read(`${controls}/check.js`), /validate\(value\) \{\n\t\treturn cint\(value\);/);
+
+		const clientNull = Object.entries(FIELDTYPES).filter(([, r]) => r.kind === "value" && r.clientNull).map(([ft]) => ft).sort();
+		assert.deepEqual(clientNull, ["Currency", "Float", "Int", "Long Int", "Percent", "Rating"]);
+	});
+
+	test("frappe's own DocTypes generate cleanly and compile under strict consumer options", ok, async () => {
 		const dir = mkdtempSync(path.join(tmpdir(), "ft-gen-frappe-"));
 		try {
 			symlinkSync(root, path.join(dir, "frappe"), "dir");
