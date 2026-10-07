@@ -1294,6 +1294,13 @@ export interface FrappeBoot {
 	print_css: string;
 	/** `frappe/boot.py:54-55` — only for a signed-in session. */
 	user_info?: Record<string, unknown>;
+	/**
+	 * `frappe/boot.py:91` → `frappe/boot.py:551-556` — the system time zone and
+	 * the user's (the user's own setting, else the system zone), both IANA
+	 * names. Always set. The `frappe.datetime` helpers convert between the two
+	 * (`frappe/public/js/frappe/utils/datetime.js:14-48`).
+	 */
+	time_zone: { system: string; user: string };
 	/** `frappe/boot.py:94-95` — only when the session recorded it. */
 	ipinfo?: Record<string, unknown>;
 	/** `frappe/boot.py:128-130`. */
@@ -1449,10 +1456,18 @@ export type FrappeListViewSettings<DT extends string = string> = ListViewSetting
 /**
  * `frappe.datetime` — `frappe/public/js/frappe/utils/datetime.js:4`
  * (`frappe.provide("frappe.datetime")`), populated by the `$.extend` at :13.
- * Only the format helpers a client needs to move a value between the
- * **system** formats (`frappe.default*Format`) and the **user** formats
- * (`frappe.sys_defaults.date_format` / `time_format`) are declared; the
- * moment-object conveniences (`now_date`, `add_days`, …) are not.
+ * Declared: the format helpers that move a value between the **system**
+ * formats (`frappe.default*Format`) and the **user** formats
+ * (`frappe.sys_defaults.date_format` / `time_format`), and the date
+ * arithmetic and "now" helpers that return strings or `Date`s. Not declared:
+ * `convert_to_user_tz` / `convert_to_system_tz`, which return a moment object
+ * when `format === false`; this package does not type moment.
+ *
+ * **Most of these return a DATE string, not a datetime.** They end in moment's
+ * `.format()` with no argument, which uses `moment.defaultFormat`, and frappe
+ * sets that to `"YYYY-MM-DD"` at load
+ * (`frappe/public/js/frappe/utils/datetime.js:9`). So `add_days("2026-01-31 18:30:00", 1)`
+ * is `"2026-02-01"`: the time is dropped.
  *
  * Every function here is backed by moment and the user formats read from
  * `frappe.sys_defaults`, which the desk sets before any app bundle runs, so
@@ -1487,6 +1502,309 @@ export interface FrappeDatetime {
 	 * v16.50.0, so `"9:05:03"` now validates where it did not).
 	 */
 	validate(d: string): boolean;
+
+	// -- arithmetic and "now" (all `YYYY-MM-DD` strings unless stated) ---------
+
+	/** `frappe/public/js/frappe/utils/datetime.js:93-95` — `moment(d).add(days, "days")`, as a date string (the time is dropped; see above). */
+	add_days(d: FrappeDateInput, days: number): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:97-99` — as {@link FrappeDatetime.add_days}, in months. */
+	add_months(d: FrappeDateInput, months: number): string;
+	/**
+	 * `frappe/public/js/frappe/utils/datetime.js:77-79` — whole days from `d2` to
+	 * `d1` (`moment(d1).diff(d2, "days")`), truncated toward zero. Negative when
+	 * `d1` is earlier.
+	 */
+	get_diff(d1: FrappeDateInput, d2: FrappeDateInput): number;
+	/** `frappe/public/js/frappe/utils/datetime.js:89-91` — the same computation as {@link FrappeDatetime.get_diff}. */
+	get_day_diff(d1: FrappeDateInput, d2: FrappeDateInput): number;
+	/** `frappe/public/js/frappe/utils/datetime.js:81-83` — whole hours from `d2` to `d1`. */
+	get_hour_diff(d1: FrappeDateInput, d2: FrappeDateInput): number;
+	/** `frappe/public/js/frappe/utils/datetime.js:85-87` — whole minutes from `d2` to `d1`. */
+	get_minute_diff(d1: FrappeDateInput, d2: FrappeDateInput): number;
+	/**
+	 * `frappe/public/js/frappe/utils/datetime.js:101-103` — the first day of the
+	 * CURRENT week (moment's `startOf("week")`). The week starts on the system
+	 * setting `sys_defaults.first_day_of_the_week`, "Sunday" when unset: the desk
+	 * forces moment's locale to `"en"` and sets its first weekday from that
+	 * setting at boot (`frappe/public/js/frappe/desk.js:631-637`,
+	 * `frappe/public/js/frappe/utils/datetime.js:297-300`), so the browser's
+	 * locale plays no part.
+	 *
+	 * Like every `*_start` / `*_end` helper here it calls plain `moment()`, so
+	 * "current" is the BROWSER's local clock and time zone, not the user's time
+	 * zone that {@link FrappeDatetime.now_date} and
+	 * {@link FrappeDatetime.get_today} use
+	 * (`frappe/public/js/frappe/utils/datetime.js:238-252`); near midnight the
+	 * two can disagree on the day. The result is moment's default `format()`, an
+	 * ISO 8601 date-time with the local offset. Takes no argument; one passed is
+	 * ignored.
+	 */
+	week_start(): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:105-107` — the last moment of the current week, in the browser's time zone; see {@link FrappeDatetime.week_start}. */
+	week_end(): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:109-111` — the first day of the current month, in the browser's time zone; see {@link FrappeDatetime.week_start}. Takes no argument. */
+	month_start(): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:113-115` — browser time zone; see {@link FrappeDatetime.week_start}. */
+	month_end(): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:117-119` — browser time zone; see {@link FrappeDatetime.week_start}. */
+	quarter_start(): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:121-123` — browser time zone; see {@link FrappeDatetime.week_start}. */
+	quarter_end(): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:125-127` — browser time zone; see {@link FrappeDatetime.week_start}. */
+	year_start(): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:129-131` — browser time zone; see {@link FrappeDatetime.week_start}. */
+	year_end(): string;
+	/**
+	 * `frappe/public/js/frappe/utils/datetime.js:222-224` — today in the USER's
+	 * time zone (`frappe.boot.time_zone.user`, falling back to the system zone;
+	 * `frappe/public/js/frappe/utils/datetime.js:238-252`), as `YYYY-MM-DD`, or as
+	 * a `Date` with `as_obj`. Any truthy `as_obj` gives the `Date` (:251), hence
+	 * the `boolean` overload.
+	 */
+	now_date(as_obj?: false): string;
+	now_date(as_obj: true): Date;
+	now_date(as_obj: boolean): string | Date;
+	/** `frappe/public/js/frappe/utils/datetime.js:226-228` — the time now in the user's zone, `HH:mm:ss`, or a `Date` with `as_obj`. */
+	now_time(as_obj?: false): string;
+	now_time(as_obj: true): Date;
+	now_time(as_obj: boolean): string | Date;
+	/** `frappe/public/js/frappe/utils/datetime.js:230-232` — `YYYY-MM-DD HH:mm:ss` in the user's zone, or a `Date` with `as_obj`. */
+	now_datetime(as_obj?: false): string;
+	now_datetime(as_obj: true): Date;
+	now_datetime(as_obj: boolean): string | Date;
+	/** `frappe/public/js/frappe/utils/datetime.js:234-236` — as {@link FrappeDatetime.now_datetime}, in the SYSTEM time zone. */
+	system_datetime(as_obj?: false): string;
+	system_datetime(as_obj: true): Date;
+	system_datetime(as_obj: boolean): string | Date;
+	/** `frappe/public/js/frappe/utils/datetime.js:267-269` — {@link FrappeDatetime.now_date}. */
+	nowdate(): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:271-273` — {@link FrappeDatetime.now_date}: today in the user's zone, `YYYY-MM-DD`. */
+	get_today(): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:275-278` — `"hh:mm A"`, e.g. `"02:05 PM"`. */
+	get_time(timestamp: FrappeDateInput): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:65-67` — parses a SYSTEM datetime string into a `Date`. */
+	str_to_obj(d: string): Date;
+	/** `frappe/public/js/frappe/utils/datetime.js:69-71` — `YYYY-MM-DD`, with English digits. */
+	obj_to_str(d: FrappeDateInput): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:73-75` — the date in the user's date format. */
+	obj_to_user(d: FrappeDateInput): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:209-211` — a user-format string to a `Date`, through {@link FrappeDatetime.user_to_str}. */
+	user_to_obj(d: string): Date;
+	/** `frappe/public/js/frappe/utils/datetime.js:141-144` — the same as {@link FrappeDatetime.get_user_date_fmt}, kept for compatibility. */
+	get_user_fmt(): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:183-187` — system date plus the user's time format. */
+	get_datetime_as_string(d: FrappeDateInput): string;
+	/** `frappe/public/js/frappe/utils/datetime.js:213-220` — `"Do MMMM YYYY"`, with `", hh:mm A"` when the input was parsed with a time. */
+	global_date_format(d: FrappeDateInput): string;
+	/**
+	 * `frappe/public/js/frappe/utils/datetime.js:50-59` — whether the user's and
+	 * the system's time zones have the same UTC offset now. `true` when boot
+	 * carries no zones.
+	 */
+	is_system_time_zone(): boolean;
+	/** `frappe/public/js/frappe/utils/datetime.js:61-63` — {@link FrappeDatetime.is_system_time_zone}. */
+	is_timezone_same(): boolean;
+	/**
+	 * `frappe/public/js/frappe/utils/datetime.js:297-300` — the index, in
+	 * `moment.weekdays()` (Sunday is 0), of `sys_defaults.first_day_of_the_week`,
+	 * default `"Sunday"`.
+	 */
+	get_first_day_of_the_week_index(): number;
+}
+
+/**
+ * What the {@link FrappeDatetime} helpers hand to `moment(d)`: a date or
+ * datetime string (system format), a `Date`, or epoch milliseconds.
+ */
+export type FrappeDateInput = string | Date | number;
+
+/**
+ * `frappe.user` — `frappe/public/js/frappe/utils/user.js:65-134`, an object
+ * `frappe.provide`d at `frappe/public/js/frappe/provide.js:31` and extended
+ * with these helpers. `name` starts as `"Guest"` and the desk sets it from
+ * boot at `frappe/public/js/frappe/desk.js:330`.
+ *
+ * It defines `toString()` to return `name`
+ * (`frappe/public/js/frappe/utils/user.js:122-133`), so `frappe.user == "Administrator"`
+ * works by coercion. That only works with `==`; TypeScript rejects the
+ * comparison anyway, so compare `frappe.session.user` instead.
+ */
+export interface FrappeUser {
+	/** The session user's name, `"Guest"` until the desk has booted. */
+	name: string;
+	/**
+	 * `frappe/public/js/frappe/utils/user.js:84-90` — `true` when the user has
+	 * ANY of the roles, and `undefined` (not `false`) otherwise. Reads
+	 * `frappe.boot.user.roles`, or `["Guest"]` before boot.
+	 */
+	has_role(roles: string | readonly string[]): true | undefined;
+	/** `frappe/public/js/frappe/utils/user.js:91-93` — Administrator, System Manager or Report Manager. `undefined` when not. */
+	is_report_manager(): true | undefined;
+	/**
+	 * `frappe/public/js/frappe/utils/user.js:69-77` — the translated `"You"` for
+	 * the session user, else the user's full name from `frappe.boot.user_info`
+	 * (the user id when there is no entry, `frappe/public/js/frappe/utils/user.js:5-9`).
+	 */
+	full_name(uid?: string): string;
+	/**
+	 * `frappe/public/js/frappe/utils/user.js:78-80` — the user's image URL from
+	 * `frappe.boot.user_info`. `null` for a user without an image (boot copies
+	 * `User.user_image` as is, `frappe/utils/__init__.py:1092-1099`), `undefined`
+	 * when the entry has no `image` at all.
+	 */
+	image(uid?: string): string | null | undefined;
+	/** `frappe/public/js/frappe/utils/user.js:81-83` — the initials frappe draws in an avatar. */
+	abbr(uid?: string): string;
+	/**
+	 * `frappe/public/js/frappe/utils/user.js:95-116` — `Full Name <email>`, the
+	 * name quoted when it contains a special character; the bare `email` when the
+	 * user has no name.
+	 */
+	get_formatted_email(email: string): string;
+	/** `frappe/public/js/frappe/utils/user.js:118-120` — the `email` of every user in `frappe.boot.user_info`. */
+	get_emails(): Array<string | undefined>;
+	/** `frappe/public/js/frappe/utils/user.js:131-133` — {@link FrappeUser.name}. */
+	toString(): string;
+}
+
+/**
+ * One allowed value in a user's User Permissions, as
+ * `frappe/core/doctype/user_permission/user_permission.py:110-125` builds it.
+ */
+export interface FrappeUserPermissionValue {
+	/** The permitted document's name. */
+	doc: string;
+	/** The doctype the permission is limited to, when it is. */
+	applicable_for: string | null;
+	is_default: FrappeCheck | boolean;
+	hide_descendants: FrappeCheck | boolean;
+}
+
+/**
+ * `frappe.defaults` — created at `frappe/public/js/frappe/sys_defaults.js:4`
+ * with the global-default readers (:6-26), then extended by
+ * `frappe/public/js/frappe/defaults.js:6-129` in the desk bundle, whose
+ * `get_default` and `get_user_default` REPLACE the `sys_defaults.js` ones. The
+ * descriptions below are the desk versions. On a website page only
+ * `sys_defaults.js` is loaded (`frappe/public/js/frappe-web.bundle.js:8`), and
+ * there both read `frappe.sys_defaults[key]`.
+ *
+ * Values come from `frappe.boot.user.defaults`. A key with several rows holds
+ * an array, and these return its first element.
+ */
+export interface FrappeDefaults {
+	/**
+	 * `frappe/public/js/frappe/defaults.js:7-23` — the user's default for `key`.
+	 * For a doctype key (`"Company"`) it falls back to the scrubbed key
+	 * (`"company"`) and to the user's default User Permission, and it returns
+	 * `undefined` when the value is not among the values the user is permitted
+	 * (`in_user_permission`).
+	 */
+	get_user_default(key: string): string | undefined;
+	/**
+	 * `frappe/public/js/frappe/defaults.js:66-88` — like
+	 * {@link FrappeDefaults.get_user_default}, but the value is `JSON.parse`d
+	 * when it parses (`"5"` becomes `5`, `"true"` becomes `true`) and returned
+	 * as-is when it does not. Hence `unknown`.
+	 */
+	get_default(key: string): unknown;
+	/**
+	 * `frappe/public/js/frappe/defaults.js:45-62` — every permitted value for
+	 * `key`, as an array (the stored value wrapped in one when it is single,
+	 * which is `[undefined]` when there is none).
+	 */
+	get_user_defaults(key: string): Array<string | undefined>;
+	/** `frappe/public/js/frappe/defaults.js:25-43` — the value of the user's default User Permission on `key`, or `null`. */
+	get_user_permission_default(key: string, defaults: Record<string, unknown>): string | null;
+	/** `frappe/public/js/frappe/defaults.js:63-65` — writes `frappe.boot.user.defaults[key]` in this browser only. */
+	set_user_default_local(key: string, value: string | readonly string[]): void;
+	/** `frappe/public/js/frappe/defaults.js:90-92` — whether `key` is a doctype name (no `:`, and not already scrubbed). */
+	is_a_user_permission_key(key: string): boolean;
+	/** `frappe/public/js/frappe/defaults.js:94-106` — `true` when the user has no User Permission on the doctype `key` names, or one of them is `value`. */
+	in_user_permission(key: string, value: unknown): boolean;
+	/** `frappe/public/js/frappe/defaults.js:108-110` — the cached User Permissions, by doctype; `{}` before they load. */
+	get_user_permissions(): Record<string, FrappeUserPermissionValue[] | undefined>;
+	/** `frappe/public/js/frappe/defaults.js:112-120` — refetches the User Permissions from the server, asynchronously. */
+	update_user_permissions(): void;
+	/** `frappe/public/js/frappe/defaults.js:122-128` — takes the User Permissions from boot, or fetches them. */
+	load_user_permission_from_boot(): void;
+	/** `frappe/public/js/frappe/sys_defaults.js:7-11` — `frappe.sys_defaults[key]`, the first value when there are several. */
+	get_global_default(key: string): string | boolean | undefined;
+	/** `frappe/public/js/frappe/sys_defaults.js:12-16` — every value of `frappe.sys_defaults[key]`, as an array. */
+	get_global_defaults(key: string): Array<string | boolean | undefined>;
+	/** `frappe/public/js/frappe/sys_defaults.js:17-19` — `cint(get_global_default(key)) === 1`. */
+	is_enabled(key: string): boolean;
+}
+
+/**
+ * `frappe.realtime` — the socket.io client wrapper, `RealTimeClient` at
+ * `frappe/public/js/frappe/socketio_client.js:5-221`, instantiated at :223 and
+ * aliased as `frappe.socketio` at :226. The desk calls `init()` at boot.
+ *
+ * Event payloads are whatever the server passed to `frappe.publish_realtime`,
+ * so handlers receive `unknown` unless you say what you expect:
+ *
+ * ```js
+ * frappe.realtime.on("doc_update", (/** @type {{ doctype: string, name: string }} *\/ data) => { … });
+ * ```
+ *
+ * Before `init()` has created the socket, the methods do NOT all behave alike:
+ *
+ * - `on`, `off` and `publish` check for a socket and do nothing without one
+ *   (`frappe/public/js/frappe/socketio_client.js:12-23`, `:216-220`).
+ * - `emit` does not (`frappe/public/js/frappe/socketio_client.js:33-37`), so it
+ *   throws a `TypeError` before `init()`, and so do the helpers built on it:
+ *   `doctype_subscribe` / `doctype_unsubscribe`, `doc_subscribe` /
+ *   `doc_unsubscribe`, `doc_open` / `doc_close` and `task_subscribe` /
+ *   `task_unsubscribe` (`frappe/public/js/frappe/socketio_client.js:139-179`).
+ *
+ * When `frappe.boot.disable_async` is set, `init()` only sets
+ * {@link FrappeRealtime.disabled} (`frappe/public/js/frappe/socketio_client.js:40-43`)
+ * and every method does nothing. `doc_subscribe` still records the document in
+ * {@link FrappeRealtime.open_docs} then (:167-168), though nothing was sent.
+ */
+export interface FrappeRealtime {
+	/** `frappe/public/js/frappe/socketio_client.js:9` — set when `disable_async` is on. */
+	disabled: boolean;
+	/** `frappe/public/js/frappe/socketio_client.js:8` — `"doctype:name"` keys of the documents subscribed to. */
+	open_docs: Set<string>;
+	/**
+	 * `frappe/public/js/frappe/socketio_client.js:12-17` — listens for a
+	 * realtime event. Connects first if the socket was created lazily.
+	 */
+	on<T = unknown>(event: string, callback: (data: T) => void): void;
+	/** `frappe/public/js/frappe/socketio_client.js:19-23` — removes a listener `on` added; pass the same function. */
+	off<T = unknown>(event: string, callback: (data: T) => void): void;
+	/** `frappe/public/js/frappe/socketio_client.js:33-37` — sends an event to the socket server. */
+	emit(event: string, ...args: unknown[]): void;
+	/** `frappe/public/js/frappe/socketio_client.js:216-220` — {@link FrappeRealtime.emit} with one message, only once a socket exists. */
+	publish(event: string, message: unknown): void;
+	/** `frappe/public/js/frappe/socketio_client.js:25-31` — opens a lazily created connection. */
+	connect(): void;
+	/** `frappe/public/js/frappe/socketio_client.js:39-118` — creates the socket. The desk calls it; a second call does nothing. */
+	init(port?: number, lazy_connect?: boolean): void;
+	/** `frappe/public/js/frappe/socketio_client.js:120-131` — the socket server URL, ending in `/<sitename>`. */
+	get_host(port?: number): string;
+	/** `frappe/public/js/frappe/socketio_client.js:145-147` — receive `list_update` events for a doctype. */
+	doctype_subscribe(doctype: string): void;
+	/** `frappe/public/js/frappe/socketio_client.js:148-150`. */
+	doctype_unsubscribe(doctype: string): void;
+	/**
+	 * `frappe/public/js/frappe/socketio_client.js:151-169` — receive
+	 * `doc_update` events for one document. Throttled to one call a second: a
+	 * call inside that window is DROPPED, not queued.
+	 */
+	doc_subscribe(doctype: string, docname: string): void;
+	/** `frappe/public/js/frappe/socketio_client.js:170-173` — `true` when the document had been subscribed to. */
+	doc_unsubscribe(doctype: string, docname: string): boolean;
+	/** `frappe/public/js/frappe/socketio_client.js:174-176` — announce that the document's form is open (the "viewers" avatars). */
+	doc_open(doctype: string, docname: string): void;
+	/** `frappe/public/js/frappe/socketio_client.js:177-179`. */
+	doc_close(doctype: string, docname: string): void;
+	/** `frappe/public/js/frappe/socketio_client.js:139-141` — progress events of a background job. */
+	task_subscribe(task_id: string): void;
+	/** `frappe/public/js/frappe/socketio_client.js:142-144`. */
+	task_unsubscribe(task_id: string): void;
 }
 
 /**
@@ -1546,6 +1864,19 @@ export interface FrappeCore {
 	validated: boolean | 0;
 	/** See {@link FrappeDatetime} — `frappe/public/js/frappe/utils/datetime.js:4, :13`. */
 	datetime: FrappeDatetime;
+	/** See {@link FrappeUser} — `frappe/public/js/frappe/utils/user.js:65-134`. */
+	user: FrappeUser;
+	/**
+	 * `frappe/public/js/frappe/desk.js:373` — `frappe.boot.user.roles`, set at
+	 * boot; `["Guest"]` for a guest (`frappe/public/js/frappe/desk.js:404`).
+	 */
+	user_roles: string[];
+	/** See {@link FrappeDefaults} — `frappe/public/js/frappe/sys_defaults.js:4`, `frappe/public/js/frappe/defaults.js:6`. */
+	defaults: FrappeDefaults;
+	/** See {@link FrappeRealtime} — `frappe/public/js/frappe/socketio_client.js:223`. */
+	realtime: FrappeRealtime;
+	/** `frappe/public/js/frappe/socketio_client.js:226` — the same object as {@link FrappeCore.realtime}, kept for compatibility. */
+	socketio: FrappeRealtime;
 
 	// -- scalars ------------------------------------------------------------
 
@@ -1605,6 +1936,29 @@ export interface FrappeCore {
 	provide(namespace: "frappe.query_reports"): Record<string, QueryReportSettings | undefined>;
 	provide(namespace: "frappe.listview_settings"): Record<string, ListViewSettings | undefined>;
 	provide(namespace: string): Record<string, unknown>;
+
+	// -- assets and sequencing ----------------------------------------------
+
+	/**
+	 * `frappe/public/js/frappe/assets.js:8-20` — loads JS or CSS once per page
+	 * and resolves when it has run. A `*.bundle.*` name such as
+	 * `"side_panel.bundle.js"` is mapped to its built, hashed file through
+	 * `frappe.boot.assets_json` (`frappe/public/js/frappe/assets.js:141-148`);
+	 * anything else is fetched as the URL given. A file that fails to load still
+	 * resolves the promise ("for backward compatibility",
+	 * `frappe/public/js/frappe/assets.js:32-33`), so a resolved promise does not
+	 * mean the code is there. `callback` runs after the promise resolves.
+	 */
+	require(items: string | readonly string[], callback?: () => void): Promise<void>;
+
+	/**
+	 * `frappe/public/js/frappe/dom.js:269-277` — chains the tasks with `.then`,
+	 * so each runs after the previous one (or the promise it returned) settled,
+	 * and RECEIVES that previous result as its argument. Falsy entries are
+	 * skipped. Resolves with the last task's result; a task that throws rejects
+	 * the chain and the remaining tasks do not run.
+	 */
+	run_serially(tasks: ReadonlyArray<((previous: unknown) => unknown) | null | undefined | false>): Promise<unknown>;
 
 	// -- viewport -------------------------------------------------------------
 

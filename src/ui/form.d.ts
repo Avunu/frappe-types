@@ -2260,6 +2260,218 @@ export type FormEventHandlerRegistry = Record<
 >;
 
 /* ========================================================================== *
+ * QuickEntryForm and PrintView
+ * ========================================================================== */
+
+/**
+ * The callback a {@link QuickEntryForm} calls after the document was created.
+ * It receives the saved document (`frappe/public/js/frappe/form/quick_entry.js:298-299`),
+ * or the unsaved one when `skip_insert` is set (:232-233). After "Edit Full
+ * Form", or a failed insert that opens the full form, it is called later with
+ * that FORM once it saves (:344-348), hence the union.
+ */
+export type QuickEntryAfterInsert = (doc_or_frm: FrappeDoc | Form) => void;
+
+/**
+ * `frappe.ui.form.QuickEntryForm` — frappe/public/js/frappe/form/quick_entry.js:36,
+ * the "quick entry" dialog for a doctype's mandatory and `allow_in_quick_entry`
+ * fields. Usually reached through `frappe.ui.form.make_quick_entry`, which
+ * prefers a doctype-specific subclass registered as
+ * `frappe.ui.form.<DocTypeWithoutSpaces>QuickEntryForm`
+ * (frappe/public/js/frappe/form/quick_entry.js:18-23).
+ *
+ * The constructor only stores its arguments; {@link QuickEntryForm.setup}
+ * loads the doctype and either renders the dialog or, when the doctype does
+ * not qualify for quick entry, routes to the full form.
+ */
+export declare class QuickEntryForm extends Dialog {
+	/** frappe/public/js/frappe/form/quick_entry.js:37-49. */
+	constructor(
+		doctype: string,
+		after_insert?: QuickEntryAfterInsert | null,
+		init_callback?: ((dialog_or_doc: QuickEntryForm | FrappeDoc) => void) | null,
+		doc?: FrappeDoc | null,
+		force?: boolean,
+		skip_insert?: boolean,
+	);
+	override doctype: string;
+	after_insert?: QuickEntryAfterInsert | null;
+	/**
+	 * Called with the dialog once it is rendered (:169-171), or with the new
+	 * document when quick entry does not apply and the full form opens instead
+	 * (:67-69).
+	 */
+	init_callback?: ((dialog_or_doc: QuickEntryForm | FrappeDoc) => void) | null;
+	/** The document being created: the one passed in, or a new one made in `setup()` (:89-93). */
+	override doc: FrappeDoc;
+	/** frappe/public/js/frappe/form/quick_entry.js:45 — show the dialog even when the doctype does not qualify. */
+	force: boolean;
+	/** frappe/public/js/frappe/form/quick_entry.js:46 — only fill `doc` and call `after_insert`; do not save. */
+	skip_insert: boolean;
+	/**
+	 * frappe/public/js/frappe/form/quick_entry.js:47 — `this.dialog = this`, "for
+	 * backward compatibility". frappe reaches the form's own members through it
+	 * (`me.dialog.working`, :187-193; `me.dialog.doc`, :244, :335), so it is typed
+	 * as the instance, subclass included.
+	 */
+	dialog: this;
+	/** frappe/public/js/frappe/form/quick_entry.js:76. */
+	meta: DocTypeMeta;
+	/** frappe/public/js/frappe/form/quick_entry.js:79-86 — the fields shown: mandatory or `allow_in_quick_entry`, not read-only, not virtual. */
+	docfields: DocField[];
+	/** @deprecated frappe/public/js/frappe/form/quick_entry.js:142-152 — {@link QuickEntryForm.docfields}, with a console warning. */
+	get mandatory(): DocField[];
+	set mandatory(value: DocField[]);
+	/** frappe/public/js/frappe/form/quick_entry.js:187-193 — set while a save is in flight. */
+	working?: boolean;
+	/** Read at frappe/public/js/frappe/form/quick_entry.js:266: when set, a failed insert does not open the full form. */
+	skip_redirect_on_error?: boolean;
+	/** Read at frappe/public/js/frappe/form/quick_entry.js:355: when set, no "Edit Full Form" link. */
+	hide_full_form_button?: boolean;
+
+	/** frappe/public/js/frappe/form/quick_entry.js:51-73 — resolves with this dialog, rendered or not. */
+	setup(): Promise<this>;
+	/** frappe/public/js/frappe/form/quick_entry.js:75-87. */
+	set_meta_and_mandatory_fields(): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:89-93. */
+	check_quick_entry_doc(): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:95-107 — the doctype has `quick_entry` set, no mandatory table, and at least one field to show. */
+	is_quick_entry(): boolean;
+	/** frappe/public/js/frappe/form/quick_entry.js:109-115 — more than seven fields. */
+	too_many_mandatory_fields(): boolean;
+	/** frappe/public/js/frappe/form/quick_entry.js:117-127. */
+	has_child_table(): boolean;
+	/** frappe/public/js/frappe/form/quick_entry.js:129-140 — prepends a `__newname` field for prompt-named doctypes. */
+	validate_for_prompt_autoname(): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:154-172 — builds and shows the dialog, then calls `init_callback`. */
+	render_dialog(): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:174-182. */
+	get_title(): string;
+	/** frappe/public/js/frappe/form/quick_entry.js:184-226. */
+	register_primary_action(): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:228-235. */
+	handle_after_callbacks(): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:237-275 — saves through `frappe.client.save`; resolves with the dialog's `doc` on success only. */
+	insert(): Promise<FrappeDoc>;
+	/** frappe/public/js/frappe/form/quick_entry.js:277-289. */
+	submit(doc: FrappeDoc): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:291-303 — replaces `doc` with the saved one, then calls `after_insert` or opens the form. */
+	process_after_insert(r: { message: FrappeDoc }): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:305-318. */
+	setup_cmd_enter_for_save(): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:320-328. */
+	open_form_if_not_list(): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:330-339 — copies the dialog's non-null values onto `doc` and returns it. */
+	update_doc(): FrappeDoc;
+	/** frappe/public/js/frappe/form/quick_entry.js:341-352 — hides the dialog and opens the full form with what was typed. */
+	open_doc(set_hooks?: boolean): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:354-357. */
+	render_edit_in_full_page_link(): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:359-365 — an alert at the top of the dialog; clears it for a falsy `txt`. */
+	set_intro(txt?: string | null, color?: string): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:367-372 — does nothing for a field the dialog does not have. */
+	override set_df_property(fieldname: string, prop: string, value: unknown): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:374-379. */
+	toggle_display(fieldnames: string | readonly string[] | null | undefined, show: boolean): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:381-386. */
+	toggle_enable(fieldnames: string | readonly string[] | null | undefined, enable: boolean): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:388-393. */
+	toggle_reqd(fieldnames: string | readonly string[] | null | undefined, mandatory: boolean): void;
+	/** frappe/public/js/frappe/form/quick_entry.js:404-415 — fills the inputs from `doc`. */
+	set_defaults(): void;
+}
+export interface QuickEntryForm {}
+
+/**
+ * What {@link PrintView.show} prints: a {@link Form}, or the stand-in the print
+ * page builds when it is opened by URL
+ * (frappe/printing/page/print/print.js:13-21).
+ */
+export interface PrintViewTarget {
+	doctype: string;
+	docname: string;
+	doc: FrappeDoc;
+	meta: DocTypeMeta;
+}
+
+/**
+ * `frappe.ui.form.PrintView` — frappe/printing/page/print/print.js:34, the
+ * controller of the `print` page. It is defined by that Page's own script,
+ * not by a desk bundle, so it exists only once the print page has been opened.
+ * An app extends it with a `page_js` hook for the `print` page, whose code runs
+ * after frappe's script:
+ *
+ * ```js
+ * // hooks.py: page_js = {"print": "public/js/print_view.js"}
+ * const Base = frappe.ui.form.PrintView;
+ * if (Base) {
+ *   frappe.ui.form.PrintView = class extends Base {
+ *     show(frm) { super.show(frm); this.page.add_button(__("Mail"), () => {}); }
+ *   };
+ * }
+ * ```
+ */
+export declare class PrintView {
+	/** frappe/printing/page/print/print.js:35-43 — `wrapper` is the print page's element, after `make_app_page`. */
+	constructor(wrapper: HTMLElement & { page: Page });
+	/** frappe/printing/page/print/print.js:36. */
+	wrapper: JQuery<HTMLElement>;
+	/** frappe/printing/page/print/print.js:37. */
+	page: Page;
+	/** The document printed, set by {@link PrintView.show} (frappe/printing/page/print/print.js:208). */
+	frm: PrintViewTarget;
+	/** frappe/printing/page/print/print.js:73 — the Print Settings single. */
+	print_settings: FrappeDoc;
+	/** frappe/printing/page/print/print.js:46. */
+	print_wrapper: JQuery<HTMLElement>;
+	/** frappe/printing/page/print/print.js:107. */
+	sidebar: JQuery<HTMLElement>;
+	/** frappe/printing/page/print/print.js:235 — values of the print settings the doctype adds to the sidebar. */
+	additional_settings: Record<string, unknown>;
+	/** frappe/printing/page/print/print.js:45-78 — builds the preview, toolbar, sidebar and menu. Called by the constructor. */
+	make(): void;
+	/** frappe/printing/page/print/print.js:80-82. */
+	set_title(): void;
+	/** frappe/printing/page/print/print.js:84-104 — Print, Full Page, PDF, Refresh and the Form switch. */
+	setup_toolbar(): void;
+	/** frappe/printing/page/print/print.js:106-163. */
+	setup_sidebar(): void;
+	/** frappe/printing/page/print/print.js:165-181 — a control in the sidebar. */
+	add_sidebar_item(df: Partial<DocField>, is_dynamic?: boolean): BaseControl;
+	/** frappe/printing/page/print/print.js:183-205. */
+	setup_menu(): void;
+	/**
+	 * frappe/printing/page/print/print.js:207-222 — prints `frm`: sets the title
+	 * and breadcrumbs, then the default format, language and letterhead, then
+	 * renders the preview. Resolves when all of that has run.
+	 */
+	show(frm: PrintViewTarget): Promise<unknown>;
+	/** frappe/printing/page/print/print.js:338-342. */
+	refresh_print_format(): void;
+	/** frappe/printing/page/print/print.js:451-484 — renders the preview, through the print format generator when the format uses one. */
+	preview(): void;
+	/** frappe/printing/page/print/print.js:571-579 — returns a form's print view to its main view. */
+	hide(): void;
+	/** frappe/printing/page/print/print.js:581-586. */
+	go_to_form_view(): void;
+	/** frappe/printing/page/print/print.js:603-658 — through the print server, a mapped raw printer, or the browser. */
+	printit(): void;
+	/** frappe/printing/page/print/print.js:725-757 — opens the PDF in a new window. */
+	render_pdf(): void;
+	/** frappe/printing/page/print/print.js:765-792 — opens `method` with the document, format, letterhead and settings as query parameters. */
+	render_page(method: string, printit?: boolean, pdf_generator?: string): void;
+	/** frappe/printing/page/print/print.js:823-825 — the selected letterhead, or the translated "No Letterhead". */
+	get_letterhead(): string;
+	/** frappe/printing/page/print/print.js:890-892 — the selected print format, or `"Standard"`. */
+	selected_format(): string;
+	/** frappe/printing/page/print/print.js:898-909 — the Print Format document from `locals`, or `{}`. */
+	get_print_format(format?: string): Record<string, unknown>;
+	/** frappe/printing/page/print/print.js:911-913 — `1` unless "No Letterhead" is selected, else `0`. */
+	with_letterhead(): number;
+}
+export interface PrintView {}
+
+/* ========================================================================== *
  * The frappe.ui.form namespace object itself
  * ========================================================================== */
 
@@ -2439,8 +2651,8 @@ export interface FrappeUiFormNamespace {
 	LinkedWith: unknown;
 	/** `form/multi_select_dialog.js` */
 	MultiSelectDialog: unknown;
-	/** `form/quick_entry.js` */
-	QuickEntryForm: unknown;
+	/** frappe/public/js/frappe/form/quick_entry.js:36. See {@link QuickEntryForm}. */
+	QuickEntryForm: typeof QuickEntryForm;
 	/** `utils/address_and_contact.js` */
 	AddressQuickEntryForm: unknown;
 	/** `utils/address_and_contact.js` */
@@ -2468,8 +2680,26 @@ export interface FrappeUiFormNamespace {
 	get_event_handler_list(doctype: string, fieldname: string): FormEventHandler[];
 	/** `form/save.js` */
 	is_saving: unknown;
-	/** `form/quick_entry.js` */
-	make_quick_entry: unknown;
+	/**
+	 * frappe/public/js/frappe/form/quick_entry.js:10-34 — builds the quick entry
+	 * dialog for `doctype` (a `frappe.ui.form.<DocTypeWithoutSpaces>QuickEntryForm`
+	 * when one is registered, else {@link QuickEntryForm}), stores it as
+	 * `frappe.quick_entry`, and returns its `setup()`.
+	 */
+	make_quick_entry(
+		doctype: string,
+		after_insert?: QuickEntryAfterInsert | null,
+		init_callback?: ((dialog_or_doc: QuickEntryForm | FrappeDoc) => void) | null,
+		doc?: FrappeDoc | null,
+		force?: boolean,
+		skip_insert?: boolean,
+	): Promise<QuickEntryForm>;
+	/**
+	 * frappe/printing/page/print/print.js:34. **Optional**, unlike the rest of
+	 * this namespace: the print Page's own script defines it, so it exists only
+	 * once that page has been opened. See {@link PrintView}.
+	 */
+	PrintView?: typeof PrintView;
 	/**
 	 * frappe/public/js/frappe/form/script_manager.js:60-73. Drops EVERY handler
 	 * registered for `fieldname` on `doctype` — the `handler` argument is

@@ -42,3 +42,12 @@ void is_new;
 
 // @ts-expect-error validate must return a boolean (or nothing)
 frappe.web_form.validate = () => "yes";
+
+// The Web Form's own fields are copied onto the controller, typed.
+/** @type {string} */
+const target_doctype = frappe.web_form.doc_type;
+frappe.web_form.doc.doctype = target_doctype;
+frappe.web_form.doc.web_form_name = frappe.web_form.name;
+
+// @ts-expect-error doc_type is the target doctype's name, a string
+void (frappe.web_form.doc_type * 2);
