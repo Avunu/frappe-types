@@ -682,10 +682,12 @@ type Flatten<T> = { [K in keyof T]: T[K] };
  * intersection is only built once `DT` is a concrete name. Intersecting the
  * generic `FrappeDocTypes[DT]` directly makes TypeScript (5.8 and 7 alike)
  * resolve the registry's property types while it is still resolving this
- * alias; when the registry's FIRST entry has a `FrappeChildRow<…>` field, which
- * leads back here through {@link ChildRowOf}, that fails as TS2456 ("circularly
- * references itself") on this alias and TS2502 on the field. As the checked type
- * of the conditional, `DT` keeps `Form<DT>` covariant (see {@link DocOf}).
+ * alias; when the registry's FIRST entry has a field that leads back here — a
+ * `FrappeChildRow<…>` through {@link ChildRowOf}, or a `frappe.Doc<…>` through
+ * {@link DocOf} — that fails as TS2456 ("circularly references itself") on this
+ * alias and TS2502 on the field. Deferring here fixes every such path at once,
+ * so {@link ChildRowOf} can stay built on this type. As the checked type of the
+ * conditional, `DT` keeps `Form<DT>` covariant (see {@link DocOf}).
  */
 export type RegisteredDoc<DT extends DocTypeName> = FrappeDocTypes[DT] extends infer Fields
 	? Flatten<Omit<FrappeDocFields, "name" | "doctype" | keyof Fields> & Fields & { name: string; doctype: DT }>

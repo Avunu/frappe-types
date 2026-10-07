@@ -5,6 +5,12 @@ frappe.ui.form.on("Sales Order", {
 		/** @type {number} */
 		const total = frm.doc.grand_total;
 		void total;
+		// A frappe.Doc<…> field resolves to the other doctype's closed document.
+		/** @type {string | undefined} */
+		const party = frm.doc.source_quotation?.party_name;
+		// @ts-expect-error -- Quotation has no field `customer`.
+		void frm.doc.source_quotation?.customer;
+		void party;
 		for (const row of frm.doc.items) {
 			/** @type {string} */
 			const item = row.item_code;
