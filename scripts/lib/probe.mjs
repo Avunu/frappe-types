@@ -53,11 +53,29 @@ const NULLABLE_CODES = new Set([
 ]);
 
 /**
- * @param {string[]} paths dotted API paths, e.g. ["frappe.call", "frappe.ui.form.Grid"]
- * @returns {Promise<{covered: string[], guarded: {path: string, code: number, message: string}[], missing: {path: string, code: number, message: string}[]}>}
+ * `frappe.app.sidebar` as `frappe!.app!.sidebar`: a non-null assertion on every
+ * segment but the last, so the untyped probe reads a value through optional
+ * namespaces without tripping the nullability diagnostics the first block
+ * already reports. The leaf keeps its own type, because `x!` on an `unknown` is
+ * `{}` and would hide exactly what the probe is looking for.
  */
-export async function probePaths(paths) {
-	if (!paths.length) return { covered: [], guarded: [], missing: [] };
+function assertedPath(p) {
+	const segments = p.split(".");
+	return segments.map((s, i) => (i < segments.length - 1 ? `${s}!` : s)).join(".");
+}
+
+/**
+ * @param {string[]} paths dotted API paths, e.g. ["frappe.call", "frappe.ui.form.Grid"]
+ * @param {{ untyped?: boolean, extraTypes?: string[] }} [opts]
+ *   `untyped`: also report the covered paths whose declared type is `unknown`
+ *   (or `any`). A path like that resolves, so it counts as covered, but a
+ *   consumer can do nothing with the value without narrowing it first.
+ *   `extraTypes`: absolute paths of further `.d.ts` files to include in the
+ *   program, such as a consumer app's own augmentations.
+ * @returns {Promise<{covered: string[], guarded: {path: string, code: number, message: string}[], missing: {path: string, code: number, message: string}[], untyped: string[]}>}
+ */
+export async function probePaths(paths, { untyped = false, extraTypes = [] } = {}) {
+	if (!paths.length) return { covered: [], guarded: [], missing: [], untyped: [] };
 
 	await mkdir(PROBE_DIR, { recursive: true });
 
@@ -65,7 +83,16 @@ export async function probePaths(paths) {
 	// without caring about its type, so the ONLY thing that can fail is resolution.
 	const header = "// AUTO-GENERATED probe — see scripts/lib/probe.mjs. Safe to delete.\nexport {};\n";
 	const headerLines = header.split("\n").length - 1;
-	const body = paths.map((p) => `void (${p});`).join("\n");
+	let body = paths.map((p) => `void (${p});`).join("\n");
+	// The untyped block: one declaration line, then one line per path again, in
+	// the same order. `__probe_known(x)` has type "untyped" when `unknown` is
+	// assignable to x's type, which is true for `unknown` and `any` and for
+	// nothing else.
+	const untypedStart = headerLines + paths.length + 1;
+	if (untyped) {
+		body += "\ndeclare function __probe_known<T>(v: T): unknown extends T ? \"untyped\" : \"typed\";";
+		body += "\n" + paths.map((p, i) => `const __probe_u${i}: "typed" = __probe_known(${assertedPath(p)});`).join("\n");
+	}
 	await writeFile(path.join(PROBE_DIR, "probe.ts"), header + body + "\n");
 
 	await writeFile(
@@ -73,8 +100,14 @@ export async function probePaths(paths) {
 		JSON.stringify(
 			{
 				extends: "../tsconfig.json",
-				compilerOptions: { noUnusedLocals: false, noUnusedParameters: false },
-				include: ["../src/**/*.d.ts", "probe.ts"],
+				compilerOptions: {
+					noUnusedLocals: false,
+					noUnusedParameters: false,
+					// An app's own declarations import the package by name. Point that
+					// name at this checkout, not at whatever version the app installed.
+					paths: { "frappe-types": ["../src/index.d.ts"], "frappe-types/*": ["../src/*"] },
+				},
+				include: ["../src/**/*.d.ts", "probe.ts", ...extraTypes],
 			},
 			null,
 			2,
@@ -96,13 +129,20 @@ export async function probePaths(paths) {
 
 	const failures = new Map();
 	const nullable = new Map();
+	const untypedHits = new Set();
 	const line_re = /^(?:.*[/\\])?probe\.ts\((\d+),\d+\): error TS(\d+): (.*)$/;
 	for (const line of stdout.split("\n")) {
 		const m = line_re.exec(line.trim());
 		if (!m) continue;
 		const code = Number(m[2]);
 		if (IGNORABLE_CODES.has(code)) continue;
-		const idx = Number(m[1]) - 1 - headerLines;
+		const lineNo = Number(m[1]);
+		if (untyped && lineNo > untypedStart) {
+			const u = lineNo - untypedStart - 1;
+			if (code === 2322 && u >= 0 && u < paths.length) untypedHits.add(paths[u]);
+			continue;
+		}
+		const idx = lineNo - 1 - headerLines;
 		if (idx < 0 || idx >= paths.length) continue;
 		const bucket = NULLABLE_CODES.has(code) ? nullable : failures;
 		if (!bucket.has(paths[idx])) bucket.set(paths[idx], { path: paths[idx], code, message: m[3] });
@@ -119,7 +159,7 @@ export async function probePaths(paths) {
 		.filter((l) => !/^\s*$/.test(l));
 	if (foreign.length) {
 		throw new Error(
-			`The declarations under src/ do not type-check on their own; fix these before trusting coverage:\n${foreign.join("\n")}`,
+			`The declarations under src/${extraTypes.length ? " (with the extra type files)" : ""} do not type-check on their own; fix these before trusting coverage:\n${foreign.join("\n")}`,
 		);
 	}
 
@@ -129,5 +169,6 @@ export async function probePaths(paths) {
 		covered: paths.filter((p) => !failures.has(p)),
 		guarded: [...nullable.values()],
 		missing: [...failures.values()],
+		untyped: paths.filter((p) => untypedHits.has(p) && !failures.has(p)),
 	};
 }
