@@ -1,5 +1,12 @@
 # Changelog
 
+## [16.4.1](https://github.com/Avunu/frappe-types/compare/v16.4.0...v16.4.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* declare frappe.avatar and Awesomplete.close ([#26](https://github.com/Avunu/frappe-types/issues/26)) ([d3d7d58](https://github.com/Avunu/frappe-types/commit/d3d7d58ad5ceee3fa2e46439d6a215a0241211d6))
+
 ## [16.4.0](https://github.com/Avunu/frappe-types/compare/v16.3.1...v16.4.0) (2026-10-06)
 
 
