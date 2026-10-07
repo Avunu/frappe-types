@@ -27,5 +27,7 @@
     "types": ["jquery"]
   },
   "include": ["src/**/*.d.ts", "test/**/*.ts"],
-  "exclude": ["node_modules"]
+  // test/types/ holds consumer projects with their own tsconfigs, checked against
+  // the packed package by scripts/test-types.mjs, not against this config.
+  "exclude": ["node_modules", "test/types"]
 }

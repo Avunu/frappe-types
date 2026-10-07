@@ -4,11 +4,12 @@ name: check
 # laptop measure the same tree:
 #
 #   checks.typecheck        tsc --noEmit, with skipLibCheck OFF
+#   checks.types            the test/types/ consumer fixtures, against the packed file list
 #   checks.coverage         the coverage ratchet, against the PINNED frappe
 #   checks.frappe-major     the package major is the frappe major
 #   checks.verified-against package.json's frappe.verifiedAgainst matches the pin
 #
-# WHY NIX RATHER THAN `npm ci && npm run test`. Three of those four checks are claims
+# WHY NIX RATHER THAN `npm ci && npm run test`. Three of those five checks are claims
 # about a frappe source tree, and until the flake existed CI had to go and find one:
 # it cloned frappe at the branch named in package.json's `frappe.branch` and hoped.
 # That is a moving target by construction — the branch advances — so the coverage
