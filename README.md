@@ -209,7 +209,7 @@ The namespaces are `Frappe` (the root), `FrappeUiNamespace` (`frappe.ui`), `Frap
 Two things the presets ask of a desk script that subclasses a frappe class:
 
 - **`/** @override */` on each method that overrides one.** The presets turn on `noImplicitOverride`, which applies to JavaScript through JSDoc.
-- **Narrow a class that only some pages have before extending it.** `frappe.ui.form.PrintView` exists only on the print page, `frappe.ui.GroupBy` only once a report has loaded, and every `frappe.views` class only once its bundle has; they are optional. Take the class into a constant and check it:
+- **Narrow a class that only some pages have before extending it.** `frappe.ui.form.PrintView` exists only on the print page, `frappe.ui.SidePanel` only once `side_panel.bundle.js` has been required, and every `frappe.views` class only once its bundle has; they are optional. Take the class into a constant and check it:
 
 ```js
 const Base = frappe.ui.form.PrintView;
