@@ -1,0 +1,23 @@
+{
+  // The `frappe-types` command (bin/) is shipped as plain JavaScript so that node runs it
+  // from node_modules, where it will not strip types. Its JSDoc is checked here instead,
+  // under the same strictness as the declarations. `npm run check` runs both projects.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": false,
+    "types": ["node"]
+  },
+  "include": ["bin/**/*.mjs"]
+}

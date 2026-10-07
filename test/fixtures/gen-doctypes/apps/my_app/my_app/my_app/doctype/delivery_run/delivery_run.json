@@ -1,0 +1,46 @@
+{
+ "doctype": "DocType",
+ "name": "Delivery Run",
+ "module": "My App",
+ "fields": [
+  {
+   "fieldname": "route-code",
+   "fieldtype": "Data",
+   "label": "Route Code"
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "stops",
+   "fieldtype": "Table",
+   "label": "Stops",
+   "options": "Delivery Stop"
+  },
+  {
+   "fieldname": "lines",
+   "fieldtype": "Table",
+   "label": "Lines",
+   "options": "Sales Order Item"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Duration",
+   "label": "Duration"
+  },
+  {
+   "fieldname": "started_at",
+   "fieldtype": "Datetime",
+   "label": "Started At"
+  },
+  {
+   "fieldname": "widget",
+   "fieldtype": "Fancy Widget",
+   "label": "Widget"
+  }
+ ],
+ "autoname": "autoincrement"
+}

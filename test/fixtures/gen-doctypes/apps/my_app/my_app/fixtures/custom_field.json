@@ -1,0 +1,17 @@
+[
+ {
+  "doctype": "Custom Field",
+  "dt": "Selling Settings",
+  "fieldname": "custom_default_run",
+  "fieldtype": "Link",
+  "label": "Default Run",
+  "options": "Delivery Run"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Payment Terminal",
+  "fieldname": "custom_terminal_id",
+  "fieldtype": "Data",
+  "label": "Terminal"
+ }
+]

@@ -1,0 +1,11 @@
+{
+ "doctype": "DocType",
+ "name": "Unrelated",
+ "module": "Other",
+ "fields": [
+  {
+   "fieldname": "x",
+   "fieldtype": "Data"
+  }
+ ]
+}

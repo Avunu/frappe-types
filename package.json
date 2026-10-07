@@ -23,6 +23,9 @@
   "author": "Avunu LLC",
   "type": "module",
   "types": "./src/index.d.ts",
+  "bin": {
+    "frappe-types": "bin/frappe-types.mjs"
+  },
   "exports": {
     ".": {
       "types": "./src/index.d.ts"
@@ -40,6 +43,7 @@
   },
   "files": [
     "src",
+    "bin",
     "README.md",
     "CHANGELOG.md",
     "DRIFT.md",
@@ -58,7 +62,7 @@
     "typescript": "^7.0.2"
   },
   "scripts": {
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && tsc -p tsconfig.bin.json",
     "check:major": "node scripts/check-frappe-major.mjs",
     "test": "tsc --noEmit && npm run test:unit && node scripts/audit-coverage.mjs --strict",
     "test:unit": "node --test \"test/*.test.mjs\"",
