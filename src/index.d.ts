@@ -1071,11 +1071,13 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	/** frappe/public/js/frappe/ui/sort_selector.js:1, in the desk bundle (frappe/public/js/desk.bundle.js:124). See {@link SortSelector}. */
 	SortSelector: typeof SortSelector;
 	/**
-	 * frappe/public/js/frappe/ui/group_by/group_by.js:3. **Lazy**: defined by
-	 * `report.bundle.js` (frappe/public/js/report.bundle.js:8), so absent until a
-	 * report view has loaded. See {@link GroupBy}.
+	 * frappe/public/js/frappe/ui/group_by/group_by.js:3. Defined by
+	 * `report.bundle.js` (frappe/public/js/report.bundle.js:8), which is in
+	 * frappe's `app_include_js` (frappe/hooks.py:30) and so loads on every desk
+	 * page, before any app script (frappe/www/desk.py:68,
+	 * frappe/www/desk.html:76-78). See {@link GroupBy}.
 	 */
-	GroupBy?: typeof GroupBy;
+	GroupBy: typeof GroupBy;
 	/**
 	 * frappe/public/js/frappe/views/reports/link_side_panel.js:16-40 — the click
 	 * handler both report views bind to Link cells
@@ -1084,16 +1086,18 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	 * `false` and lets the click route as usual: when split view is off, on a
 	 * modified or non-left click, when the anchor has no `data-doctype` /
 	 * `data-name`, or when the cell's column is not Link or Dynamic Link.
-	 * **Lazy**, like {@link FrappeUiNamespace.GroupBy}: defined by `report.bundle.js`
-	 * (frappe/public/js/report.bundle.js:1).
+	 * Defined at desk boot, like {@link FrappeUiNamespace.GroupBy}, by
+	 * `report.bundle.js` (frappe/public/js/report.bundle.js:1); only the panel
+	 * itself is loaded on demand.
 	 */
-	handle_link_cell_click?: (e: JQuery.ClickEvent<HTMLElement>, datatable: DataTable) => boolean;
+	handle_link_cell_click: (e: JQuery.ClickEvent<HTMLElement>, datatable: DataTable) => boolean;
 	/**
 	 * frappe/public/js/frappe/views/reports/link_side_panel.js:8-12 — whether a
 	 * Link cell click previews: never on mobile, otherwise the desk setting
-	 * `report_split_view`, on when unset. Lazy, from `report.bundle.js`.
+	 * `report_split_view`, on when unset. Defined at desk boot by
+	 * `report.bundle.js` (frappe/hooks.py:30).
 	 */
-	split_view_enabled?: () => boolean;
+	split_view_enabled: () => boolean;
 	/** frappe/public/js/frappe/ui/side_panel.js:399. Lazy, from `side_panel.bundle.js`. See {@link SidePanel}. */
 	SidePanel?: typeof SidePanel;
 	/**

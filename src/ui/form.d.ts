@@ -2308,8 +2308,13 @@ export declare class QuickEntryForm extends Dialog {
 	force: boolean;
 	/** frappe/public/js/frappe/form/quick_entry.js:46 — only fill `doc` and call `after_insert`; do not save. */
 	skip_insert: boolean;
-	/** frappe/public/js/frappe/form/quick_entry.js:47 — `this`, "for backward compatibility". */
-	dialog: Dialog;
+	/**
+	 * frappe/public/js/frappe/form/quick_entry.js:47 — `this.dialog = this`, "for
+	 * backward compatibility". frappe reaches the form's own members through it
+	 * (`me.dialog.working`, :187-193; `me.dialog.doc`, :244, :335), so it is typed
+	 * as the instance, subclass included.
+	 */
+	dialog: this;
 	/** frappe/public/js/frappe/form/quick_entry.js:76. */
 	meta: DocTypeMeta;
 	/** frappe/public/js/frappe/form/quick_entry.js:79-86 — the fields shown: mandatory or `allow_in_quick_entry`, not read-only, not virtual. */

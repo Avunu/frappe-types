@@ -210,10 +210,19 @@ export interface PageContainerElement extends HTMLElement {
  * };
  * ```
  *
- * `page` (inherited) is there only once `frappe.ui.make_app_page` has run on
- * the element, which a page script does in `on_page_load`.
+ * Unlike {@link PageContainerElement}, `page` is OPTIONAL here: `add_page`
+ * creates a bare element (`frappe/public/js/frappe/views/container.js:38-49`)
+ * and nothing sets `page` until the page script calls
+ * `frappe.ui.make_app_page` (`frappe/public/js/frappe/ui/page.js:23`), which it
+ * does inside `on_page_load`. frappe itself reads it as `this.wrapper.page?.`
+ * right after that hook (`frappe/public/js/frappe/views/pageview.js:95`).
  */
-export interface PageWrapper extends PageContainerElement {
+export interface PageWrapper extends Omit<PageContainerElement, "page"> {
+	/**
+	 * `frappe/public/js/frappe/ui/page.js:23` `opts.parent.page = new frappe.ui.Page(opts)` —
+	 * set by `frappe.ui.make_app_page`, so `undefined` when `on_page_load` is called.
+	 */
+	page?: Page;
 	/** `frappe/public/js/frappe/views/pageview.js:86` — the Page document's name. */
 	page_name?: string;
 	/** Called once, after the page script ran (`frappe/public/js/frappe/views/pageview.js:94`). */
@@ -983,9 +992,10 @@ export interface GroupBySettings {
 
 /**
  * `frappe.ui.GroupBy` — `frappe/public/js/frappe/ui/group_by/group_by.js:3`, the
- * report view's "Add Group" control. **Lazy**: it lives in `report.bundle.js`
- * (`frappe/public/js/report.bundle.js:8`), so it exists only once a report view
- * has loaded. A {@link ReportView} builds one in `setup_sort_selector`
+ * report view's "Add Group" control. It lives in `report.bundle.js`
+ * (`frappe/public/js/report.bundle.js:8`), which is in frappe's `app_include_js`
+ * (`frappe/hooks.py:30`), so it is defined on every desk page from boot. A
+ * {@link ReportView} builds one in `setup_sort_selector`
  * (`frappe/public/js/frappe/views/reports/report_view.js:120`).
  */
 export declare class GroupBy {
@@ -2732,11 +2742,14 @@ export interface SidePanel {}
  */
 export declare class FileView extends ListView {
 	/**
-	 * `frappe/public/js/frappe/views/file/file_view.js:23-26` — whether files are
-	 * shown as a grid. A class-level flag the "Toggle Grid View" button flips;
-	 * `undefined` until it is first clicked.
+	 * Whether files are shown as a grid. Set at module scope when `list.bundle.js`
+	 * loads, from the File user settings
+	 * (`frappe/public/js/frappe/views/file/file_view.js:527`,
+	 * `frappe.get_user_settings("File").grid_view || false`); the "Toggle Grid
+	 * View" button flips it (`frappe/public/js/frappe/views/file/file_view.js:23-26`)
+	 * and the view saves it back (`frappe/public/js/frappe/views/file/file_view.js:239`).
 	 */
-	static grid_view?: boolean;
+	static grid_view: boolean;
 	/**
 	 * `frappe/public/js/frappe/views/file/file_view.js:4-6`, `:526-535` — on a
 	 * `List/File/List` route, redirects to the Home folder and returns `true`.

@@ -7,6 +7,9 @@ if (wrapper) {
 	wrapper.on_page_load = (page_wrapper) => {
 		const parent = frappe.make_page(true, page_wrapper.page_name ?? "todo-board", null);
 		parent.page.set_title(__("ToDo Board"));
+		// make_app_page is what gives the wrapper its page.
+		frappe.ui.make_app_page({ parent: page_wrapper, title: __("ToDo Board") });
+		page_wrapper.page?.set_indicator(__("Live"), "green");
 	};
 	wrapper.on_page_show = () => frappe.get_current_page()?.set_title(__("ToDo Board"));
 }
@@ -19,6 +22,17 @@ const last_week = frappe.datetime.add_days(today, -7);
 const now = frappe.datetime.now_datetime(true);
 /** @type {string} */
 const month_start = frappe.datetime.month_start();
+/** @param {boolean} as_obj */
+const now_either = (as_obj) => frappe.datetime.now_date(as_obj);
+/** @type {string | Date} */
+const either = now_either(false);
+void either;
+/** @type {string | null | undefined} */
+const avatar = frappe.user.image();
+void avatar;
+/** @type {boolean} */
+const grid = frappe.views.FileView?.grid_view ?? false;
+void grid;
 void last_week, now, month_start;
 
 frappe.realtime.on("todo_update", (/** @type {{ name: string }} */ data) => {
@@ -51,7 +65,7 @@ selector.set_value("date", "asc");
 const views = frappe.views;
 if (views.ListView && views.ListViewSelect) {
 	const report = /** @type {frappe.views.ReportView | undefined} */ (cur_list ?? undefined);
-	if (report && frappe.ui.GroupBy) {
+	if (report) {
 		report.group_by_control = new frappe.ui.GroupBy(report);
 	}
 }
@@ -60,6 +74,19 @@ if (views.ListView && views.ListViewSelect) {
 
 // @ts-expect-error a page that has not been routed to has no entry
 frappe.pages["todo-board"].on_page_load = () => {};
+
+if (wrapper) {
+	wrapper.on_page_load = (page_wrapper) => {
+		// @ts-expect-error the wrapper has no page until make_app_page has run
+		page_wrapper.page.set_title(__("ToDo Board"));
+	};
+}
+
+const image = frappe.user.image();
+if (image !== undefined) {
+	// @ts-expect-error a user without an image has a null image
+	void image.length;
+}
 
 // @ts-expect-error month_start takes no argument (the one timeclock passes is ignored)
 frappe.datetime.month_start(today);
@@ -78,5 +105,5 @@ if (frappe.user.has_role("Guest") === false) void 0;
 // @ts-expect-error set_value throws for an order other than "asc" / "desc"
 selector.set_value("date", "up");
 
-// @ts-expect-error GroupBy is defined by the lazily loaded report bundle
-void new frappe.ui.GroupBy(/** @type {frappe.views.ReportView} */ (/** @type {unknown} */ (null)));
+// @ts-expect-error get_side_panel is in side_panel.bundle.js, which loads on demand
+frappe.ui.get_side_panel().open("ToDo", "TD-0001");

@@ -17,6 +17,14 @@ frappe.ui.form.ToDoQuickEntryForm = class ToDoQuickEntryForm extends frappe.ui.f
 		super.render_dialog();
 		this.set_intro(__("Quick ToDo"), "blue");
 	}
+
+	/** frappe's own idiom: `this.dialog` is the instance (quick_entry.js:47). */
+	mark_working() {
+		if (this.dialog.working) return;
+		this.dialog.working = true;
+		void this.dialog.doc.name;
+		void this.dialog.skip_redirect_on_error;
+	}
 };
 
 void frappe.ui.form.make_quick_entry("ToDo", (doc_or_frm) => {

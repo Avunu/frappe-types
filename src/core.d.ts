@@ -1523,41 +1523,59 @@ export interface FrappeDatetime {
 	get_minute_diff(d1: FrappeDateInput, d2: FrappeDateInput): number;
 	/**
 	 * `frappe/public/js/frappe/utils/datetime.js:101-103` — the first day of the
-	 * CURRENT week, in the browser's locale (moment's `startOf("week")`). Takes
-	 * no argument; one passed is ignored.
+	 * CURRENT week (moment's `startOf("week")`). The week starts on the system
+	 * setting `sys_defaults.first_day_of_the_week`, "Sunday" when unset: the desk
+	 * forces moment's locale to `"en"` and sets its first weekday from that
+	 * setting at boot (`frappe/public/js/frappe/desk.js:631-637`,
+	 * `frappe/public/js/frappe/utils/datetime.js:297-300`), so the browser's
+	 * locale plays no part.
+	 *
+	 * Like every `*_start` / `*_end` helper here it calls plain `moment()`, so
+	 * "current" is the BROWSER's local clock and time zone, not the user's time
+	 * zone that {@link FrappeDatetime.now_date} and
+	 * {@link FrappeDatetime.get_today} use
+	 * (`frappe/public/js/frappe/utils/datetime.js:238-252`); near midnight the
+	 * two can disagree on the day. The result is moment's default `format()`, an
+	 * ISO 8601 date-time with the local offset. Takes no argument; one passed is
+	 * ignored.
 	 */
 	week_start(): string;
-	/** `frappe/public/js/frappe/utils/datetime.js:105-107` — the last day of the current week. */
+	/** `frappe/public/js/frappe/utils/datetime.js:105-107` — the last moment of the current week, in the browser's time zone; see {@link FrappeDatetime.week_start}. */
 	week_end(): string;
-	/** `frappe/public/js/frappe/utils/datetime.js:109-111` — the first day of the current month. Takes no argument. */
+	/** `frappe/public/js/frappe/utils/datetime.js:109-111` — the first day of the current month, in the browser's time zone; see {@link FrappeDatetime.week_start}. Takes no argument. */
 	month_start(): string;
-	/** `frappe/public/js/frappe/utils/datetime.js:113-115`. */
+	/** `frappe/public/js/frappe/utils/datetime.js:113-115` — browser time zone; see {@link FrappeDatetime.week_start}. */
 	month_end(): string;
-	/** `frappe/public/js/frappe/utils/datetime.js:117-119`. */
+	/** `frappe/public/js/frappe/utils/datetime.js:117-119` — browser time zone; see {@link FrappeDatetime.week_start}. */
 	quarter_start(): string;
-	/** `frappe/public/js/frappe/utils/datetime.js:121-123`. */
+	/** `frappe/public/js/frappe/utils/datetime.js:121-123` — browser time zone; see {@link FrappeDatetime.week_start}. */
 	quarter_end(): string;
-	/** `frappe/public/js/frappe/utils/datetime.js:125-127`. */
+	/** `frappe/public/js/frappe/utils/datetime.js:125-127` — browser time zone; see {@link FrappeDatetime.week_start}. */
 	year_start(): string;
-	/** `frappe/public/js/frappe/utils/datetime.js:129-131`. */
+	/** `frappe/public/js/frappe/utils/datetime.js:129-131` — browser time zone; see {@link FrappeDatetime.week_start}. */
 	year_end(): string;
 	/**
 	 * `frappe/public/js/frappe/utils/datetime.js:222-224` — today in the USER's
 	 * time zone (`frappe.boot.time_zone.user`, falling back to the system zone;
 	 * `frappe/public/js/frappe/utils/datetime.js:238-252`), as `YYYY-MM-DD`, or as
-	 * a `Date` with `as_obj`.
+	 * a `Date` with `as_obj`. Any truthy `as_obj` gives the `Date` (:251), hence
+	 * the `boolean` overload.
 	 */
 	now_date(as_obj?: false): string;
 	now_date(as_obj: true): Date;
+	now_date(as_obj: boolean): string | Date;
 	/** `frappe/public/js/frappe/utils/datetime.js:226-228` — the time now in the user's zone, `HH:mm:ss`, or a `Date` with `as_obj`. */
 	now_time(as_obj?: false): string;
 	now_time(as_obj: true): Date;
+	now_time(as_obj: boolean): string | Date;
 	/** `frappe/public/js/frappe/utils/datetime.js:230-232` — `YYYY-MM-DD HH:mm:ss` in the user's zone, or a `Date` with `as_obj`. */
 	now_datetime(as_obj?: false): string;
 	now_datetime(as_obj: true): Date;
+	now_datetime(as_obj: boolean): string | Date;
 	/** `frappe/public/js/frappe/utils/datetime.js:234-236` — as {@link FrappeDatetime.now_datetime}, in the SYSTEM time zone. */
 	system_datetime(as_obj?: false): string;
 	system_datetime(as_obj: true): Date;
+	system_datetime(as_obj: boolean): string | Date;
 	/** `frappe/public/js/frappe/utils/datetime.js:267-269` — {@link FrappeDatetime.now_date}. */
 	nowdate(): string;
 	/** `frappe/public/js/frappe/utils/datetime.js:271-273` — {@link FrappeDatetime.now_date}: today in the user's zone, `YYYY-MM-DD`. */
@@ -1628,8 +1646,13 @@ export interface FrappeUser {
 	 * (the user id when there is no entry, `frappe/public/js/frappe/utils/user.js:5-9`).
 	 */
 	full_name(uid?: string): string;
-	/** `frappe/public/js/frappe/utils/user.js:78-80` — the user's image URL, when the user has one. */
-	image(uid?: string): string | undefined;
+	/**
+	 * `frappe/public/js/frappe/utils/user.js:78-80` — the user's image URL from
+	 * `frappe.boot.user_info`. `null` for a user without an image (boot copies
+	 * `User.user_image` as is, `frappe/utils/__init__.py:1092-1099`), `undefined`
+	 * when the entry has no `image` at all.
+	 */
+	image(uid?: string): string | null | undefined;
 	/** `frappe/public/js/frappe/utils/user.js:81-83` — the initials frappe draws in an avatar. */
 	abbr(uid?: string): string;
 	/**
@@ -1725,8 +1748,20 @@ export interface FrappeDefaults {
  * frappe.realtime.on("doc_update", (/** @type {{ doctype: string, name: string }} *\/ data) => { … });
  * ```
  *
- * Every method is a no-op until `init()` has created the socket, and when
- * `frappe.boot.disable_async` is set (`frappe/public/js/frappe/socketio_client.js:40-43`).
+ * Before `init()` has created the socket, the methods do NOT all behave alike:
+ *
+ * - `on`, `off` and `publish` check for a socket and do nothing without one
+ *   (`frappe/public/js/frappe/socketio_client.js:12-23`, `:216-220`).
+ * - `emit` does not (`frappe/public/js/frappe/socketio_client.js:33-37`), so it
+ *   throws a `TypeError` before `init()`, and so do the helpers built on it:
+ *   `doctype_subscribe` / `doctype_unsubscribe`, `doc_subscribe` /
+ *   `doc_unsubscribe`, `doc_open` / `doc_close` and `task_subscribe` /
+ *   `task_unsubscribe` (`frappe/public/js/frappe/socketio_client.js:139-179`).
+ *
+ * When `frappe.boot.disable_async` is set, `init()` only sets
+ * {@link FrappeRealtime.disabled} (`frappe/public/js/frappe/socketio_client.js:40-43`)
+ * and every method does nothing. `doc_subscribe` still records the document in
+ * {@link FrappeRealtime.open_docs} then (:167-168), though nothing was sent.
  */
 export interface FrappeRealtime {
 	/** `frappe/public/js/frappe/socketio_client.js:9` — set when `disable_async` is on. */
