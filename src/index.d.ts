@@ -154,9 +154,11 @@ export type {
 	FrappeClientInsertArgs,
 	FrappeCore,
 	FrappeCoreGlobalWiring,
+	FrappeDateInput,
 	FrappeDatetime,
 	FrappeDb,
 	FrappeDbGetListArgs,
+	FrappeDefaults,
 	FrappeDevServer,
 	FrappeDialog,
 	FrappeFilters,
@@ -175,6 +177,7 @@ export type {
 	FrappeMsgprintOptions,
 	FrappeMsgprintPrimaryAction,
 	FrappeMsgprintSecondaryAction,
+	FrappeRealtime,
 	FrappeRequest,
 	FrappeRequestCallOptions,
 	FrappeResponse,
@@ -184,6 +187,8 @@ export type {
 	FrappeThrowOptions,
 	FrappeTranslate,
 	FrappeTranslateReplace,
+	FrappeUser,
+	FrappeUserPermissionValue,
 	PatchRegistryEntry,
 	SafePatch,
 } from "./core";
@@ -202,6 +207,8 @@ export {
 	Form,
 	FormController,
 	Layout,
+	PrintView,
+	QuickEntryForm,
 	Section,
 	Tab,
 	Toolbar,
@@ -236,6 +243,8 @@ export type {
 	LayoutFieldObject,
 	LayoutOptions,
 	LinkFormatters,
+	PrintViewTarget,
+	QuickEntryAfterInsert,
 	ScriptManager,
 	SortableInstance,
 	StandardFormEvents,
@@ -375,11 +384,16 @@ export {
 	BaseList,
 	Container,
 	Factory,
+	FileView,
+	GroupBy,
 	ListFactory,
 	ListSettings,
 	ListView,
+	ListViewSelect,
 	QueryReport,
 	ReportView,
+	SidePanel,
+	SortSelector,
 } from "./views";
 
 export type {
@@ -399,6 +413,7 @@ export type {
 	FrappeViewsNamespace,
 	GetCurrentPage,
 	GetListView,
+	GroupBySettings,
 	ListColumn,
 	ListColumnType,
 	ListDocOf,
@@ -412,6 +427,7 @@ export type {
 	ListViewDBSettings,
 	ListViewElementFactory,
 	ListViewMenuItem,
+	ListViewSelectView,
 	ListViewSettings,
 	ListViewSettingsButton,
 	ListViewSettingsDropdownButton,
@@ -419,6 +435,7 @@ export type {
 	ListViewUserSettings,
 	ListViewVirtualizationState,
 	PageContainerElement,
+	PageWrapper,
 	QueryReportColumn,
 	QueryReportFilterControl,
 	QueryReportRawData,
@@ -426,7 +443,10 @@ export type {
 	ReportChartArgs,
 	ReportViewCellEditor,
 	ReportViewJSON,
-	SortSelector,
+	SortSelectorArgs,
+	SortSelectorOptions,
+	ViewSwitcherMenuGroup,
+	ViewSwitcherMenuItem,
 } from "./views";
 
 // ---------------------------------------------------------------------------
@@ -689,7 +709,7 @@ import type {
 	FrappeTabButtons,
 	FrappeTabButtonsFunction,
 } from "./ui/components";
-import type { FrappeDataTableNamespace } from "./datatable";
+import type { DataTable, FrappeDataTableNamespace } from "./datatable";
 import type { FrappeModelMetaGlobals } from "./model";
 import type { Dialog, FieldGroup, FrappeUiFormNamespace } from "./ui/form";
 import type { FrappeNotifications } from "./ui/notifications";
@@ -708,7 +728,15 @@ import type {
 	FrappeUtilsDomRouterGlobals,
 	Page,
 } from "./utils";
-import type { FrappeQueryReportGlobals, FrappeViewsNamespace } from "./views";
+import type {
+	FrappeQueryReportGlobals,
+	FrappeViewsNamespace,
+	GroupBy,
+	PageContainerElement,
+	PageWrapper,
+	SidePanel,
+	SortSelector,
+} from "./views";
 
 /**
  * `frappe.ui.toolbar` — a namespace OBJECT, not the class.
@@ -1040,6 +1068,41 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	TabButtons: typeof FrappeTabButtons;
 	/** frappe/public/js/frappe/ui/components/tab_buttons.js:238-242 — builds a {@link FrappeTabButtons} and returns its container. */
 	tab_buttons: FrappeTabButtonsFunction;
+	/** frappe/public/js/frappe/ui/sort_selector.js:1, in the desk bundle (frappe/public/js/desk.bundle.js:124). See {@link SortSelector}. */
+	SortSelector: typeof SortSelector;
+	/**
+	 * frappe/public/js/frappe/ui/group_by/group_by.js:3. **Lazy**: defined by
+	 * `report.bundle.js` (frappe/public/js/report.bundle.js:8), so absent until a
+	 * report view has loaded. See {@link GroupBy}.
+	 */
+	GroupBy?: typeof GroupBy;
+	/**
+	 * frappe/public/js/frappe/views/reports/link_side_panel.js:16-40 — the click
+	 * handler both report views bind to Link cells
+	 * (frappe/public/js/frappe/views/reports/report_view.js:416-420). Previews the
+	 * linked document in the {@link SidePanel} and returns `true`, or returns
+	 * `false` and lets the click route as usual: when split view is off, on a
+	 * modified or non-left click, when the anchor has no `data-doctype` /
+	 * `data-name`, or when the cell's column is not Link or Dynamic Link.
+	 * **Lazy**, like {@link FrappeUiNamespace.GroupBy}: defined by `report.bundle.js`
+	 * (frappe/public/js/report.bundle.js:1).
+	 */
+	handle_link_cell_click?: (e: JQuery.ClickEvent<HTMLElement>, datatable: DataTable) => boolean;
+	/**
+	 * frappe/public/js/frappe/views/reports/link_side_panel.js:8-12 — whether a
+	 * Link cell click previews: never on mobile, otherwise the desk setting
+	 * `report_split_view`, on when unset. Lazy, from `report.bundle.js`.
+	 */
+	split_view_enabled?: () => boolean;
+	/** frappe/public/js/frappe/ui/side_panel.js:399. Lazy, from `side_panel.bundle.js`. See {@link SidePanel}. */
+	SidePanel?: typeof SidePanel;
+	/**
+	 * frappe/public/js/frappe/ui/side_panel.js:805-810 — the one {@link SidePanel},
+	 * created on the first call. Lazy, from `side_panel.bundle.js`: load it with
+	 * `frappe.require("side_panel.bundle.js")` first, as
+	 * frappe/public/js/frappe/views/reports/link_side_panel.js:36-38 does.
+	 */
+	get_side_panel?: () => SidePanel;
 }
 
 /**
@@ -1097,4 +1160,35 @@ export interface Frappe
 	 * wherever the desk's sidebar does.
 	 */
 	get_module_icon(module: string | null | undefined): string | null;
+	/**
+	 * frappe/public/js/frappe/views/container.js:16 — the `frappe.ui.Page` on
+	 * screen (`frappe.container.page.page`), or `null` before one has rendered.
+	 */
+	get_current_page(): Page | null;
+	/**
+	 * frappe/public/js/frappe/views/factory.js:37-53 — adds a `.page-container`
+	 * for `page_name` (default: the current route, `frappe.get_route_str()`),
+	 * builds a `frappe.ui.Page` in it (`single_column` unless `double_column`;
+	 * the sidebar toggle is disabled unless `sidebar_position` is given),
+	 * switches to it and returns the element. The element is also registered in
+	 * {@link Frappe.pages} (frappe/public/js/frappe/views/container.js:46).
+	 */
+	make_page(
+		double_column?: boolean,
+		page_name?: string | null,
+		sidebar_position?: "Left" | "Right" | null,
+	): PageContainerElement;
+	/**
+	 * frappe/public/js/frappe/views/container.js:5 — every routed page's
+	 * element, by route string (frappe/public/js/frappe/views/container.js:46).
+	 * A Page doctype's script finds its own entry here and assigns its hooks;
+	 * see {@link PageWrapper}. A name that has not been routed to has no entry,
+	 * so narrow before use:
+	 *
+	 * ```js
+	 * const wrapper = frappe.pages["my-page"];
+	 * if (wrapper) wrapper.on_page_load = (wrapper) => { … };
+	 * ```
+	 */
+	pages: Record<string, PageWrapper | undefined>;
 }

@@ -196,6 +196,35 @@ export interface PageContainerElement extends HTMLElement {
 }
 
 /**
+ * An entry of `frappe.pages`: the `.page-container` element of a routed page.
+ *
+ * For a **Page doctype** page, `frappe.views.Page` creates the element with
+ * `frappe.container.add_page(name)` and then evaluates the page's script
+ * (`frappe/public/js/frappe/views/pageview.js:85-90`). The script assigns the
+ * hooks below on `frappe.pages[name]`, and frappe calls each with the element
+ * (`frappe/public/js/frappe/views/pageview.js:94`, `:98-110`):
+ *
+ * ```js
+ * frappe.pages["my-page"].on_page_load = (wrapper) => {
+ *   const page = frappe.ui.make_app_page({ parent: wrapper, title: __("My Page") });
+ * };
+ * ```
+ *
+ * `page` (inherited) is there only once `frappe.ui.make_app_page` has run on
+ * the element, which a page script does in `on_page_load`.
+ */
+export interface PageWrapper extends PageContainerElement {
+	/** `frappe/public/js/frappe/views/pageview.js:86` — the Page document's name. */
+	page_name?: string;
+	/** Called once, after the page script ran (`frappe/public/js/frappe/views/pageview.js:94`). */
+	on_page_load?: (wrapper: PageWrapper) => void;
+	/** Called each time the page is shown (`frappe/public/js/frappe/views/pageview.js:98-102`). */
+	on_page_show?: (wrapper: PageWrapper) => void;
+	/** Called each time the page is shown, after `on_page_show` (`frappe/public/js/frappe/views/pageview.js:101`). */
+	refresh?: (wrapper: PageWrapper) => void;
+}
+
+/**
  * Constructor options. `frappe/public/js/frappe/list/base_list.js:6-8` is literally
  * `constructor(opts) { Object.assign(this, opts); }`, so ANY property is
  * accepted and lands on the instance verbatim; the two below are the ones every
@@ -553,9 +582,9 @@ export declare class BaseList {
 	 * `frappe/public/js/frappe/list/base_list.js:214-220` — `new frappe.views.ListViewSelect({...})`, the view switcher
 	 * (only when `desk_settings.view_switcher` is on and the doctype does not
 	 * force its default view). It replaced the old `views_menu` button group,
-	 * which no longer exists anywhere in frappe.
+	 * which no longer exists anywhere in frappe. See {@link ListViewSelect}.
 	 */
-	views_list?: unknown;
+	views_list?: ListViewSelect;
 	/**
 	 * `frappe/public/js/frappe/list/base_list.js:391-411` — the page-size radio group (20 / 100 / 500 / 2500), a
 	 * `frappe.ui.TabButtons`. It replaced the `.btn-paging` buttons, which are gone.
@@ -852,13 +881,272 @@ export interface ListLayout {
 	[field: string]: unknown;
 }
 
-/** `frappe.ui.SortSelector` — minimal, only the members the views read. */
-export interface SortSelector {
+/**
+ * What a {@link SortSelector} offers and starts on. `args` may also be given as
+ * an `ORDER BY` string, which `prepare_args` turns into this
+ * (`frappe/public/js/frappe/ui/sort_selector.js:70-93`).
+ */
+export interface SortSelectorArgs {
+	sort_by?: string;
+	/** `"asc"` or `"desc"`; lower-cased by `setup_from_doctype` (`frappe/public/js/frappe/ui/sort_selector.js:181`). */
+	sort_order?: string;
+	sort_by_label?: string;
+	/** The fields offered. Built from the doctype's meta when absent (`frappe/public/js/frappe/ui/sort_selector.js:136-177`). */
+	options?: Array<{ fieldname: string; label?: string }>;
+}
+
+/**
+ * Constructor options of {@link SortSelector}. The constructor copies every
+ * key onto the instance (`$.extend(this, opts)`,
+ * `frappe/public/js/frappe/ui/sort_selector.js:11`); these are the ones it reads.
+ */
+export interface SortSelectorOptions {
+	/** The control is appended here, replacing any `.sort-selector` already in it (`frappe/public/js/frappe/ui/sort_selector.js:17-18`). */
+	parent: JQuery<HTMLElement>;
+	/** Supplies default options, the meta sort field and labels (`frappe/public/js/frappe/ui/sort_selector.js:114-182`, `:206-212`). */
+	doctype?: string;
+	/**
+	 * An object, or an `ORDER BY` string such as
+	 * "`tabToDo`.`modified` desc": only its first column is kept, and the table
+	 * name is stripped (`frappe/public/js/frappe/ui/sort_selector.js:71-93`).
+	 */
+	args?: SortSelectorArgs | string;
+	/** Called after the user changes the field or the order. Wins over `change` (`frappe/public/js/frappe/ui/sort_selector.js:28`, `:34`). */
+	onchange?: (sort_by: string, sort_order: string) => void;
+	/** The older name of {@link SortSelectorOptions.onchange}. */
+	change?: (sort_by: string, sort_order: string) => void;
+	[option: string]: unknown;
+}
+
+/**
+ * `frappe.ui.SortSelector` — `frappe/public/js/frappe/ui/sort_selector.js:1`,
+ * in the desk bundle. The sort field dropdown and order toggle on list and
+ * report views (`frappe/public/js/frappe/list/base_list.js:324-335`). Apps
+ * subclass it, usually to override {@link SortSelector.get_sql_string} or
+ * {@link SortSelector.get_label}.
+ */
+export declare class SortSelector {
+	constructor(opts: SortSelectorOptions);
+	parent: JQuery<HTMLElement>;
+	doctype?: string;
+	/** After construction always an object; a string `args` has been parsed. */
+	args: SortSelectorArgs;
+	/** `frappe/public/js/frappe/ui/sort_selector.js:12`, `:95-99` — fieldname to label, from `args.options`. */
+	labels: Record<string, string | undefined>;
+	/** `frappe/public/js/frappe/ui/sort_selector.js:18` — the rendered control. */
+	wrapper: JQuery<HTMLElement>;
 	sort_by: string;
 	sort_order: string;
-	/** `frappe/public/js/frappe/list/base_list.js:515`, `frappe/public/js/frappe/views/reports/report_view.js:161`. */
+	onchange?: (sort_by: string, sort_order: string) => void;
+	change?: (sort_by: string, sort_order: string) => void;
+	/** `frappe/public/js/frappe/ui/sort_selector.js:15-20` — prepares `args`, renders, binds. Called by the constructor. */
+	make(): void;
+	/** `frappe/public/js/frappe/ui/sort_selector.js:21-36`. */
+	bind_events(): void;
+	/**
+	 * `frappe/public/js/frappe/ui/sort_selector.js:37-63` — updates the label and
+	 * the order button. Does not call `onchange`. `sort_order` must be `"asc"` or
+	 * `"desc"`: any other value throws (it destructures a lookup, :58).
+	 */
+	set_value(sort_by: string, sort_order: "asc" | "desc"): void;
+	/** `frappe/public/js/frappe/ui/sort_selector.js:64-113`. */
+	prepare_args(): void;
+	/** `frappe/public/js/frappe/ui/sort_selector.js:114-182` — defaults from the doctype's meta. Does nothing without one. */
+	setup_from_doctype(): void;
+	/**
+	 * `frappe/public/js/frappe/ui/sort_selector.js:183-205` — the meta's first
+	 * sort column and its order (lower case, `""` when unset); both `null`
+	 * without meta.
+	 */
+	get_meta_sort_field(): { meta_sort_field: string | null; meta_sort_order: string | null };
+	/** `frappe/public/js/frappe/ui/sort_selector.js:206-212` — "Most Used" for `idx`, else the option's label, else the field's label from meta. */
+	get_label(fieldname: string): string;
+	/**
+	 * `frappe/public/js/frappe/ui/sort_selector.js:213-223` — "`tab<doctype>`.`<sort_by>` <order>",
+	 * followed by `name` in the same order unless sorting by `name`,
+	 * `creation` or `modified`. Read by `frappe/public/js/frappe/list/base_list.js:515`
+	 * and `frappe/public/js/frappe/views/reports/report_view.js:161`.
+	 */
 	get_sql_string(): string;
 }
+export interface SortSelector {}
+
+/** What {@link GroupBy.get_settings} returns and {@link GroupBy.apply_settings} takes, as stored in the report's user settings. */
+export interface GroupBySettings {
+	/** "`tab<doctype>`.`<fieldname>`", or a bare fieldname of the report's doctype. */
+	group_by: string;
+	/** `"count"`, `"sum"` or `"avg"`. */
+	aggregate_function: string;
+	/** The aggregated column, in the same forms as `group_by`; absent for `count`. */
+	aggregate_on?: string | null | undefined;
+}
+
+/**
+ * `frappe.ui.GroupBy` — `frappe/public/js/frappe/ui/group_by/group_by.js:3`, the
+ * report view's "Add Group" control. **Lazy**: it lives in `report.bundle.js`
+ * (`frappe/public/js/report.bundle.js:8`), so it exists only once a report view
+ * has loaded. A {@link ReportView} builds one in `setup_sort_selector`
+ * (`frappe/public/js/frappe/views/reports/report_view.js:120`).
+ */
+export declare class GroupBy {
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:4-9` — reads `page` and `doctype` off the view, then builds the button and its popover. */
+	constructor(report_view: ReportView);
+	report_view: ReportView;
+	page: Page;
+	doctype: string;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:241` — inserted before the page's `.sort-selector`. */
+	group_by_button: JQuery<HTMLElement>;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:70` — the popover, once it has been opened. */
+	wrapper?: JQuery<HTMLElement>;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:389-436` — fields that can be grouped by, per doctype (the report's own and its child tables). */
+	group_by_fields: Record<string, DocField[]>;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:391`, `:416`, `:432` — every field per doctype, for the aggregate column picker. */
+	all_fields: Record<string, DocField[]>;
+	/** "`tab<doctype>`.`<fieldname>`" while grouping, else `null` (`frappe/public/js/frappe/ui/group_by/group_by.js:258`, `:366`). */
+	group_by?: string | null;
+	group_by_field?: string | null;
+	group_by_doctype?: string;
+	aggregate_function?: string;
+	aggregate_on?: string | null;
+	aggregate_on_field?: string | null;
+	aggregate_on_doctype?: string | null;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:11-15`. */
+	make(): void;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:178-188` — `null` when not grouping. */
+	get_settings(): GroupBySettings | null;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:190-217` — restores saved settings, then updates the button. Does not refresh the view. */
+	apply_settings(settings: GroupBySettings): void;
+	/**
+	 * `frappe/public/js/frappe/ui/group_by/group_by.js:245-278` — computes
+	 * `group_by` / `aggregate_on`; `false` when the combination is not allowed
+	 * (a message is shown) or is incomplete.
+	 */
+	apply_group_by(): boolean;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:280-284` — {@link GroupBy.apply_group_by}, then refreshes the report. */
+	apply_group_by_and_refresh(): void;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:286-320` — while grouping, rewrites the view's fields and the query `args` for the aggregate query. */
+	set_args(args: ListViewArgs): void;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:322-362` — the docfield of the `_aggregate_column`: an Int "Count", or a copy of the aggregated field relabelled "Sum of …" / "Average of …". */
+	get_group_by_docfield(): DocField;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:364-387` — clears the grouping, restores the view's fields and refreshes. */
+	remove_group_by(): void;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:389-436` — fills and returns {@link GroupBy.group_by_fields}. */
+	get_group_by_fields(): Record<string, DocField[]>;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:438-459`. */
+	update_group_by_button(): void;
+	/** `frappe/public/js/frappe/ui/group_by/group_by.js:461-466` — the grouped field's label, else its fieldname. */
+	get_group_by_field_label(): string | undefined;
+}
+export interface GroupBy {}
+
+/**
+ * A row of a `frappe.ui.Dropdown` menu — `MenuItem` in
+ * `frappe/public/js/frappe/ui/components/menu.js:34-51`, the keys the view
+ * switcher sets.
+ */
+export interface ViewSwitcherMenuItem {
+	label: string;
+	icon?: string;
+	/** Marks the current choice (visual only). */
+	selected?: boolean;
+	href?: string;
+	onclick?: () => void;
+	/** Rows of a side panel, or a function returning them (or a promise of them), run on hover. */
+	submenu?:
+		| Array<ViewSwitcherMenuItem | ViewSwitcherMenuGroup>
+		| (() => Array<ViewSwitcherMenuItem | ViewSwitcherMenuGroup> | Promise<Array<ViewSwitcherMenuItem | ViewSwitcherMenuGroup>>);
+}
+
+/** A section of rows — `MenuGroup` in `frappe/public/js/frappe/ui/components/menu.js:53-58`. */
+export interface ViewSwitcherMenuGroup {
+	group: string;
+	hide_label?: boolean;
+	options: ViewSwitcherMenuItem[];
+}
+
+/** One view in {@link ListViewSelect.get_views}: whether to offer it, and how to switch to it. */
+export interface ListViewSelectView {
+	/** Truthy to offer the view; frappe stores whatever the check returned (`frappe/public/js/frappe/list/list_view_select.js:128-183`). */
+	condition: unknown;
+	action: () => void;
+}
+
+/**
+ * `frappe.views.ListViewSelect` — `frappe/public/js/frappe/list/list_view_select.js:15`,
+ * the view switcher on the list-family page header: one dropdown listing every
+ * view the doctype supports, with saved layouts, reports, calendars, inbox
+ * accounts and Kanban boards as submenus. A list view builds one in
+ * `setup_view_menu` when the desk's view switcher is on
+ * (`frappe/public/js/frappe/list/base_list.js:210-221`).
+ *
+ * It replaced three separate header dropdowns. The old builder methods
+ * (`add_view_to_menu`, `setup_dropdown_in_navbar`, `setup_kanban_switcher`)
+ * are kept for apps that call them; the switcher itself does not.
+ * There is no `setup_views` method any more.
+ */
+export declare class ListViewSelect {
+	/** `frappe/public/js/frappe/list/list_view_select.js:16-20` — copies `opts` onto the instance, then builds the switcher into the page's custom actions. */
+	constructor(opts: {
+		doctype: string;
+		page: Page;
+		list_view: ListView;
+		icon_map: Partial<Record<FrappeViewName, string>>;
+		label_map: Record<FrappeViewName, string>;
+		[option: string]: unknown;
+	});
+	doctype: string;
+	page: Page;
+	list_view: ListView;
+	icon_map: Partial<Record<FrappeViewName, string>>;
+	label_map: Record<FrappeViewName, string>;
+	/** `frappe/public/js/frappe/list/list_view_select.js:22-35` — a {@link FrappeViewName} from the route; `"List"` when it names none. */
+	current_view: FrappeViewName;
+	/** `frappe/public/js/frappe/list/list_view_select.js:30` — the board name on a Kanban route. */
+	kanban_board?: string;
+	/** `frappe/public/js/frappe/list/list_view_select.js:32` — the account on an Inbox route. */
+	email_account?: string;
+	/** `frappe/public/js/frappe/list/list_view_select.js:38`. */
+	$wrapper: JQuery<HTMLElement>;
+	/** `frappe/public/js/frappe/list/list_view_select.js:39` — a `frappe.ui.button`. */
+	$trigger: JQuery<HTMLElement>;
+	set_current_view(): void;
+	/** `frappe/public/js/frappe/list/list_view_select.js:37-52`. */
+	make_switcher(): void;
+	/** `frappe/public/js/frappe/list/list_view_select.js:57-78` — the active variant (layout, board, calendar, account, report) or the view's label. */
+	get_trigger_label(): string;
+	/** `frappe/public/js/frappe/list/list_view_select.js:80-90`. */
+	set_trigger_content(label: string): void;
+	/** `frappe/public/js/frappe/list/list_view_select.js:94-96` — re-renders the trigger after the active variant changed. */
+	refresh_trigger(): void;
+	/** `frappe/public/js/frappe/list/list_view_select.js:98-126` — one row per offered view, in `frappe.views.view_modes` order. */
+	get_view_options(): ViewSwitcherMenuItem[];
+	/**
+	 * `frappe/public/js/frappe/list/list_view_select.js:128-183` — the views
+	 * frappe knows, keyed by view name. Override it, call `super`, and add or
+	 * change entries to offer another view; only names in
+	 * `frappe.views.view_modes` are listed (`frappe/public/js/frappe/list/list_view_select.js:102-104`).
+	 */
+	get_views(): Partial<Record<FrappeViewName, ListViewSelectView>> & Record<string, ListViewSelectView | undefined>;
+	/** `frappe/public/js/frappe/list/list_view_select.js:378-387` — routes to `/<doctype slug>/view/<view>[/<calendar_name>]`, keeping the current filters. */
+	set_route(view: string, calendar_name?: string): void;
+	/** `frappe/public/js/frappe/list/list_view_select.js:389-391`. */
+	get_page_name(): string;
+	/** `frappe/public/js/frappe/list/list_view_select.js:525-527` — the doctype's route slug (or the doctype layout's). */
+	slug(): string;
+	/** `frappe/public/js/frappe/list/list_view_select.js:441-470` — opens the last Kanban board, or any board, or the new-board dialog. */
+	setup_kanban_boards(): void;
+	/** `frappe/public/js/frappe/list/list_view_select.js:532-545` — legacy: adds a row to the page's `parent` custom menu. */
+	add_view_to_menu(view: string, action: () => void): void;
+	/** `frappe/public/js/frappe/list/list_view_select.js:547-563` — legacy. */
+	setup_dropdown_in_navbar(
+		view: string,
+		items: Array<{ name: string; route: string }> | null | undefined,
+		default_action?: { label: string; action: () => void } | null,
+	): void;
+	/** `frappe/public/js/frappe/list/list_view_select.js:565-591` — legacy. */
+	setup_kanban_switcher(kanbans: Array<{ name: string }>): void;
+}
+export interface ListViewSelect {}
 
 /* ------------------------------------------------------------------ *
  * 5. ListView
@@ -1575,13 +1863,8 @@ export declare class ReportView extends ListView<DataTableColumn> {
 	order_by?: string;
 	add_totals_row?: 0 | 1;
 	group_by?: string | null;
-	/** `frappe/public/js/frappe/views/reports/report_view.js:120` — `new frappe.ui.GroupBy(this)`. */
-	group_by_control?: {
-		set_args(args: ListViewArgs): void;
-		get_settings(): unknown;
-		apply_settings(settings: unknown): void;
-		get_group_by_docfield(): DocField;
-	};
+	/** `frappe/public/js/frappe/views/reports/report_view.js:120` — `new frappe.ui.GroupBy(this)`. See {@link GroupBy}. */
+	group_by_control?: GroupBy;
 	/** `frappe/public/js/frappe/views/reports/report_view.js:630` — `new frappe.Chart(...)`; nulled at `frappe/public/js/frappe/views/reports/report_view.js:671`. */
 	chart?: FrappeBaseChart | null;
 	chart_args?: ReportChartArgs | null;
@@ -2336,8 +2619,8 @@ export interface FrappeViewsNamespace {
 	CommunicationComposer?: unknown;
 	/** `views/dashboard/dashboard_view.js` */
 	DashboardView?: unknown;
-	/** `views/file/file_view.js` */
-	FileView?: unknown;
+	/** `frappe/public/js/frappe/views/file/file_view.js:3`, in `list.bundle.js`. See {@link FileView}. */
+	FileView?: typeof FileView;
 	/** `views/formview.js` */
 	FormFactory?: unknown;
 	/** `views/image/image_view.js` */
@@ -2368,8 +2651,13 @@ export interface FrappeViewsNamespace {
 	open_kanban_settings?: unknown;
 	/** `list/list_sidebar_group_by.js` */
 	ListGroupBy?: unknown;
-	/** `list/list_view_select.js` */
-	ListViewSelect?: unknown;
+	/**
+	 * `frappe/public/js/frappe/list/list_view_select.js:15`, in the list bundle.
+	 * See {@link ListViewSelect}. Writable: an app replaces it with a subclass to
+	 * change the switcher on every list (`frappe/public/js/frappe/list/base_list.js:214`
+	 * reads it at construction).
+	 */
+	ListViewSelect?: typeof ListViewSelect;
 	/** `views/map/map_view.js` */
 	MapView?: unknown;
 	/**
@@ -2397,6 +2685,67 @@ export interface FrappeViewsNamespace {
 }
 
 /**
+ * `frappe.ui.SidePanel` — `frappe/public/js/frappe/ui/side_panel.js:399`, the
+ * right-hand drawer that previews a document when a Link cell is clicked in a
+ * report (see {@link ReportView.setup_link_side_panel}). **Lazy**: it lives in
+ * `side_panel.bundle.js` (`frappe/public/js/side_panel.bundle.js:2`), which
+ * `frappe.ui.handle_link_cell_click` loads on the first click
+ * (`frappe/public/js/frappe/views/reports/link_side_panel.js:36-38`). Reach the
+ * one instance through `frappe.ui.get_side_panel()`.
+ */
+export declare class SidePanel {
+	/** `frappe/public/js/frappe/ui/side_panel.js:400-413` — builds the drawer and appends it to `<body>`. */
+	constructor();
+	/** `frappe/public/js/frappe/ui/side_panel.js:407` — the documents opened before the current one, for Back. */
+	history: Array<{ doctype: string; docname: string }>;
+	/** `frappe/public/js/frappe/ui/side_panel.js:410` — the document shown, or `null` when closed. */
+	current: { doctype: string; docname: string } | null;
+	/** `frappe/public/js/frappe/ui/side_panel.js:415`. */
+	$panel: JQuery<HTMLElement>;
+	/** `frappe/public/js/frappe/ui/side_panel.js:417`. */
+	$body: JQuery<HTMLElement>;
+	/**
+	 * `frappe/public/js/frappe/ui/side_panel.js:528-553` — shows a document.
+	 * Does nothing without both names, alerts instead when the user cannot read
+	 * the doctype, and ignores a re-open of the document already shown. `push`
+	 * (default `true`) keeps the current document for Back.
+	 */
+	open(doctype: string, docname: string, opts?: { push?: boolean }): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:555-560` — the previous document, if any. */
+	back(): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:516-526` — the drawer width in pixels, clamped to the CSS minimum and the window. */
+	set_width(width: number): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:764-770` — slides the drawer in. */
+	show(): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:784-786`. */
+	is_open(): boolean;
+	/** `frappe/public/js/frappe/ui/side_panel.js:788-801` — slides it out and forgets the history. */
+	close(): void;
+}
+export interface SidePanel {}
+
+/**
+ * `frappe.views.FileView` — `frappe/public/js/frappe/views/file/file_view.js:3`,
+ * the File doctype's list view (folders, breadcrumbs, the grid toggle).
+ * Instance members are the inherited {@link ListView} ones; the overrides keep
+ * their signatures.
+ */
+export declare class FileView extends ListView {
+	/**
+	 * `frappe/public/js/frappe/views/file/file_view.js:23-26` — whether files are
+	 * shown as a grid. A class-level flag the "Toggle Grid View" button flips;
+	 * `undefined` until it is first clicked.
+	 */
+	static grid_view?: boolean;
+	/**
+	 * `frappe/public/js/frappe/views/file/file_view.js:4-6`, `:526-535` — on a
+	 * `List/File/List` route, redirects to the Home folder and returns `true`.
+	 */
+	static override load_last_view(): boolean;
+}
+export interface FileView {}
+
+/**
  * `frappe.get_list_view(doctype)` — `frappe/public/js/frappe/list/list_view.js:3280-3283`.
  *
  * Looks up `frappe.views.list_view["List/<doctype>/List"]`, so it only ever
@@ -2408,8 +2757,8 @@ export type GetListView = (doctype: string) => ListView | undefined;
  * `frappe.get_current_page()` — `frappe/public/js/frappe/views/container.js:16`: the `frappe.ui.Page` on screen, or
  * `null` before one has rendered. It is `frappe.container?.page?.page || null`,
  * i.e. the page held by the current {@link PageContainerElement}. New in
- * v16.50.0 (the breadcrumbs shim and `Container#change_to` use it); not yet
- * wired onto {@link Frappe} by any fragment.
+ * v16.50.0 (the breadcrumbs shim and `Container#change_to` use it). The
+ * member itself is `Frappe#get_current_page` in `index.d.ts`.
  */
 export type GetCurrentPage = () => Page | null;
 

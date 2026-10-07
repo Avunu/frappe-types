@@ -51,17 +51,26 @@ import type {
 	FormEventHandler as FormEventHandlerType,
 	FormEvents as FormEventsType,
 	LayoutOptions,
+	PrintView as PrintViewClass,
+	PrintViewTarget as PrintViewTargetShape,
+	QuickEntryAfterInsert as QuickEntryAfterInsertType,
+	QuickEntryForm as QuickEntryFormClass,
 	StandardFormEvents as StandardFormEventsType,
 } from "./ui/form";
 import type {
+	GroupBy as GroupByClass,
 	ListDocOf,
 	ListView as ListViewClass,
+	ListViewSelect as ListViewSelectClass,
+	PageWrapper as PageWrapperShape,
 	ListViewSettings as ListViewSettingsShape,
 	QueryReport as QueryReportClass,
 	QueryReportColumn as QueryReportColumnShape,
 	QueryReportFilterControl as QueryReportFilterControlShape,
 	QueryReportSettings as QueryReportSettingsShape,
 	ReportView as ReportViewClass,
+	SortSelector as SortSelectorClass,
+	SortSelectorOptions as SortSelectorOptionsShape,
 } from "./views";
 import type { Page as PageClass } from "./utils";
 
@@ -89,6 +98,12 @@ declare global {
 			type FieldGroupOptions = LayoutOptions;
 			/** `frappe.ui.Page` — `frappe/public/js/frappe/ui/page.js:51`. */
 			type Page = PageClass;
+			/** `frappe.ui.SortSelector` — `frappe/public/js/frappe/ui/sort_selector.js:1`. */
+			type SortSelector = SortSelectorClass;
+			/** The options `new frappe.ui.SortSelector(...)` takes. */
+			type SortSelectorOptions = SortSelectorOptionsShape;
+			/** `frappe.ui.GroupBy` — `frappe/public/js/frappe/ui/group_by/group_by.js:3`. */
+			type GroupBy = GroupByClass;
 
 			namespace form {
 				/** `frappe.ui.form.Form` — `frappe/public/js/frappe/form/form.js:64`. */
@@ -108,6 +123,14 @@ declare global {
 				type Control = BaseControl;
 				/** The options `frappe.ui.form.make_control` and every Control constructor take. */
 				type ControlOptions = ControlOptionsShape;
+				/** `frappe.ui.form.QuickEntryForm` — `frappe/public/js/frappe/form/quick_entry.js:36`. */
+				type QuickEntryForm = QuickEntryFormClass;
+				/** The `after_insert` callback of a quick entry dialog. */
+				type QuickEntryAfterInsert = QuickEntryAfterInsertType;
+				/** `frappe.ui.form.PrintView` — `frappe/printing/page/print/print.js:34`. */
+				type PrintView = PrintViewClass;
+				/** What `PrintView#show` prints: a form, or the print page's stand-in for one. */
+				type PrintViewTarget = PrintViewTargetShape;
 			}
 		}
 
@@ -121,6 +144,10 @@ declare global {
 			type ListView = ListViewClass;
 			/** `frappe.views.ReportView` — `frappe/public/js/frappe/views/reports/report_view.js:9`. */
 			type ReportView = ReportViewClass;
+			/** `frappe.views.ListViewSelect` — `frappe/public/js/frappe/list/list_view_select.js:15`. */
+			type ListViewSelect = ListViewSelectClass;
+			/** An entry of `frappe.pages`: a routed page's element, where a page script assigns `on_page_load`. */
+			type PageWrapper = PageWrapperShape;
 			/** `frappe.views.QueryReport` — `frappe/public/js/frappe/views/reports/query_report.js:30`. */
 			type QueryReport = QueryReportClass;
 			/** `frappe.query_reports[report_name]` — what a query report's `<report>.js` assigns. */
