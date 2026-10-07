@@ -1,0 +1,33 @@
+{
+ "doctype": "DocType",
+ "name": "DocType",
+ "module": "Edge Cases",
+ "autoname": "Prompt",
+ "istable": 0,
+ "issingle": 0,
+ "fields": [
+  {
+   "fieldname": "module",
+   "fieldtype": "Link",
+   "label": "Module",
+   "options": "Module Def",
+   "reqd": 1
+  },
+  {
+   "fieldname": "istable",
+   "fieldtype": "Check",
+   "label": "Is Child Table"
+  },
+  {
+   "fieldname": "naming_rule",
+   "fieldtype": "Select",
+   "label": "Naming Rule",
+   "options": "\nSet by user\nAutoincrement\nBy fieldname\nBy \"Naming Series\" field\nExpression\nExpression (old style)\nRandom\nUUID\nBy script"
+  },
+  {
+   "fieldname": "autoname",
+   "fieldtype": "Data",
+   "label": "Auto Name"
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+[
+ {
+  "doctype": "Property Setter",
+  "doctype_or_field": "DocField",
+  "doc_type": "Selling Settings",
+  "field_name": "so_required",
+  "property": "options",
+  "property_type": "Text",
+  "value": "Never\nAlways"
+ }
+]

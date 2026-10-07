@@ -33,6 +33,10 @@ updates:
         patterns: ["*"]
     ignore:
       - dependency-name: "@types/jquery"
+      # The type tests' second compiler (scripts/test-types.mjs) is pinned to the
+      # oldest TypeScript the README supports, on purpose. Moving it is a decision
+      # about that floor, not a routine bump.
+      - dependency-name: "typescript-5.8"
 
   # ── Nix flake inputs, including the frappe source itself ─────────────────────────
   #

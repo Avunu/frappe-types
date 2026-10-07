@@ -1,0 +1,27 @@
+{
+ "doctype": "DocType",
+ "name": "Customize Form",
+ "module": "Edge Cases",
+ "autoname": "DL.####",
+ "istable": 0,
+ "issingle": 0,
+ "fields": [
+  {
+   "fieldname": "naming_rule",
+   "fieldtype": "Select",
+   "label": "Naming Rule",
+   "options": "\nSet by user\nBy fieldname\nBy \"Naming Series\" field\nExpression\nExpression (old style)\nRandom\nBy script"
+  },
+  {
+   "fieldname": "doc_type",
+   "fieldtype": "Link",
+   "label": "Enter Form Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "autoname",
+   "fieldtype": "Data",
+   "label": "Auto Name"
+  }
+ ]
+}

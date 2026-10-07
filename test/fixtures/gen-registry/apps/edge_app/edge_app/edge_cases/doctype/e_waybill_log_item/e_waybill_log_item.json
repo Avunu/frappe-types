@@ -1,0 +1,14 @@
+{
+ "doctype": "DocType",
+ "name": "e-Waybill Log Item",
+ "module": "Edge Cases",
+ "istable": 1,
+ "issingle": 0,
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Data",
+   "label": "Item Code"
+  }
+ ]
+}

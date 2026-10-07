@@ -1,0 +1,14 @@
+{
+ "doctype": "DocType",
+ "name": "Sales Order Tag",
+ "module": "Selling",
+ "fields": [
+  {
+   "fieldname": "tag",
+   "fieldtype": "Link",
+   "label": "Tag",
+   "options": "Tag"
+  }
+ ],
+ "istable": 1
+}

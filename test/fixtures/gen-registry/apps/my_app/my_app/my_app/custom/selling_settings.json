@@ -1,0 +1,14 @@
+{
+ "doctype": "Selling Settings",
+ "custom_fields": [],
+ "property_setters": [
+  {
+   "doctype_or_field": "DocField",
+   "doc_type": "Selling Settings",
+   "field_name": "so_required",
+   "property": "options",
+   "property_type": "Text",
+   "value": "No\nYes\nOnly On Install"
+  }
+ ]
+}

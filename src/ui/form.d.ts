@@ -43,8 +43,12 @@
 import type {
 	ChildDoc,
 	DocField,
+	DocFieldName,
+	DocOf,
 	DocTypeMeta,
 	FormatterOptions,
+	FormDocTypeOf,
+	FormSetValueArgs,
 	FrappeDoc,
 	Permission,
 } from "../model";
@@ -1776,10 +1780,21 @@ export declare class FormController {
  *
  * Unusually for this slice the constructor takes **positional** arguments, not
  * an options bag (frappe/public/js/frappe/form/form.js:65).
+ *
+ * ## The `DT` parameter
+ *
+ * `DT` is the form's doctype name. It defaults to `string`, which is exactly
+ * the pre-generic `Form`: `doc` is the open {@link FrappeDoc}. When `DT` is a
+ * doctype registered in the global `FrappeDocTypes` interface, `doc` is that
+ * doctype's {@link DocOf} — closed, with typed fields — and
+ * {@link Form.set_value} checks fieldnames and values against it. A `Form<"ToDo">`
+ * is still assignable to `Form`, so every API typed against the plain `Form`
+ * accepts it — on TypeScript 5.8 as well as 7, which is why no member may put
+ * `DT` in a type-parameter constraint (see {@link FormSetValueArgs}).
  */
-export declare class Form {
+export declare class Form<DT extends string = string> {
 	constructor(
-		doctype: string,
+		doctype: DT,
 		parent: HTMLElement,
 		in_form?: boolean,
 		doctype_layout_name?: string
@@ -1787,7 +1802,8 @@ export declare class Form {
 
 	// ---- constructor (frappe/public/js/frappe/form/form.js:65-93) ----
 	docname: string;
-	doctype: string;
+	/** frappe/public/js/frappe/form/form.js:67 — the constructor's first argument. */
+	doctype: DT;
 	doctype_layout_name?: string;
 	in_form: boolean;
 	hidden: boolean;
@@ -1847,8 +1863,12 @@ export declare class Form {
 	body?: JQuery<HTMLElement>;
 
 	// ---- per-document state ----
-	/** The document being edited; only present once `refresh()` has run. */
-	doc: FrappeDoc;
+	/**
+	 * The document being edited; only present once `refresh()` has run.
+	 * {@link DocOf}`<DT>`: the registered shape for a registered doctype, the
+	 * open {@link FrappeDoc} otherwise.
+	 */
+	doc: DocOf<DT>;
 	save_disabled?: boolean;
 	/**
 	 * Set by whatever embeds a Form in a dialog — the Data Import dialog does
@@ -1957,7 +1977,7 @@ export declare class Form {
 	/** frappe/public/js/frappe/form/form.js:1612-1633. */
 	remove_custom_button(label: string, group?: string): void;
 	/** frappe/public/js/frappe/form/form.js:1665-1667. */
-	get_doc(): FrappeDoc;
+	get_doc(): DocOf<DT>;
 	/** frappe/public/js/frappe/form/form.js:1736-1752. `"*"` maps every field in `fields_dict`. */
 	field_map(fnames: string | string[], fn: (df: DocField) => void): void;
 	/**
@@ -1995,13 +2015,19 @@ export declare class Form {
 	 * with `$.extend` **minus** `idx` and `name`, which are never overridden.
 	 */
 	add_child(fieldname: string, values?: Record<string, unknown>): ChildDoc;
-	/** frappe/public/js/frappe/form/form.js:1863-1927. */
-	set_value(
-		field: string | Record<string, unknown>,
-		value?: unknown,
-		if_missing?: boolean,
-		skip_dirty_trigger?: boolean
-	): Promise<unknown>;
+	/**
+	 * frappe/public/js/frappe/form/form.js:1863-1927. One field and its value,
+	 * or a `{fieldname: value}` map (:1917-1926 walks the object form and ignores
+	 * the second argument). For a registered `DT` the fieldname must be one of
+	 * its own fields — never a standard one like `name` or `idx`, which frappe
+	 * throws on (:1910-1912) — and the value must fit that field's type;
+	 * otherwise any fieldname and value are accepted, as before. A Table field
+	 * also takes partial rows: frappe clears the table and `add_child`s a fresh
+	 * row per element, copying everything but the standard fields (:1869-1897).
+	 * See {@link FormSetValueArgs} for the exact rules, and for why this is one
+	 * rest-tuple signature rather than overloads.
+	 */
+	set_value(...args: FormSetValueArgs<DT>): Promise<unknown>;
 	/** frappe/public/js/frappe/form/form.js:1929-1978. */
 	call(
 		opts: string | Record<string, unknown>,
@@ -2072,6 +2098,15 @@ export declare class Form {
 }
 
 /**
+ * What {@link Form.set_value} accepts for a field whose document type is `V`:
+ * `V` itself, plus — for a Table field — an array of partial rows, because
+ * frappe builds the real rows from them (frappe/public/js/frappe/form/form.js:1869-1897).
+ */
+export type FormSetValueInput<V> = V extends readonly (infer R extends object)[]
+	? V | ReadonlyArray<Partial<R>>
+	: V;
+
+/**
  * The desk-global "form currently on screen".
  *
  * `window.cur_frm = null` at frappe/public/js/frappe/provide.js:50, set to the active form at
@@ -2082,6 +2117,147 @@ export declare class Form {
  * type.
  */
 export type CurFrm = Form | null;
+
+/* ========================================================================== *
+ * Form events (form/script_manager.js)
+ * ========================================================================== */
+
+/**
+ * Holder for {@link FormEventHandler}'s signature. Declared as a METHOD so the
+ * handler type compares bivariantly in its parameters: a handler that declares
+ * a NARROWER parameter than frappe's — `@param {frappe.ui.form.Form<"ToDo">} frm`
+ * in a map typed for any doctype, or a literal `cdt` — still fits.
+ *
+ * A parameter of an unrelated type is still rejected, and rightly: frappe
+ * registers EVERY function in the map as a handler for the event of that name
+ * (frappe/public/js/frappe/form/script_manager.js:46-53), so a helper written
+ * as `(frm, row)` would receive the doctype string as `row` the moment that
+ * event fires. Keep such helpers outside the map.
+ */
+interface FormEventHandlerSignature<FrmDT extends string> {
+	handler(frm: Form<FrmDT>, cdt: string, cdn: string): unknown;
+}
+
+/**
+ * One handler registered with `frappe.ui.form.on`.
+ *
+ * `ScriptManager#trigger` calls it as `_function(me.frm, doctype, name)`
+ * (frappe/public/js/frappe/form/script_manager.js:109): the form, then the
+ * doctype and name of the document the event is about — the form's own for a
+ * form event, the CHILD row's for a child-table event (`cdt` / `cdn` in frappe's
+ * own scripts). There is no `this` binding: the handler is invoked through the
+ * wrapper at :28-35.
+ *
+ * The return value is `unknown` because frappe accepts anything: a thenable is
+ * awaited before the next handler runs (frappe/public/js/frappe/form/script_manager.js:114-118,
+ * chained by `frappe.run_serially` at :141), and any other value is ignored.
+ */
+export type FormEventHandler<FrmDT extends string = string> = FormEventHandlerSignature<FrmDT>["handler"];
+
+/**
+ * The events frappe's form itself triggers, by name. Each is cited at its
+ * trigger site; all run through `ScriptManager#trigger`, so all receive
+ * `(frm, cdt, cdn)` as described on {@link FormEventHandler}.
+ */
+export interface StandardFormEvents<FrmDT extends string = string> {
+	/** frappe/public/js/frappe/form/script_manager.js:259 — once per form, at the end of `ScriptManager#setup`; called immediately rather than queued (:123-125). */
+	setup?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:629 — before a new document is rendered; `onload` waits for it. */
+	before_load?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:630 — once per document opened in this form. */
+	onload?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:674 — on every render of the form. */
+	refresh?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:677-680 — after the first `refresh` of a document (`cscript.is_onload`). */
+	onload_post_render?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:901 — before save; set `frappe.validated = false` to stop it (:904-907). */
+	validate?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:902 — after `validate`, before the save request. */
+	before_save?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:862 — after a successful save. */
+	after_save?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:937 — after the submit confirmation; `frappe.validated = false` stops it (:938-940). */
+	before_submit?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:950-951 — after a successful submit. */
+	on_submit?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:1078 — `frappe.validated = false` stops the cancel (:1079-1081). */
+	before_cancel?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:1090 — after a successful cancel. */
+	after_cancel?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:922, :1124 — `frappe.validated = false` stops the discard (:1125-1127). */
+	before_discard?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:1135 — after a successful discard. */
+	after_discard?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/workflow.js:136 — before a workflow transition is applied; `frm.selected_workflow_action` holds the action (:135). */
+	before_workflow_action?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/workflow.js:146 — after the transition has been applied and the form refreshed. */
+	after_workflow_action?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:20 — after the timeline re-renders. */
+	timeline_refresh?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/dashboard.js:457 — after the connections counts arrive in `frm.dashboard_data`. */
+	dashboard_update?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:141 — when the form's page is hidden. */
+	on_hide?: FormEventHandler<FrmDT>;
+	/** frappe/public/js/frappe/form/form.js:2315 — after `set_active_tab`. */
+	on_tab_change?: FormEventHandler<FrmDT>;
+	/**
+	 * frappe/public/js/frappe/form/grid_row.js:1417 — a child row's detail form
+	 * was opened. Triggered with the CHILD doctype, so register it on the child
+	 * doctype (`frappe.ui.form.on("Sales Order Item", { form_render })`).
+	 */
+	form_render?: FormEventHandler<FrmDT>;
+}
+
+/**
+ * The events map `frappe.ui.form.on(doctype, events)` takes — what a doctype's
+ * `<doctype>.js` hands frappe.
+ *
+ * - `DT` is the doctype the handlers are registered on, the first argument of
+ *   `frappe.ui.form.on`.
+ * - `FrmDT` is the doctype of the form they run on. It defaults to
+ *   {@link FormDocTypeOf}`<DT>`: `DT` itself, or — for a child table registered
+ *   with a `parenttype` — its parent(s). Pass it explicitly to narrow a child
+ *   table used by several parents.
+ *
+ * Besides the {@link StandardFormEvents}, any key is accepted, as frappe
+ * accepts it (frappe/public/js/frappe/form/script_manager.js:46-53 registers every
+ * function-valued key):
+ *
+ * - a fieldname — fired when that field changes (frappe/public/js/frappe/form/form.js:351,
+ *   :373 for a child field), and for a Button field when it is clicked
+ *   (frappe/public/js/frappe/form/controls/button.js:42);
+ * - a child-table event, registered on the CHILD doctype: `<table>_add`
+ *   (frappe/public/js/frappe/form/grid.js:1199), `before_<table>_remove` and
+ *   `<table>_remove` (frappe/public/js/frappe/form/grid_row.js:100-113),
+ *   `<table>_move` (frappe/public/js/frappe/form/grid.js:937-942),
+ *   `<table>_delete` after a bulk delete (frappe/public/js/frappe/form/grid.js:389, :409);
+ *   and `<table>_on_form_rendered` on the PARENT (frappe/public/js/frappe/form/grid_row.js:1416);
+ * - a `depends_on: "fn:<name>"` callback (frappe/public/js/frappe/form/layout.js:810-815);
+ * - a helper of your own, reached with `frm.trigger("<name>")`
+ *   (frappe/public/js/frappe/form/form.js:1999-2001). It is called like any
+ *   other handler, so it takes `(frm, cdt, cdn)` too.
+ *
+ * Handler parameters are checked against `(frm, cdt: string, cdn: string)` —
+ * see {@link FormEventHandler}.
+ *
+ * For a registered `DT` its fieldnames are spelled out as well, so an editor
+ * can complete them.
+ */
+export type FormEvents<DT extends string = string, FrmDT extends string = FormDocTypeOf<DT>> =
+	StandardFormEvents<FrmDT> & { [F in DocFieldName<DT>]?: FormEventHandler<FrmDT> } & {
+		[event: string]: FormEventHandler<FrmDT> | undefined;
+	};
+
+/**
+ * `frappe.ui.form.handlers` — `frappe.provide("frappe.ui.form.handlers")` at
+ * frappe/public/js/frappe/form/script_manager.js:4, keyed by doctype (or `"*"`, which every form
+ * consults — :166-170) and then by event name. Each list holds the WRAPPED
+ * handlers `on` pushed (:28-37), not the functions you passed.
+ */
+export type FormEventHandlerRegistry = Record<
+	string,
+	Record<string, FormEventHandler[] | undefined> | undefined
+>;
 
 /* ========================================================================== *
  * The frappe.ui.form namespace object itself
@@ -2285,18 +2461,45 @@ export interface FrappeUiFormNamespace {
 	add_options: unknown;
 	/** `form/save.js` */
 	check_mandatory: unknown;
-	/** `form/script_manager.js` */
-	get_event_handler_list: unknown;
+	/**
+	 * frappe/public/js/frappe/form/script_manager.js:14-22 — the handler list for
+	 * one doctype and event, created (empty) on first access.
+	 */
+	get_event_handler_list(doctype: string, fieldname: string): FormEventHandler[];
 	/** `form/save.js` */
 	is_saving: unknown;
 	/** `form/quick_entry.js` */
 	make_quick_entry: unknown;
-	/** `form/script_manager.js` */
-	off: unknown;
-	/** `form/script_manager.js` */
-	on: unknown;
-	/** `form/script_manager.js` */
-	on_change: unknown;
+	/**
+	 * frappe/public/js/frappe/form/script_manager.js:60-73. Drops EVERY handler
+	 * registered for `fieldname` on `doctype` — the `handler` argument is
+	 * accepted and ignored — plus the open form's `events[fieldname]` and old-style
+	 * `cscript[fieldname]` when the open form is that doctype.
+	 */
+	off(doctype: string, fieldname: string, handler?: FormEventHandler): void;
+	/**
+	 * frappe/public/js/frappe/form/script_manager.js:24-57 — registers form-event
+	 * handlers for `doctype` (`"*"` for every doctype, :166-170).
+	 *
+	 * Two forms. With a map, every FUNCTION-valued key is registered and anything
+	 * else is skipped (:46-53); `DT` is inferred from the first argument, so the
+	 * handlers' `frm` is a `Form` of that doctype — of its parent, for a child
+	 * table registered with a `parenttype` (see {@link FormEvents}). With a
+	 * single event name, `handler` is registered for it (:55).
+	 *
+	 * A handler added while a form of `doctype` is open is also installed on
+	 * that form's `events` (:39-43). Returns nothing.
+	 */
+	on<DT extends string>(doctype: DT, events: FormEvents<DT>): void;
+	on<DT extends string>(
+		doctype: DT,
+		event: string,
+		handler: FormEventHandler<FormDocTypeOf<DT>>
+	): void;
+	/** frappe/public/js/frappe/form/script_manager.js:24 — the same function as {@link FrappeUiFormNamespace.on}. */
+	on_change: FrappeUiFormNamespace["on"];
+	/** frappe/public/js/frappe/form/script_manager.js:4. See {@link FormEventHandlerRegistry}. */
+	handlers: FormEventHandlerRegistry;
 	/** `form/print_utils.js` */
 	qz_connect: unknown;
 	/** `form/print_utils.js` */
@@ -2317,8 +2520,13 @@ export interface FrappeUiFormNamespace {
 	set_user_image: unknown;
 	/** `form/sidebar/user_image.js` */
 	setup_user_image_event: unknown;
-	/** `form/script_manager.js` */
-	trigger: unknown;
+	/**
+	 * frappe/public/js/frappe/form/script_manager.js:75-77 —
+	 * `cur_frm.script_manager.trigger(fieldname, doctype)`. Runs on the form
+	 * currently open, whatever its doctype, and throws when there is none
+	 * (`cur_frm` is `null`). Discards the promise `trigger` returns.
+	 */
+	trigger(doctype: string, fieldname: string): void;
 	/** `form/save.js` */
 	update_calling_link: unknown;
 }

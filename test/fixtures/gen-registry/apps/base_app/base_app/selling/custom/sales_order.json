@@ -1,0 +1,30 @@
+{
+ "doctype": "Sales Order",
+ "sync_on_migrate": 1,
+ "custom_fields": [
+  {
+   "dt": "Sales Order",
+   "fieldname": "custom_priority",
+   "fieldtype": "Data",
+   "label": "Priority (base_app)"
+  }
+ ],
+ "property_setters": [
+  {
+   "doctype_or_field": "DocField",
+   "doc_type": "Sales Order",
+   "field_name": "status",
+   "property": "options",
+   "property_type": "Text",
+   "value": "\nBaseOnly"
+  },
+  {
+   "doctype_or_field": "DocField",
+   "doc_type": "Sales Order",
+   "field_name": "customer",
+   "property": "not_nullable",
+   "property_type": "Check",
+   "value": "0"
+  }
+ ]
+}

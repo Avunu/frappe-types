@@ -4,11 +4,14 @@ name: check
 # laptop measure the same tree:
 #
 #   checks.typecheck        tsc --noEmit, with skipLibCheck OFF
+#   checks.types            the test/types/ consumer fixtures, against the packed file list
 #   checks.coverage         the coverage ratchet, against the PINNED frappe
 #   checks.frappe-major     the package major is the frappe major
 #   checks.verified-against package.json's frappe.verifiedAgainst matches the pin
+#   checks.unit             the script unit tests, incl. gen-registry against the PINNED frappe
+#   checks.drift            audit:drift --strict: the PINNED frappe vs drift-baseline.json
 #
-# WHY NIX RATHER THAN `npm ci && npm run test`. Three of those four checks are claims
+# WHY NIX RATHER THAN `npm ci && npm run test`. Most of those checks are claims
 # about a frappe source tree, and until the flake existed CI had to go and find one:
 # it cloned frappe at the branch named in package.json's `frappe.branch` and hoped.
 # That is a moving target by construction — the branch advances — so the coverage
@@ -60,8 +63,10 @@ jobs:
       - name: nix flake check
         run: nix flake check -L
 
-      # The artifact a release would publish, built from the same tree. Cheap, and it
-      # is the only thing that answers "does `files` in package.json still ship the
-      # right 16 files?" — a question no type check can reach.
+      # The artifact a release would publish, built from the same tree, so that a pack
+      # that fails outright fails here. Whether `files` ships what consumers need is
+      # asserted by checks.types above: it builds its scratch package from `npm pack`'s
+      # file list, requires the presets, the web entry and both bin/ files, and runs the
+      # packed `frappe-types gen-registry`.
       - name: nix build
         run: nix build .#default -L

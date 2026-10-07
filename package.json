@@ -1,7 +1,7 @@
 {
   "name": "frappe-types",
   "version": "16.4.1",
-  "description": "TypeScript type definitions for the Frappe Framework desk JS API (window.frappe)",
+  "description": "TypeScript types for the Frappe Framework desk JS API (window.frappe), with an offline generator of a global DocType registry for desk scripts. Not the frappe_types bench app.",
   "keywords": [
     "frappe",
     "erpnext",
@@ -23,6 +23,9 @@
   "author": "Avunu LLC",
   "type": "module",
   "types": "./src/index.d.ts",
+  "bin": {
+    "frappe-types": "bin/frappe-types.mjs"
+  },
   "exports": {
     ".": {
       "types": "./src/index.d.ts"
@@ -36,10 +39,16 @@
     "./deep-modules": {
       "types": "./src/deep-modules.d.ts"
     },
+    "./web": {
+      "types": "./src/web.d.ts"
+    },
+    "./tsconfig/*": "./tsconfig/*",
     "./package.json": "./package.json"
   },
   "files": [
     "src",
+    "bin",
+    "tsconfig",
     "README.md",
     "CHANGELOG.md",
     "DRIFT.md",
@@ -55,18 +64,20 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "typescript-5.8": "npm:typescript@~5.8.3"
   },
   "scripts": {
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && tsc -p tsconfig.bin.json",
     "check:major": "node scripts/check-frappe-major.mjs",
-    "test": "tsc --noEmit && npm run test:unit && node scripts/audit-coverage.mjs --strict",
+    "test": "tsc --noEmit && npm run test:unit && npm run test:types && node scripts/audit-coverage.mjs --strict",
     "test:unit": "node --test \"test/*.test.mjs\"",
+    "test:types": "node scripts/test-types.mjs",
     "coverage": "node scripts/audit-coverage.mjs",
     "audit:drift": "node scripts/audit-drift.mjs",
     "remap:citations": "node scripts/remap-citations.mjs",
     "consumers": "node scripts/audit-consumer.mjs",
-    "upgrade": "npx npm-check-updates -u --reject @types/jquery && npm install"
+    "upgrade": "npx npm-check-updates -u --reject @types/jquery,typescript-5.8 && npm install"
   },
   "publishConfig": {
     "access": "public",

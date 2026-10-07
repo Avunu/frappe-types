@@ -1,0 +1,4 @@
+{
+	"extends": "frappe-types/tsconfig/desk-js.json",
+	"include": ["**/*.js"]
+}

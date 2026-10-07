@@ -1,0 +1,6 @@
+{
+	"//": "scripts/test-types.mjs runs the PACKED `frappe-types gen-registry` with these options (bench relative to the repo root) and writes doctypes.d.ts here before compiling. doctypes.d.ts is not committed.",
+	"bench": "test/fixtures/gen-registry/apps",
+	"app": "my_app",
+	"out": "doctypes.d.ts"
+}

@@ -1,0 +1,26 @@
+{
+ "doctype": "DocType",
+ "name": "Sales Order Item",
+ "module": "Selling",
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Quantity"
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Select",
+   "label": "UOM",
+   "options": "Nos\nKg\nNos"
+  }
+ ],
+ "istable": 1
+}

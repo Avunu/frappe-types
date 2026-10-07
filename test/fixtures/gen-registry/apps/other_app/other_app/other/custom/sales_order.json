@@ -1,0 +1,12 @@
+{
+ "doctype": "Sales Order",
+ "sync_on_migrate": 1,
+ "custom_fields": [
+  {
+   "dt": "Sales Order",
+   "fieldname": "custom_from_other_app",
+   "fieldtype": "Data"
+  }
+ ],
+ "property_setters": []
+}

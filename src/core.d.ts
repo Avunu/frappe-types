@@ -43,6 +43,13 @@ import type {
 	FrappeSidebarEntityKind,
 } from "./ui/sidebar";
 import type { FrappeDesktopIconRecord } from "./utils";
+import type {
+	ListViewSettings,
+	ListViewSettingsButton,
+	ListViewSettingsDropdownButton,
+	ListViewSettingsDropdownItem,
+	QueryReportSettings,
+} from "./views";
 
 /**
  * A `frappe.ui.Dialog` instance. Owned by `ui/form.d.ts`.
@@ -1398,112 +1405,42 @@ export type FrappeAssetsJson = Record<string, string>;
 // ---------------------------------------------------------------------------
 // listview_settings
 //
-// OWNERSHIP NOTE — `frappe.listview_settings` is arguably a `frappe-views`
-// concern. It is declared here because it was assigned to this group; if
-// `frappe-views` also emits a `ListViewSettings`, keep one and delete the other.
+// OWNERSHIP — `frappe.listview_settings[doctype]` is declared ONCE, as
+// `ListViewSettings` in `views.d.ts`, which is also the type of
+// `BaseList#settings` (`frappe/public/js/frappe/list/base_list.js:47`, the
+// same object). This fragment used to carry a second copy, `FrappeListViewSettings`,
+// that had drifted from it (`add_fields` as `string[]` here and
+// `(string | DocField)[]` there, `button.action` only here, `hide_name_filter`
+// only here). Two shapes for one object meant a `ListViewSettings` a list script
+// built could not be stored in `frappe.listview_settings`. The members only this
+// copy had were folded into `views.d.ts`; the old names remain as aliases so
+// existing imports keep compiling.
+//
+// Where the two copies disagreed, the merged type keeps what frappe does: a
+// formatter may return `undefined` (the Subject text falls back to `doc.name`,
+// `frappe/public/js/frappe/list/list_view.js:1874-1876`) and `button.action`
+// is required (called unguarded, `frappe/public/js/frappe/list/list_view.js:2161`),
+// both as the old copy had them. What the aliases do NOT carry over from the
+// old copy, because `views.d.ts` already declared it narrower at 16.4.1:
+// `filters` entries are `[fieldname, operator, value]` or
+// `[doctype, fieldname, operator, value, hidden?]` tuples, not any
+// `readonly unknown[]` (`frappe/public/js/frappe/list/list_view.js:138-143`);
+// `get_indicator` may return `null`/`undefined`, which `frappe.get_indicator`
+// treats as "no indicator" (`frappe/public/js/frappe/model/indicator.js:88-90`);
+// and `onload`/`refresh` receive the list view as a `BaseList`, not `unknown`.
 // ---------------------------------------------------------------------------
 
-/**
- * The per-doctype `listview_settings.button` block.
- * Source: `frappe/public/js/frappe/list/list_view.js:1709-1726`.
- */
-export interface FrappeListViewSettingsButton {
-	show(doc: FrappeDoc): boolean;
-	/** A **function** here — contrast `dropdown_button.get_label`, which is a string. */
-	get_label(doc: FrappeDoc): string;
-	get_description(doc: FrappeDoc): string;
-	/**
-	 * Click handler, called unguarded with the row's doc
-	 * (`frappe/public/js/frappe/list/list_view.js:2157-2164`) — a button without it
-	 * throws when clicked.
-	 */
-	action(doc: FrappeDoc): void;
-}
+/** @deprecated The same type as {@link ListViewSettingsButton}; use that name. */
+export type FrappeListViewSettingsButton<DT extends string = string> = ListViewSettingsButton<DT>;
 
-/**
- * One entry of `listview_settings.dropdown_button.buttons`.
- * Source: `frappe/public/js/frappe/list/list_view.js:1734-1743`.
- */
-export interface FrappeListViewSettingsDropdownItem {
-	/** Optional: `if (!button.show || button.show(doc))` (list_view.js:1735). */
-	show?(doc: FrappeDoc): boolean;
-	/** A **string**, interpolated directly (list_view.js:1739). Upstream inconsistency, preserved. */
-	get_label: string;
-	get_description?(doc: FrappeDoc): string;
-	/** Optional click handler, guarded: `if (button && button.action)` (list_view.js:2166-2174). */
-	action?(doc: FrappeDoc): void;
-}
+/** @deprecated The same type as {@link ListViewSettingsDropdownItem}; use that name. */
+export type FrappeListViewSettingsDropdownItem<DT extends string = string> = ListViewSettingsDropdownItem<DT>;
 
-/**
- * `listview_settings.dropdown_button`.
- * Source: `frappe/public/js/frappe/list/list_view.js:1729-1763`.
- */
-export interface FrappeListViewSettingsDropdown {
-	/** A **string** (list_view.js:1749, :1757), unlike `button.get_label`. */
-	get_label: string;
-	buttons: FrappeListViewSettingsDropdownItem[];
-}
+/** @deprecated The same type as {@link ListViewSettingsDropdownButton}; use that name. */
+export type FrappeListViewSettingsDropdown<DT extends string = string> = ListViewSettingsDropdownButton<DT>;
 
-/**
- * One doctype's entry in `frappe.listview_settings`.
- *
- * The namespace is created empty by `frappe.provide("frappe.listview_settings")`
- * (`frappe/public/js/frappe/provide.js:37`) and each doctype's
- * `<doctype>_list.js` assigns into it; `frappe/public/js/frappe/list/base_list.js:47`
- * reads `frappe.listview_settings[this.doctype] || {}`, so *every* member is
- * optional and a missing doctype is normal.
- */
-export interface FrappeListViewSettings {
-	/** list_view.js:274 — extra fieldnames to fetch. */
-	add_fields?: string[];
-	/**
-	 * list_view.js:138-143, :816-821 — default filters as `[fieldname, operator, value]`
-	 * triples; a 3-element entry is prefixed with the doctype, any other length passes
-	 * through unchanged (so `[doctype, fieldname, operator, value]` is accepted too).
-	 */
-	filters?: ReadonlyArray<readonly unknown[]>;
-	/**
-	 * list_view.js:1545-1547, :1869-1871 — per-fieldname cell renderers, called as
-	 * `(value, df, doc)`. The subject (first) column is skipped by the first call
-	 * site (`col.type !== "Subject"`, list_view.js:1546) and handled by
-	 * `get_subject_text` (list_view.js:1866-1884) as the text of the row link; a
-	 * falsy result there falls back to `doc.name`.
-	 */
-	formatters?: Record<
-		string,
-		(value: unknown, df: DocField, doc: FrappeDoc) => string | undefined
-	>;
-	/** list_view.js:1816-1817 — override the row link target. */
-	get_form_link?(doc: FrappeDoc): string;
-	/**
-	 * `frappe/public/js/frappe/model/indicator.js:8, 88-89` — `[label, colour, filter?]`.
-	 *
-	 * SEAM — the tuple was spelled inline here and imported as `IndicatorTuple`
-	 * from `./model` by `views.d.ts`. `model.d.ts` won ownership (indicator.js is
-	 * under `frappe/public/js/frappe/model/`); the shape is unchanged.
-	 */
-	get_indicator?(doc: FrappeDoc): IndicatorTuple;
-	/** list_view.js:560-571 — skip the extra `ID` (`name`) column added for a doctype whose `title_field` is not `name`. */
-	hide_name_column?: boolean;
-	/** `frappe/public/js/frappe/list/base_list.js:1164` — omit the standard "ID" filter field. */
-	hide_name_filter?: boolean;
-	/** list_view.js:420 — called once with the list view instance. */
-	onload?(listview: unknown): void;
-	/** base_list.js:556-557 — called on every refresh with the list view instance. */
-	refresh?(listview: unknown): void;
-	/** list_view.js:972. */
-	before_render?(): void;
-	/**
-	 * list_view.js:345-349, :2281-2285 — replaces the "Add" button's action (and the
-	 * `ctrl+b` shortcut, which calls the same wrapper, list_view.js:358-363) and the
-	 * empty-state "new" button; `make_new_doc()` runs when absent.
-	 */
-	primary_action?(): void;
-	button?: FrappeListViewSettingsButton;
-	dropdown_button?: FrappeListViewSettingsDropdown;
-	/** Apps hang arbitrary helpers here (e.g. `frappe.listview_settings["DocType"].new_doctype_dialog`). */
-	[key: string]: unknown;
-}
+/** @deprecated The same type as {@link ListViewSettings}; use that name. */
+export type FrappeListViewSettings<DT extends string = string> = ListViewSettings<DT>;
 
 // ---------------------------------------------------------------------------
 // The frappe-core slice of the `frappe` global
@@ -1597,7 +1534,16 @@ export interface FrappeCore {
 	/** `frappe/public/js/frappe/request.js:6`. */
 	request: FrappeRequest;
 	/** `frappe/public/js/frappe/provide.js:37`; indexed by doctype at base_list.js:47. */
-	listview_settings: Record<string, FrappeListViewSettings | undefined>;
+	listview_settings: Record<string, ListViewSettings | undefined>;
+	/**
+	 * The save/submit/cancel/discard veto flag. `0` at module scope
+	 * (`frappe/public/js/frappe/form/form.js:2442`), reset to `true` before each
+	 * of those actions (`frappe/public/js/frappe/form/form.js:898`, `:936`,
+	 * `:1077`, `:1123`) and read after the `validate` / `before_*` handlers ran
+	 * (`:904`, `:938`, `:1079`, `:1125`). A form script vetoes by setting it to
+	 * `false`.
+	 */
+	validated: boolean | 0;
 	/** See {@link FrappeDatetime} — `frappe/public/js/frappe/utils/datetime.js:4, :13`. */
 	datetime: FrappeDatetime;
 
@@ -1645,7 +1591,19 @@ export interface FrappeCore {
 	 * It walks `window` — `frappe.provide("locals")` creates `window.locals`, not
 	 * `frappe.locals` (provide.js:21). Returns the deepest object; the return
 	 * value is genuinely untyped, hence the honest open record.
+	 *
+	 * Two overloads name the registries desk scripts write into, where the
+	 * object `provide` returns IS the typed registry:
+	 * `frappe.provide("frappe.query_reports")` — what
+	 * `frappe/public/js/frappe/views/reports/query_report.js:10` itself calls —
+	 * and `frappe.provide("frappe.listview_settings")`
+	 * (`frappe/public/js/frappe/provide.js:37`). The first is the way for a report
+	 * script to reach `frappe.query_reports` without a null check: the property
+	 * is optional on `frappe` because it does not exist until the report bundle
+	 * has loaded, and `provide` creates it when missing (`provide.js:13-15`).
 	 */
+	provide(namespace: "frappe.query_reports"): Record<string, QueryReportSettings | undefined>;
+	provide(namespace: "frappe.listview_settings"): Record<string, ListViewSettings | undefined>;
 	provide(namespace: string): Record<string, unknown>;
 
 	// -- viewport -------------------------------------------------------------

@@ -1,0 +1,13 @@
+[
+	{
+		"//": "Two apps' generated files in one program. scripts/test-types.mjs runs the PACKED command once per entry (bench relative to the repo root). The outputs are not committed.",
+		"bench": "test/fixtures/gen-registry/apps",
+		"app": "other_app",
+		"out": "other_app.d.ts"
+	},
+	{
+		"bench": "test/fixtures/gen-registry/apps",
+		"app": "side_app",
+		"out": "side_app.d.ts"
+	}
+]

@@ -1,0 +1,11 @@
+{
+ "doctype": "DocType",
+ "name": "Ghost",
+ "module": "Archived",
+ "fields": [
+  {
+   "fieldname": "x",
+   "fieldtype": "Data"
+  }
+ ]
+}

@@ -1,0 +1,25 @@
+{
+ "doctype": "DocType",
+ "name": "e-Invoice Log",
+ "module": "Edge Cases",
+ "istable": 0,
+ "issingle": 0,
+ "fields": [
+  {
+   "fieldname": "irn",
+   "fieldtype": "Data",
+   "label": "IRN"
+  },
+  {
+   "fieldname": "e_waybill_number",
+   "fieldtype": "Link",
+   "label": "e-Waybill Number",
+   "options": "e-Waybill Log"
+  },
+  {
+   "fieldname": "is_cancelled",
+   "fieldtype": "Check",
+   "label": "Is Cancelled"
+  }
+ ]
+}

@@ -1,0 +1,39 @@
+{
+ "doctype": "DocType",
+ "name": "Bank Statement Import Log",
+ "module": "Edge Cases",
+ "autoname": "hash",
+ "istable": 0,
+ "issingle": 0,
+ "fields": [
+  {
+   "fieldname": "bank_account",
+   "fieldtype": "Link",
+   "label": "Bank Account",
+   "options": "Bank Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "number_of_transactions",
+   "fieldtype": "Int",
+   "label": "Number of Transactions"
+  },
+  {
+   "fieldname": "detected_amount_format",
+   "fieldtype": "Select",
+   "label": "Detected Amount Format",
+   "options": "Separate columns for withdrawal and deposit\nAmount column has \"CR\"/\"DR\" values\nAmount column has positive/negative values\nTransaction type column has \"CR\"/\"DR\" values\nTransaction type column has \"Deposit\"/\"Withdrawal\" values\nTransaction type column has \"C\"/\"D\" values"
+  },
+  {
+   "fieldname": "pdf_tables",
+   "fieldtype": "JSON",
+   "label": "PDF Tables"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Not Started\nCompleted"
+  }
+ ]
+}

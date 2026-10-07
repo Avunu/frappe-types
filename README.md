@@ -1,5 +1,7 @@
 # frappe-types
 
+> Not affiliated with [github.com/frappe/frappe-types](https://github.com/frappe/frappe-types), the `frappe_types` bench app; this is an npm package of desk JS API types and does not need that app. See [Relation to frappe/frappe-types and frappe-ui frappeTypes](#relation-to-frappefrappe-types-and-frappe-ui-frappetypes).
+
 TypeScript definitions for the **Frappe Framework desk JS API** — the `window.frappe` global that every desk page, doctype client script, custom app bundle and theme is written against.
 
 Frappe ships no types for the desk JS API. This package is a hand-maintained, **source-verified** typeset: every declaration is derived by reading the frappe version it targets, and carries a `file.js:line` citation back to the code it describes.
@@ -28,6 +30,8 @@ Prefer explicit imports (frappe-ui SPAs, shared libraries, anywhere a floating g
 import type { DocField, FrappeDoc, ListViewSettings } from "frappe-types";
 ```
 
+Checking an app's own code? There are [`tsconfig` presets](#tsconfig-presets) for compiled TypeScript (`frappe-types/tsconfig/base.json`) and for the plain JavaScript in doctype, list and report scripts (`frappe-types/tsconfig/desk-js.json`). [JSDoc](#jsdoc-in-desk-scripts) such as `/** @type {frappe.ui.form.FormEvents<"Customer">} */` type-checks in those scripts, `frm.doc` is typed from [your doctypes](#typing-your-doctypes-frappedoctypes), and web form scripts have [their own entry](#web-forms-and-website-pages-frappe-typesweb). See [Checking an app with it](#checking-an-app-with-it).
+
 ## Which version do I install?
 
 **The package major mirrors the frappe major.** Minor and patch are this package's own.
@@ -50,9 +54,20 @@ Each frappe major lives on its own branch (`version-16`, `version-15`), mirrorin
 
 **It is** the browser-side desk API: `frappe.call`, the `frappe.ui.form.*` class hierarchy, the `frappe.views.*` list/report views, `frappe.model` / `frappe.meta` and the `DocField` / doc shapes, `frappe.utils` / `frappe.dom` / `frappe.router`, `frappe.DataTable`, `frappe.Chart`, the `__()` translator, and ambient declarations for the deep imports desk apps rely on (`import Grid from "frappe/public/js/frappe/form/grid"`).
 
-**It is not** types for frappe's Python API, for [frappe-ui](https://github.com/frappe/frappe-ui), or for the REST/`frappe.client` payload shapes of your own doctypes — generate those from your app's doctype JSON.
+**It is not** types for frappe's Python API or for the [frappe-ui](https://github.com/frappe/frappe-ui) component library, nor a hand-written model of your own doctypes — generate those from your app's doctype JSON with the bundled [`frappe-types gen-registry`](#generating-the-registry-frappe-types-gen-registry). The [`FrappeDocTypes` registry](#typing-your-doctypes-frappedoctypes) is where they plug in. That generator targets desk scripts; for the module-scoped DocType interfaces a frappe-ui SPA imports, [see below](#relation-to-frappefrappe-types-and-frappe-ui-frappetypes) (the desk API types themselves still work in an SPA through the import entry above).
 
 **It is not official.** It is not affiliated with or endorsed by Frappe Technologies. When frappe publishes its own types, use those.
+
+### Relation to frappe/frappe-types and frappe-ui frappeTypes
+
+Two existing tools also turn DocTypes into TypeScript. They solve a different problem, and this package does not replace them:
+
+- **[frappe/frappe-types](https://github.com/frappe/frappe-types)** is a bench app (`frappe_types`). Installed on a site in developer mode, it writes one `.ts` file per DocType, as `export interface`s in a folder per module, into a path configured per app, when a DocType is saved, or on demand with `bench --site … generate-types-for-doctype` / `generate-types-for-module`. It needs a running site, and because it reads the site's meta it can include Custom Fields that exist only in that site's database.
+- **frappe-ui's `frappeTypes` Vite plugin** runs when the Vite dev server starts and writes `export interface`s for the DocTypes you list into the SPA's source (`src/types/doctypes.ts` by default), reading their JSON from the bench's `apps/` folder.
+
+Both produce **module-scoped interfaces for SPA frontends** (frappe-ui / Vue apps that import their document types). If that is what you are building, use them.
+
+This package's [`frappe-types gen-registry`](#generating-the-registry-frappe-types-gen-registry) is for **desk scripts**: the doctype, list and report JavaScript (or TypeScript) that runs inside `/app` against `window.frappe`. It emits **global augmentations** of the [`FrappeDocTypes` registry](#typing-your-doctypes-frappedoctypes) and the `FrappeDocTypeFields` namespace, so `frappe.ui.form.on("Sales Order", …)`, `frappe.ui.form.FormEvents<"Sales Order">` in JSDoc (`checkJs`) and `Form<"Sales Order">` in TypeScript all see the closed document with no import. It runs **offline** from the bench's `apps/` tree, with no site, database or dev server; reads the Custom Fields and Property Setters apps ship in files (`<module>/custom/*.json`, `fixtures/*.json`) and applies them in frappe's sync order; and has a `--check` mode so CI fails when the committed file drifts from the JSON. It cannot see [database-only customisations](#customisations-that-exist-only-in-a-sites-database).
 
 ### Coverage is partial, and says so
 
@@ -65,6 +80,295 @@ So the rules here are:
 -   **Coverage is measured, not claimed** — see below — and CI ratchets it so it can only go up.
 
 If something you need is missing, that is expected at this stage. [Open an issue](https://github.com/Avunu/frappe-types/issues) with the symbol and how you call it, or send a PR — the contribution bar is "cite the frappe source".
+
+## Checking an app with it
+
+Three things ship next to the declarations: two `tsconfig` presets, a type-space `frappe` namespace that JSDoc can name, and a `FrappeDocTypes` registry that types `frm.doc` from your doctypes. The presets use `erasableSyntaxOnly`, so they need TypeScript 5.8 or later. The type tests run on both TypeScript 5.8 and the current release.
+
+### tsconfig presets
+
+| preset | for | sets |
+| --- | --- | --- |
+| `frappe-types/tsconfig/base.json` | TypeScript that something other than tsc compiles: frappe's esbuild, Vite, Node's type stripping | `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `isolatedModules`, `verbatimModuleSyntax`, `erasableSyntaxOnly`, `skipLibCheck: false`, `lib` ES2022 + DOM, `moduleResolution: "Bundler"`, `moduleDetection: "force"`, `noEmit` |
+| `frappe-types/tsconfig/desk-js.json` | the plain JavaScript an app ships uncompiled: `<doctype>.js`, `<doctype>_list.js`, query report and page scripts, `doctype_js` overrides | everything in `base.json`, plus `allowJs`, `checkJs` and `types: ["frappe-types/global"]` |
+
+```jsonc
+// tsconfig.json: compiled TypeScript (bundles under public/js)
+{
+  "extends": "frappe-types/tsconfig/base.json",
+  "compilerOptions": { "types": ["frappe-types/global"] },
+  "include": ["myapp/public/js/**/*.ts", "types/**/*.d.ts"]
+}
+```
+
+```jsonc
+// tsconfig.desk.json: uncompiled desk JavaScript
+{
+  "extends": "frappe-types/tsconfig/desk-js.json",
+  "include": [
+    "myapp/**/doctype/**/*.js",
+    "myapp/**/report/**/*.js",
+    "myapp/**/page/**/*.js",
+    "myapp/public/js/doctype_js/**/*.js",
+    "types/**/*.d.ts"
+  ]
+}
+```
+
+`base.json` leaves `types` to you, because a browser bundle wants `frappe-types/global` and a build script wants `node`. `include` is always yours: paths in an extended config resolve against the file that declares them, which is inside `node_modules`. Check with `tsc -p tsconfig.desk.json`. Nothing is emitted.
+
+`moduleDetection: "force"` is right for desk scripts as well. frappe runs each one inside its own function (`new Function(script)()`, in `form/script_manager.js` for doctype scripts and in `frappe.dom.eval` for report scripts), so one file's top-level names never reach another file.
+
+### JSDoc in desk scripts
+
+`frappe` is a value at runtime. For JSDoc it is also a namespace of types, so you can write `@type {frappe.ui.form.FormEvents<"Customer">}`. The namespace is installed with `frappe-types/global` and declares only types, so it merges with the `frappe` global without changing it. Most of the time you don't need an annotation, because `frappe.ui.form.on` infers the doctype from its first argument:
+
+```js
+// customer.js
+frappe.ui.form.on("Customer", {
+  refresh(frm) {
+    // frm is frappe.ui.form.Form<"Customer">; frm.doc comes from FrappeDocTypes["Customer"]
+    if (frm.doc.disabled) frm.set_intro(__("This customer is disabled"));
+  },
+  validate(frm) {
+    if (!frm.doc.customer_name) frappe.validated = false;
+  },
+  customer_group(frm, cdt, cdn) {
+    // a field-change handler, called as (frm, cdt, cdn)
+  },
+});
+```
+
+Annotate when the map is built separately, or for list, report and helper code:
+
+```js
+/** @type {frappe.ui.form.FormEvents<"Customer">} */
+const events = { onload(frm) { /* … */ } };
+frappe.ui.form.on("Customer", events);
+
+/** @param {frappe.ui.form.Form<"Customer">} frm */
+function set_queries(frm) { /* … */ }
+```
+
+```js
+// customer_list.js. List rows hold only the fields the view fetched, so every
+// registered field is optional on `doc`.
+/** @type {frappe.views.ListViewSettings<"Customer">} */
+const settings = {
+  add_fields: ["disabled"],
+  get_indicator(doc) {
+    return doc.disabled ? [__("Disabled"), "gray", "disabled,=,1"] : [__("Active"), "green", "disabled,=,0"];
+  },
+};
+frappe.listview_settings["Customer"] = settings;
+```
+
+```js
+// sales_summary.js, a query report
+/** @type {frappe.views.QueryReportSettings} */
+const report = {
+  filters: [{ fieldname: "company", label: __("Company"), fieldtype: "Link", options: "Company" }],
+  formatter(value, row, column, data, default_formatter) {
+    return default_formatter(value, row, column, data);
+  },
+};
+// frappe.query_reports is typed optional because it does not exist until the report bundle
+// loads. frappe.provide returns it, typed, and creates it if it is missing:
+frappe.provide("frappe.query_reports")["Sales Summary"] = report;
+```
+
+The namespace provides `frappe.Doc<DT>`, `frappe.ListDoc<DT>`, `frappe.DocType`, `frappe.FieldName<DT>` and `frappe.FieldValue<DT, F>`. It also provides `frappe.ui.Dialog`, `DialogOptions`, `FieldGroup`, `FieldGroupOptions` and `Page`; `frappe.ui.form.Form<DT>`, `FormEvents<DT>`, `FormEventHandler`, `StandardFormEvents`, `Controller`, `Control` and `ControlOptions`; and `frappe.views.ListViewSettings<DT>`, `ListView`, `ReportView`, `QueryReport`, `QueryReportSettings`, `QueryReportColumn` and `QueryReportFilter`. Each is an alias of a named export of `frappe-types`, so compiled TypeScript can import the same types instead (`import type { FormEvents } from "frappe-types"`).
+
+Some rules about form events. Each one matches what frappe does at runtime:
+
+- **Every function in the map is an event handler.** frappe registers each function-valued key of the map under that key's name, and it calls each one as `(frm, cdt, cdn)`. That includes a helper you only call through `frm.trigger("helper")`. A handler whose second parameter is not a string is therefore an error. Put helpers with other signatures outside the map.
+- **Child-table events run on the parent's form.** `frappe.ui.form.on("Sales Order Item", { qty(frm, cdt, cdn) {} })` receives the Sales Order form. Your registry tells the types which parent that is (next section). For an unregistered child doctype, `frm` is a plain `Form`.
+- **Registering a doctype makes its document closed.** On a registered doctype, `frm.doc.custmer_name` is an error instead of an `unknown`, and `frm.set_value("status", "Typo")` is checked against the field's type. `set_value` takes only the doctype's own fields: frappe throws on a standard field such as `name` or `idx`, because those are not in the form's layout. On a child table with several parents, `set_value` takes only the fields every parent has. Unregistered doctypes keep the open `FrappeDoc` and the open `set_value`, so existing code keeps compiling.
+
+### Typing your doctypes: `FrappeDocTypes`
+
+`FrappeDocTypes` is a global interface, empty in this package, that you extend with your doctypes. Each property is keyed by the doctype's name exactly as frappe spells it. Its value lists the doctype's data fields: no layout fields, and no standard fields, because `name`, `owner`, `modified`, `docstatus`, `idx` and the `__*` client flags are added for you. Type a Table field as `FrappeChildRow<"Child DocType">[]`, not as the child's bare entry, so its rows get the standard row fields (`name`, `idx`, `doctype`, `parent`, `parentfield`) too.
+
+```ts
+// types/doctypes.d.ts. This is a script (no import/export), so the interface merges directly.
+interface FrappeDocTypes {
+  Customer: {
+    customer_name: string;
+    customer_group: string;
+    disabled: 0 | 1;
+    credit_limits: FrappeChildRow<"Customer Credit Limit">[];
+  };
+  // A child table names its parent doctype(s) in `parenttype`. That is how
+  // FormEvents<"Customer Credit Limit"> knows `frm` is the Customer form.
+  "Customer Credit Limit": {
+    parenttype: "Customer";
+    company: string;
+    credit_limit: number;
+  };
+}
+```
+
+In a file that is a module, wrap the same block in `declare global { … }`. `Check` fields are `0 | 1`. Fields that can be empty should include `null`: frappe stores an empty Link, Data or Date as `null` or leaves it out. Custom Fields are not in a doctype's JSON, so add any your code reads to the entry yourself. Interface merging lets a second declaration add them.
+
+The registry is shared by both entry points, `frappe-types/global` and the module entry, so one declaration types `frappe.ui.form.on(...)` in desk JavaScript and `Form<"Customer">` in compiled TypeScript. `Form<"Customer">` is still assignable to `Form`, and a registered document is still assignable to `FrappeDoc`, so APIs typed against the open shapes accept the typed ones. A `FrappeChildRow` is also assignable to `ChildDoc`, so `frappe.model.set_value(row.doctype, row.name, "qty", 1)` compiles for a row of `frm.doc.credit_limits`.
+
+### Generating the registry: `frappe-types gen-registry`
+
+Writing the registry by hand is fine for a few doctypes. For a whole app, the package ships a command that writes it from the files `bench migrate` reads: the DocType JSON of your app (and, if you ask, its sibling apps), plus the Custom Fields and Property Setters the apps ship.
+
+It types desk scripts through the global registry, offline. For module-scoped interfaces in a frappe-ui SPA, see [Relation to frappe/frappe-types and frappe-ui frappeTypes](#relation-to-frappefrappe-types-and-frappe-ui-frappetypes).
+
+```bash
+npx frappe-types gen-registry --bench ~/frappe-bench --app my_app --out types/doctypes.d.ts
+npx frappe-types gen-registry --bench ~/frappe-bench --app my_app --include-siblings erpnext,hrms --out types/doctypes.d.ts
+```
+
+The output follows the registry contract above: one interface per DocType that lists its data fields and nothing else, registered by DocType name. The interfaces live in a global namespace, `FrappeDocTypeFields`, named after frappe's controller classes, and the module also exports each one under that name. Table fields are `FrappeChildRow<…>[]`, and a child DocType's `parenttype` names every DocType on the bench with a Table of it, so child-table events get the right parent form.
+
+```ts
+// types/doctypes.d.ts: an excerpt of test/fixtures/gen-registry/expected/my_app.d.ts
+// Generated by `frappe-types gen-registry`. Do not edit; re-run the generator.
+//   --app my_app
+//   DocType JSON read from: base_app, my_app
+//   customisations read from: my_app
+import type * as $ft from "frappe-types";
+
+declare global {
+	interface FrappeDocTypes {
+		"Sales Order": FrappeDocTypeFields.SalesOrder;
+		"Sales Order Item": FrappeDocTypeFields.SalesOrderItem;
+	}
+
+	namespace FrappeDocTypeFields {
+		interface SalesOrder {
+			/** Status · Select */
+			status?: "Draft" | "On Hold" | "Completed" | "" | null;
+			/** Is Return · Check */
+			is_return?: 0 | 1;
+			/** Grand Total · Currency */
+			grand_total?: number | null;
+			/** Items · Table → Sales Order Item */
+			items: FrappeChildRow<"Sales Order Item">[];
+			/** Delivery Run · Link → Delivery Run · Custom Field, my_app/my_app/my_app/custom/sales_order.json */
+			custom_delivery_run?: string | null;
+		}
+
+		interface SalesOrderItem {
+			/** The DocTypes on this bench with a Table of Sales Order Item: the forms its events run on. */
+			parenttype: "Delivery Run" | "Sales Order";
+			/** Quantity · Float */
+			qty?: number | null;
+		}
+	}
+}
+
+export type SalesOrder = FrappeDocTypeFields.SalesOrder;
+export type SalesOrderItem = FrappeDocTypeFields.SalesOrderItem;
+```
+
+Add the file to the `include` of the tsconfig that checks your code (the preset examples above already include `types/**/*.d.ts`). From then on `frm.doc` in `frappe.ui.form.on("Sales Order", …)`, `frappe.ui.form.FormEvents<"Sales Order">` in JSDoc and `DocOf<"Sales Order">` in TypeScript are the closed document: the standard fields from frappe-types plus the fields above. The interfaces are the registry ENTRIES, not whole documents; reach for `DocOf<…>` (or `frappe.Doc<…>` in JSDoc) when you want a document type.
+
+| option | |
+| --- | --- |
+| `--bench` | a bench (the folder holding `apps/`) or an apps directory |
+| `--app` | the app to type: its DocTypes, and the customisations it ships |
+| `--include-siblings` | more apps to type in full and take customisations from, comma-separated, in the order the site installed them |
+| `--out` | write here instead of stdout |
+| `--check` | write nothing; exit 1 if `--out` is missing or differs (for CI) |
+| `--strict` | exit 1 if anything had to be typed loosely (see below) |
+| `--quiet` | do not print warnings |
+
+**What it reads** is what `bench migrate` reads, found the same way: the modules in `<app>/modules.txt`, every `<module>/doctype/<name>/<name>.json` in them, Custom Fields and Property Setters from `<module>/custom/*.json`, and `Custom Field` / `Property Setter` records in `<app>/fixtures/*.json`. A DocType the app customises, or a child DocType any emitted DocType's table names, is pulled in from whichever app on the bench defines it, so `--app my_app` alone types `custom_*` fields on erpnext's Customer without typing all of erpnext.
+
+**When two customisations touch the same thing,** the one frappe syncs last wins, in frappe's order: `custom/` files without `sync_on_migrate` (applied only when their app is installed), then every app's `fixtures/`, then every app's `custom/` files with `sync_on_migrate`. Within each step the apps go in install order, which the generator takes to be the `--include-siblings` apps as listed and then `--app`, the app that depends on them. So a sibling never overrides the target app's own setter of the same kind, but a sibling's `sync_on_migrate` file does override the target app's fixture, just as it does on the site.
+
+**How fields are typed.** Each rule is checked against the pinned frappe's own source by `test/gen-registry.test.mjs`, which runs in CI, so a frappe release that adds or reclassifies a fieldtype, or changes what a desk control writes, fails the build instead of being typed wrong. Citations for each rule are in the header of [`bin/gen-registry.mjs`](bin/gen-registry.mjs).
+
+| fieldtype | type | why |
+| --- | --- | --- |
+| Section/Column/Tab Break, HTML, Button, Image, Fold, Heading, Attachment Gallery | not emitted | `no_value_fields`: no column, no value |
+| Table, Table MultiSelect | `FrappeChildRow<Child>[]`, required | initialised to `[]` on a new doc and on load |
+| Check | `0 \| 1` | a tinyint, coerced to 0/1 on save; the desk control always writes 0 or 1 |
+| Int, Long Int, Float, Currency, Percent, Rating | `number \| null` | clearing the input in the form writes `null` into `frm.doc` (the numeric controls' `parse`), even where the column is NOT NULL |
+| Duration | `number \| null` | a nullable column |
+| Select | `"A" \| "B" \| ""` (+ `\| null`) | the options after Property Setters; `""` skips validation. `naming_series` and option-less Selects are `string`. See the note below |
+| JSON | `unknown` | a string from MariaDB, a parsed value from Postgres |
+| everything else (Data, Link, Date, Datetime, Text, ...) | `string \| null` | varchar/text/date columns |
+
+Every value field is optional (`?:`): a doc created in the browser carries only the fields that had a default. `null` is dropped only where neither the column nor the desk control can hold it: Check, and a non-numeric field with `not_nullable`. That is stricter than frappe's own Python type exporter, which also drops it for `reqd` fields: `reqd` is enforced on save, not by the column, so old rows and `ignore_mandatory` inserts still read back NULL, and the field is empty in the browser until the user fills it in.
+
+**A Select's union is what a save accepts, not everything the column can hold.** frappe validates the options when a document is saved, but the Data Import tool skips that validation (it sets `frappe.flags.in_import`), `db_set` and `frappe.db.set_value` never run it, and rows saved before an options change, such as a Property Setter that drops an option, keep their old value. The union is kept closed anyway, because it is exactly what code that writes the field must use. When you read a Select from documents that may predate an options change or come from an import, handle a value outside the union.
+
+**Limits.**
+
+- **Several generated files in one program** (an app's own, and one another app ships, say) work, because every file registers `"Customer": FrappeDocTypeFields.Customer` and interfaces merge: each file's fields add up. A field two files declare must be declared the same way in both, though. Where they disagree, typically because one app's Property Setter changes a field the other file was generated without, TypeScript reports TS2717 (or TS2687, for `?`) on that field. Generate the files on the same bench, or type the apps together with one `--include-siblings` run, which applies their customisations in install order.
+- **Customisations made in the database** (Customize Form, a Custom Field created in the UI) are in no file and cannot be seen. See [below](#customisations-that-exist-only-in-a-sites-database).
+- **`autoname: autoincrement`** DocTypes have a numeric `name` on the wire; the registry types it `string`. The interface's doc comment says so.
+- **`parenttype`** lists the DocTypes whose JSON on this bench has a Table of the child. A parent that exists only in the database, or in an app that is not on the bench, is missing from it.
+- **Loose spots are warnings**: a fieldtype the generator does not know (typed `unknown`), a table whose child DocType is on no app on the bench (typed `ChildDoc[]`), a Custom Field on a DocType nothing defines (its custom fields only). `--strict` turns them into a non-zero exit.
+- **TypeScript module resolution.** The output imports `frappe-types`, whose declaration files use extensionless relative imports. They resolve under `moduleResolution: "Bundler"` (what the presets set, and what `module: "Preserve"` implies), but not under `"NodeNext"`/`"Node16"` with `skipLibCheck: false`, which reports TS2834 inside the package. Check desk code with the presets.
+
+Keep the file in version control and check it in CI so it cannot drift from the JSON:
+
+```bash
+npx frappe-types gen-registry --bench ../.. --app my_app --out types/doctypes.d.ts --check --strict
+```
+
+`--check` is a byte comparison: the output is deterministic (sorted, no timestamps, no absolute paths). But it is deterministic **given the bench**. The output depends on every app on the bench, not only on your app's JSON: customised and child DocTypes are pulled in from whichever app defines them, and a child's `parenttype` lists the parents found in every app. So the bench CI runs `--check` on must hold the same apps, at the same branches, as the bench the file was generated on. The header names the apps whose DocType JSON and customisations went into the file, which is the first thing to compare when `--check` fails on CI but not locally. A sibling missing from the CI bench also shows up in the warnings `--check` prints (a customised DocType or a child table that no app on the bench defines). `--strict` makes those warnings fail the run on their own, so a file generated on an incomplete bench cannot pass either.
+
+The command is plain JavaScript with no dependencies, so it runs from `node_modules` with the node you already have (node refuses to strip TypeScript types under `node_modules`, which rules out shipping it as `.ts`); its JSDoc is type-checked by `tsconfig.bin.json` as part of `npm run check`. `checks.types` runs the packed command, from the file list `npm pack` would ship, against the fixture bench and compiles its output with both presets.
+
+#### Customisations that exist only in a site's database
+
+`gen-registry` reads files, not a site. A Custom Field added through Customize Form or the Custom Field list, or a Property Setter made there, lives only in that site's database until someone exports it, so the generator never sees it. Since a registered document is closed, code that reads such a field (`frm.doc.custom_added_in_the_ui`) is a compile error rather than a silent `unknown`.
+
+Two ways out:
+
+- **Ship it as a file.** Export the customisation as a fixture (`fixtures` in `hooks.py`, then `bench export-fixtures`) or into `<module>/custom/<doctype>.json`, and re-run the generator. The site and the types then agree, and `--check` keeps them agreeing.
+- **Declare it by hand.** `FrappeDocTypeFields` is a global namespace of interfaces, so a `.d.ts` file of your own merges fields into the generated entry:
+
+  ```ts
+  // types/doctypes-extra.d.ts. A script (no import/export), so the namespace is global.
+  declare namespace FrappeDocTypeFields {
+  	interface SalesOrder {
+  		/** Added with Customize Form on the production site; not exported as a fixture. */
+  		custom_added_in_the_ui?: string | null;
+  	}
+  }
+  ```
+
+  Include it next to the generated file. A field that both files declare must be declared the same way (TS2717 otherwise), so do not redeclare a field the generator already emits. For a DocType that exists only in the database, declare the interface and register it: `interface FrappeDocTypes { "My DB DocType": FrappeDocTypeFields.MyDBDocType }`.
+
+A possible future addition is an opt-in `--meta-json <file>` input: a dump of a site's DocType meta (what `frappe.get_meta` returns), read alongside the files, so a CI job with database access could type those fields too. It is not implemented; the generator stays offline by default.
+
+### Web forms and website pages: `frappe-types/web`
+
+```jsonc
+// tsconfig.web.json
+{
+  "extends": "frappe-types/tsconfig/desk-js.json",
+  "compilerOptions": { "types": ["frappe-types/web"] },
+  "include": ["myapp/**/web_form/**/*.js", "myapp/www/**/*.js"]
+}
+```
+
+This entry includes everything in `frappe-types/global`. It also adds what frappe defines on a website page: `frappe.ready` and `frappe.ready_events`. On a web form page it adds `frappe.web_form` (the `WebForm` controller, with `on(fieldname, handler)`, `events`, and the `validate` / `after_load` / `after_save` hooks a client script assigns), `frappe.web_form_doc`, `frappe.reference_doc`, `frappe.init_client_script` and `frappe.form_dirty`.
+
+```js
+frappe.web_form.on("rating", (field, value) => {
+  if (typeof value === "number" && value < 3) frappe.web_form.set_df_property("comments", "reqd", 1);
+});
+
+frappe.web_form.validate = () => {
+  const values = frappe.web_form.get_values();
+  return Boolean(values && values["email"]);
+};
+```
+
+Two caveats:
+
+- **Not every desk name exists on a website page.** The website bundle carries only part of the desk API, and this entry does not take the rest away. If a web script calls something only the desk has, such as `frappe.views.ListView`, it type-checks and then fails at runtime. Keep web scripts in their own tsconfig, as above.
+- **Read `is_new` from `frappe.web_form_doc`.** frappe copies `web_form_doc` onto the controller, but that object carries `is_new` only on `/new`. On every other route `frappe.web_form.is_new` is the inherited `FieldGroup#is_new` method, which is always truthy. The types model this.
 
 ## Maintaining it across frappe versions
 
@@ -82,16 +386,19 @@ nix develop -c npm run coverage -- --update-baseline
 
 Before the pin, the audit went looking for a checkout: `../frappe` is tried before the bench, so on a machine that also has a `develop` clone it silently measured the v16 typeset against frappe 17.0.0-dev and reported a three-path "regression" that did not exist. Outside Nix the scripts still resolve a checkout and still take `--frappe`/`FRAPPE_PATH`, and they now refuse a cross-major one outright rather than reporting it as a regression — see `--cross-major` under _Upgrading to a new frappe major_. Inside `nix develop`, `FRAPPE_PATH` is already the pin, so the question does not arise.
 
-`nix flake check` runs four checks, each its own derivation so a failure names itself:
+`nix flake check` runs seven checks, each its own derivation so a failure names itself:
 
 | check | asserts |
 | --- | --- |
 | typecheck | tsc --noEmit with skipLibCheck: false |
+| types | the consumer fixtures in `test/types/` (presets, JSDoc, registry, web entry, and the output of the packed `gen-registry`) pass `tsc -p` against the files `npm pack` would ship |
 | coverage | the ratchet against the pinned frappe |
 | frappe-major | the package major is the frappe major |
 | verified-against | package.json's frappe.verifiedAgainst matches the pin |
+| unit | `npm run test:unit`, including the doctype generator's rules against the pinned frappe |
+| drift | `audit:drift --strict` against the pinned frappe and drift-baseline.json (below) |
 
-`nix build` produces the tarball npm would publish — the cheapest way to check that `files` still ships the right set and nothing else. It is not how a release is published: `publish.yml` runs `npm publish` so that OIDC trusted publishing and the provenance attestation apply.
+`nix build` produces the tarball npm would publish, for inspecting exactly what ships. Whether `files` ships what consumers need is asserted by `checks.types`, which builds its scratch package from `npm pack`'s file list, requires the presets, the web entry and both `bin/` files to be in it, and runs the packed command. It is not how a release is published: `publish.yml` runs `npm publish` so that OIDC trusted publishing and the provenance attestation apply.
 
 It prints undeclared paths ranked by how many frappe source files depend on them — which is the to-do list, in priority order.
 
@@ -112,13 +419,13 @@ node scripts/audit-drift.mjs --at v16.33.1 --update-baseline   # re-record the b
 
 Exit status is 0 unless `--strict` is given and there is drift: a surface that differs from the baseline, or a cited file that is gone. Line anchors that now read differently are reported and never fail a run — after a few hundred frappe commits most of them will, and that list is the triage queue, not a gate. Two limits are worth knowing before trusting a clean run: only citations written as a full `frappe/<path>` are checked (a relative `grid.js:412` takes its base from prose in the file's header, so it is counted as "not checked" and never guessed at), and only the `@import`s written directly in each entry file are compared, not what `./desk/index` pulls in.
 
-To make drift a CI signal rather than something to remember, add a check next to the other four in `flake.nix`, against the pinned tree. The flake's frappe input has no git history, so this compares with the baseline — which is what the baseline is for:
+Drift is a CI signal, not something to remember: `checks.drift` in `flake.nix` runs it against the pinned tree with `--strict`. The flake's frappe input has no git history, so this compares with the baseline — which is what the baseline is for — and it needs nothing beyond the pin and the repository, so it is deterministic and offline:
 
 ```nix
 drift = mkCheck "drift" "node scripts/audit-drift.mjs --frappe ${frappe} --strict";
 ```
 
-That is a recommendation; `flake.nix` and the workflows are unchanged in this repository. Expect it to go red whenever the pin moves past something that mattered, and to stay red until the affected frappe files have been re-read, `frappe.verifiedAgainst` bumped and the baseline re-recorded. The unit tests for the extractors (`npm run test:unit`, also part of `npm test`) need no frappe checkout; the ones that build a throwaway git repository skip themselves when `git` is not on `PATH` (the flake's checks provide only `nodejs` and the npm config hook).
+Expect it to go red whenever the pin moves past something that mattered — typically a dependabot bump of the `frappe` input — and to stay red until the affected frappe files have been re-read, `frappe.verifiedAgainst` bumped and the baseline re-recorded, all in that same pull request. The unit tests (`npm run test:unit`, also part of `npm test`, and `checks.unit`) need no frappe checkout; the generator's tests against frappe itself run when `FRAPPE_PATH` names one of this branch's major (the flake sets it to the pin), and the ones that build a throwaway git repository skip themselves when `git` is not on `PATH` (the flake's checks provide only `nodejs` and the npm config hook).
 
 **Can the citations be moved rather than re-read?** Mostly. Between two tags most cited lines did not change, they only moved: frappe inserted lines above them. `scripts/remap-citations.mjs` asks `git diff -U0` what became of each cited line and separates the two cases exactly. A line no hunk touches is the same text at a computable number, and the tool re-reads both blobs to check that before it reports the mapping as exact. A line inside a hunk was modified or deleted; the tool gives it no number, and lists it with its old text and, labelled as guesses, the nearest lines of the new file.
 
@@ -182,8 +489,10 @@ The dist-tag is derived at publish time from the version and the registry's curr
 -   Declarations live in `src/`, one file per frappe namespace.
 -   Cite the source: `// frappe/public/js/frappe/form/grid.js:412` above anything non-obvious.
 -   `npm run check` must pass with `skipLibCheck: false`. A typeset that needs `skipLibCheck` isn't one.
+-   `npm run test:types` checks the consumer fixtures in `test/types/` against the packed package. A change to how a consumer writes code (a preset, the JSDoc namespace, the registry) gets a fixture there. Write its negative cases as `// @ts-expect-error` lines.
 -   Classes that consumers subclass or prototype-patch must be `declare class`, not `interface` — `extends` and `super()` need a real class declaration.
 -   Frappe uses `0 | 1` for booleans on doc fields. Model it that way where the source does.
+-   The `frappe-types` command lives in `bin/` and ships as plain JavaScript with JSDoc types and no dependencies, because node will not strip TypeScript types under `node_modules`. `npm run check` type-checks it through `tsconfig.bin.json`; its fieldtype rules cite frappe in the file header and are tested against the pinned frappe (`test/gen-registry.test.mjs`).
 -   Commit subjects are [conventional commits](https://www.conventionalcommits.org/) — they are the changelog and they choose the version. Never `!` or `BREAKING CHANGE:`: see [Releasing](#releasing).
 
 ## License

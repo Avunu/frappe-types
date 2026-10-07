@@ -1,0 +1,36 @@
+{
+ "doctype": "DocType",
+ "name": "Web Page",
+ "module": "Edge Cases",
+ "istable": 0,
+ "issingle": 0,
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "route",
+   "fieldtype": "Data",
+   "label": "Route"
+  },
+  {
+   "fieldname": "published",
+   "fieldtype": "Check",
+   "label": "Published"
+  },
+  {
+   "fieldname": "idx",
+   "fieldtype": "Int",
+   "label": "Priority"
+  },
+  {
+   "fieldname": "content_type",
+   "fieldtype": "Select",
+   "label": "Content Type",
+   "options": "Rich Text\nMarkdown\nHTML\nPage Builder\nSlideshow"
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+[
+ {
+  "doctype": "Property Setter",
+  "doctype_or_field": "DocField",
+  "doc_type": "Sales Order",
+  "field_name": "customer",
+  "property": "not_nullable",
+  "property_type": "Check",
+  "value": "1"
+ }
+]

@@ -27,5 +27,8 @@
     "types": ["jquery"]
   },
   "include": ["src/**/*.d.ts", "test/**/*.ts"],
-  "exclude": ["node_modules"]
+  // test/fixtures holds consumer code compiled by test/gen-registry.test.mjs against a
+  // generated file, under its own options; test/types/ holds consumer projects with
+  // their own tsconfigs, checked against the packed package by scripts/test-types.mjs.
+  "exclude": ["node_modules", "test/fixtures", "test/types"]
 }

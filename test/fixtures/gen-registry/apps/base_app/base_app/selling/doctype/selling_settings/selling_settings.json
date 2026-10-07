@@ -1,0 +1,19 @@
+{
+ "doctype": "DocType",
+ "name": "Selling Settings",
+ "module": "Selling",
+ "fields": [
+  {
+   "fieldname": "so_required",
+   "fieldtype": "Select",
+   "label": "Sales Order Required",
+   "options": "No\nYes"
+  },
+  {
+   "fieldname": "allow_negative_rates",
+   "fieldtype": "Check",
+   "label": "Allow Negative Rates"
+  }
+ ],
+ "issingle": 1
+}

@@ -1,0 +1,31 @@
+{
+ "doctype": "DocType",
+ "name": "Desktop Icon",
+ "module": "Edge Cases",
+ "autoname": "field:label",
+ "istable": 0,
+ "issingle": 0,
+ "fields": [
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Label"
+  },
+  {
+   "fieldname": "idx",
+   "fieldtype": "Int",
+   "label": "Idx"
+  },
+  {
+   "fieldname": "icon_type",
+   "fieldtype": "Select",
+   "label": "Icon Type",
+   "options": "Link\nFolder\nApp"
+  },
+  {
+   "fieldname": "hidden",
+   "fieldtype": "Check",
+   "label": "Hidden"
+  }
+ ]
+}

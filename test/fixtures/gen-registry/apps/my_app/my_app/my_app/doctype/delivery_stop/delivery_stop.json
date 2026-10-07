@@ -1,0 +1,24 @@
+{
+ "doctype": "DocType",
+ "name": "Delivery Stop",
+ "module": "My App",
+ "fields": [
+  {
+   "fieldname": "address",
+   "fieldtype": "Small Text",
+   "label": "Address"
+  },
+  {
+   "fieldname": "signature",
+   "fieldtype": "Signature",
+   "label": "Signature"
+  },
+  {
+   "fieldname": "parcels",
+   "fieldtype": "Table",
+   "label": "Parcels",
+   "options": "Parcel Line"
+  }
+ ],
+ "istable": 1
+}

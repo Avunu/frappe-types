@@ -1,0 +1,96 @@
+{
+ "doctype": "DocType",
+ "name": "Sales Order",
+ "module": "Selling",
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SO-.YYYY.-\nSO-RET-.YYYY.-"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nDraft\nTo Bill\nCompleted"
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "transaction_date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "is_return",
+   "fieldtype": "Check",
+   "label": "Is Return"
+  },
+  {
+   "fieldname": "total_qty",
+   "fieldtype": "Int",
+   "label": "Total Quantity"
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "label": "Grand Total",
+   "options": "currency"
+  },
+  {
+   "fieldname": "rating",
+   "fieldtype": "Rating",
+   "label": "Rating"
+  },
+  {
+   "fieldname": "external_ref",
+   "fieldtype": "Data",
+   "label": "External Ref",
+   "not_nullable": 1
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Sales Order Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tags",
+   "fieldtype": "Table MultiSelect",
+   "label": "Tags",
+   "options": "Sales Order Tag"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text Editor",
+   "label": "Notes */ with a comment terminator"
+  },
+  {
+   "fieldname": "payload",
+   "fieldtype": "JSON",
+   "label": "Payload"
+  },
+  {
+   "fieldname": "html_help",
+   "fieldtype": "HTML",
+   "options": "<p>help</p>"
+  },
+  {
+   "fieldname": "idx",
+   "fieldtype": "Int",
+   "label": "Index"
+  }
+ ],
+ "is_submittable": 1
+}

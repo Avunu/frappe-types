@@ -112,8 +112,40 @@
           # because being explicit here is the entire point of the exercise.
           coverage = mkCheck "coverage" "node scripts/audit-coverage.mjs --frappe ${frappe} --strict --top 25";
 
+          # The consumer-side contract: the fixture projects under test/types/ —
+          # JSDoc desk scripts under the desk-js preset, compiled TS under the base
+          # preset, web form scripts, the bare module entry — each checked by
+          # `tsc -p` against the file list `npm pack` would publish. Negative cases
+          # are inline `@ts-expect-error`s, so too-permissive declarations fail here
+          # as surely as too-strict ones (scripts/test-types.mjs). Each project runs
+          # under the repo's TypeScript and under 5.8, the oldest release the README
+          # supports (the `typescript-5.8` alias in package-lock.json, fetched by
+          # importNpmLock like every other dependency). The gen-registry projects first
+          # run the PACKED `frappe-types gen-registry` (from the copied files, through
+          # package.json `bin`) against test/fixtures/gen-registry/apps, so a `files`
+          # list that drops bin/gen-registry.mjs fails here too.
+          types = mkCheck "types" "npm run test:types";
+
           # The package major must be the frappe major (scripts/check-frappe-major.mjs).
           frappe-major = mkCheck "frappe-major" "npm run check:major";
+
+          # The script unit tests, including the doctype generator's. With FRAPPE_PATH set
+          # (mkCheck sets it to the pin), test/gen-registry.test.mjs also checks the
+          # generator's fieldtype rules against the pinned frappe's own lists, and
+          # generates and compiles frappe's DocTypes. Because FRAPPE_PATH is set, a pin
+          # that is not a usable frappe tree of this major FAILS that layer instead of
+          # skipping it. The tests that need `git` skip themselves: the sandbox has none.
+          unit = mkCheck "unit" "npm run test:unit";
+
+          # Has frappe moved, in the places these declarations stand on, since the
+          # baseline was recorded? Against the PINNED tree, which has no git history, so
+          # this compares with drift-baseline.json — which is what the baseline is for.
+          # Deterministic and offline: the pin is a fixed-output input and the baseline
+          # is in the repo. It goes red when a pin bump moves something that mattered,
+          # and stays red until the affected frappe files are re-read and the baseline
+          # re-recorded (`node scripts/audit-drift.mjs --at <tag> --update-baseline`)
+          # in the same pull request as the `frappe.verifiedAgainst` bump.
+          drift = mkCheck "drift" "node scripts/audit-drift.mjs --frappe ${frappe} --strict";
 
           # package.json's `frappe.verifiedAgainst` is a published claim about which
           # frappe tag these declarations were checked against. Now that the tree is
@@ -145,9 +177,9 @@
         };
 
         # `nix build` — the tarball npm would publish, built reproducibly. Useful for
-        # inspecting exactly what ships (the package is `.d.ts` files and nothing
-        # else, so `files` in package.json is the only thing standing between a
-        # consumer and 200 MB of node_modules).
+        # inspecting exactly what ships (the package is `.d.ts` files plus the
+        # dependency-free `frappe-types` command in bin/, so `files` in package.json is
+        # the only thing standing between a consumer and 200 MB of node_modules).
         #
         # This is NOT how a release is published: publish.yml runs `npm publish` so
         # that npm's OIDC trusted publishing and the provenance attestation apply.
