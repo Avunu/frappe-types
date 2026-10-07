@@ -116,6 +116,16 @@
       "bases": ["frappe/public/js/frappe/form/"],
       "basis": "full-path-evidence: the specifiers it declares are frappe/public/js/frappe/form/*"
     },
+    "src/namespace.d.ts": {
+      "declared": "none: the header names no base; every citation in it is a full path",
+      "bases": ["frappe/public/js/frappe/"],
+      "basis": "full-path-evidence: every citation in the file is under frappe/public/js/frappe/"
+    },
+    "src/registry.d.ts": {
+      "declared": "none: the file declares the empty FrappeDocTypes registry and cites nothing",
+      "bases": ["frappe/"],
+      "basis": "no citations"
+    },
     "src/ui/components.d.ts": {
       "declared": "\"Citations are full-path (`frappe/public/js/frappe/ui/components/badge.js:87`)\" (header); every citation in the file is written in full",
       "bases": ["frappe/public/js/frappe/ui/components/", "frappe/public/js/frappe/"],

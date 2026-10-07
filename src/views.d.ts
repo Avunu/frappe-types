@@ -48,7 +48,14 @@ import type {
 	DataTableRow,
 	DataTableRowIndex,
 } from "./datatable";
-import type { DocField, DocTypeMeta, IndicatorTuple, PartialDocField } from "./model";
+import type {
+	DocField,
+	DocTypeMeta,
+	DocTypeName,
+	IndicatorTuple,
+	PartialDocField,
+	RegisteredDoc,
+} from "./model";
 // IMPORT-NAME FIXES — `Page` is `frappe.ui.Page`, declared in `utils.d.ts` (the
 // fragment that owns `FrappePageRegions`), never in `core.d.ts`.
 import type { Page } from "./utils";
@@ -111,8 +118,17 @@ export type ListFilterTuple = [
  * STRICT NOTE: `name` is declared before the index signature on purpose. Adding
  * `[fieldname: string]: unknown` first would widen `doc.name` to `unknown` and
  * break `getRowId: (doc) => doc.name`.
+ *
+ * The named members live on {@link FrappeListDocFields}; this interface adds
+ * the open bag. {@link ListDocOf} uses the split to type a registered
+ * doctype's rows without it.
  */
-export interface FrappeListDoc {
+export interface FrappeListDoc extends FrappeListDocFields {
+	[fieldname: string]: unknown;
+}
+
+/** {@link FrappeListDoc} without its index signature: the keys every list row carries or may carry. */
+export interface FrappeListDocFields {
 	/** Always requested — `frappe/public/js/frappe/list/base_list.js:91` puts `frappe.model.std_fields_list` in every query (`frappe/public/js/frappe/list/list_view.js:271` for ListView). */
 	name: string;
 	/** `frappe/public/js/frappe/list/list_view.js:1894` `doc.docstatus || 0`; `frappe/public/js/frappe/views/reports/report_view.js:822-824`. */
@@ -137,8 +153,22 @@ export interface FrappeListDoc {
 	 * (`frappe/public/js/frappe/list/list_view.js:2160` `this.data[$button.attr("data-idx")]`).
 	 */
 	_idx?: number;
-	[fieldname: string]: unknown;
 }
+
+/** See `Flatten` in `model.d.ts`: an anonymous object type fits an index signature, an intersection of interfaces does not. */
+type FlattenListDoc<T> = { [K in keyof T]: T[K] };
+
+/**
+ * A list row of doctype `DT`. For a doctype registered in `FrappeDocTypes`,
+ * its fields — every one OPTIONAL, because a row holds only the fields the
+ * view requested (`frappe/public/js/frappe/list/base_list.js:575-591`) — plus
+ * the keys of {@link FrappeListDocFields}. Otherwise the open {@link FrappeListDoc}.
+ */
+export type ListDocOf<DT extends string> = DT extends DocTypeName
+	? FlattenListDoc<
+			Partial<Omit<RegisteredDoc<DT>, keyof FrappeListDocFields>> & FrappeListDocFields
+		>
+	: FrappeListDoc;
 
 /**
  * `this.parent` on every view.
@@ -182,13 +212,19 @@ export interface BaseListOptions {
  * ------------------------------------------------------------------ */
 
 /** `frappe/public/js/frappe/list/list_view.js:1709-1727` `this.settings.button.get_label(doc)` etc. */
-export interface ListViewSettingsButton {
+export interface ListViewSettingsButton<DT extends string = string> {
 	/** `frappe/public/js/frappe/list/list_view.js:1715` — rendered into `title="…"`. */
-	get_description(doc: FrappeListDoc): string;
+	get_description(doc: ListDocOf<DT>): string;
 	/** `frappe/public/js/frappe/list/list_view.js:1716` — rendered as the button's inner HTML. */
-	get_label(doc: FrappeListDoc): string;
+	get_label(doc: ListDocOf<DT>): string;
 	/** `frappe/public/js/frappe/list/list_view.js:1721` — falsy renders `<span></span>` instead of the button. */
-	show(doc: FrappeListDoc): boolean;
+	show(doc: ListDocOf<DT>): boolean;
+	/**
+	 * `frappe/public/js/frappe/list/list_view.js:2157-2164` — the click handler,
+	 * called UNGUARDED with the row's doc, so a button without it throws when
+	 * clicked. Optional here only because the type has always allowed omitting it.
+	 */
+	action?(doc: ListDocOf<DT>): void;
 }
 
 /**
@@ -199,22 +235,22 @@ export interface ListViewSettingsButton {
  * interpolates `${button.get_label}` with no call, and so do `frappe/public/js/frappe/list/list_view.js:1749` /
  * `frappe/public/js/frappe/list/list_view.js:1757` for the parent dropdown's own `get_label`.
  */
-export interface ListViewSettingsDropdownItem {
+export interface ListViewSettingsDropdownItem<DT extends string = string> {
 	/** A STRING, despite the `get_` prefix. `frappe/public/js/frappe/list/list_view.js:1739`. */
 	get_label: string;
 	/** `frappe/public/js/frappe/list/list_view.js:1735` — omitted means "always show". */
-	show?(doc: FrappeListDoc): boolean;
+	show?(doc: ListDocOf<DT>): boolean;
 	/** `frappe/public/js/frappe/list/list_view.js:1736`. */
-	get_description?(doc: FrappeListDoc): string;
+	get_description?(doc: ListDocOf<DT>): string;
 	/** `frappe/public/js/frappe/list/list_view.js:2172-2174` `button.action(doc)`. */
-	action?(doc: FrappeListDoc): void;
+	action?(doc: ListDocOf<DT>): void;
 }
 
 /** `frappe/public/js/frappe/list/list_view.js:1729-1763`. */
-export interface ListViewSettingsDropdownButton {
+export interface ListViewSettingsDropdownButton<DT extends string = string> {
 	/** A STRING. `frappe/public/js/frappe/list/list_view.js:1749`, `frappe/public/js/frappe/list/list_view.js:1757`. */
 	get_label: string;
-	buttons: ListViewSettingsDropdownItem[];
+	buttons: ListViewSettingsDropdownItem<DT>[];
 }
 
 /**
@@ -226,16 +262,19 @@ export interface ListViewSettingsDropdownButton {
  *
  * Members below are exactly those frappe itself reads
  * (`grep -o 'this\.settings\.[a-z_]*'` over base_list/list_view/report_view).
+ *
+ * `DT` types the row documents the callbacks receive — see {@link ListDocOf}.
+ * It defaults to `string`, which keeps the open {@link FrappeListDoc}.
  */
-export interface ListViewSettings {
+export interface ListViewSettings<DT extends string = string> {
 	/** `frappe/public/js/frappe/list/list_view.js:274` — extra fieldnames pulled into the query. */
 	add_fields?: (string | DocField)[];
 	/** `frappe/public/js/frappe/list/list_view.js:972` `this.settings.before_render && this.settings.before_render()` — NO arguments. */
 	before_render?(): void;
 	/** `frappe/public/js/frappe/list/list_view.js:1711`, `frappe/public/js/frappe/list/list_view.js:1713-1721`. */
-	button?: ListViewSettingsButton;
+	button?: ListViewSettingsButton<DT>;
 	/** `frappe/public/js/frappe/list/list_view.js:1732`. */
-	dropdown_button?: ListViewSettingsDropdownButton;
+	dropdown_button?: ListViewSettingsDropdownButton<DT>;
 	/** `frappe/public/js/frappe/list/list_view.js:138-143` / `frappe/public/js/frappe/list/list_view.js:816-821` — 3-tuples are expanded to 4 with `this.doctype` in front. */
 	filters?: (ListFilterTuple | [fieldname: string, operator: string, value: unknown])[];
 	/**
@@ -243,16 +282,18 @@ export interface ListViewSettings {
 	 * `frappe/public/js/frappe/list/list_view.js:1545-1547` `this.settings.formatters[fieldname](value, df, doc)`
 	 * (never for the Subject column) and `frappe/public/js/frappe/list/list_view.js:1869-1871` for the Subject text.
 	 */
-	formatters?: Record<string, (value: unknown, df: DocField, doc: FrappeListDoc) => string>;
+	formatters?: Record<string, (value: unknown, df: DocField, doc: ListDocOf<DT>) => string>;
 	/** `frappe/public/js/frappe/list/list_view.js:1816-1818` — overrides the row's link href. */
-	get_form_link?(doc: FrappeListDoc): string;
+	get_form_link?(doc: ListDocOf<DT>): string;
 	/**
 	 * `frappe/public/js/frappe/model/indicator.js:8` (existence check in `frappe.has_indicator`) and
 	 * `frappe/public/js/frappe/model/indicator.js:37` — consulted by `frappe.get_indicator`.
 	 */
-	get_indicator?(doc: FrappeListDoc): IndicatorTuple | null | undefined;
+	get_indicator?(doc: ListDocOf<DT>): IndicatorTuple | null | undefined;
 	/** `frappe/public/js/frappe/list/list_view.js:561` — suppresses the trailing synthetic "ID" column. */
 	hide_name_column?: boolean;
+	/** `frappe/public/js/frappe/list/base_list.js:1164` — omit the standard "ID" filter field. */
+	hide_name_filter?: boolean;
 	/** `frappe/public/js/frappe/list/list_view.js:420` (ListView) and `frappe/public/js/frappe/views/reports/report_view.js:96` (ReportView) — both pass the view. */
 	onload?(view: BaseList): void;
 	/** `frappe/public/js/frappe/list/list_view.js:345-346`, `frappe/public/js/frappe/list/list_view.js:2281-2282` — replaces "Add {doctype}". Takes NO arguments. */

@@ -1,4 +1,5 @@
 /// <reference types="jquery" />
+/// <reference path="./registry.d.ts" />
 
 /**
  * frappe-types — the package's **module** entry point.
@@ -15,6 +16,11 @@
  * `frappe` / `__` / `locals` / `cur_frm` globals a desk page really has, add
  * `"frappe-types/global"` to your tsconfig's `types` array instead — see
  * `src/global.d.ts`.
+ *
+ * The one global this entry does bring is a TYPE, not a value: the
+ * `FrappeDocTypes` doctype registry (`src/registry.d.ts`, the second reference
+ * above). It is global so that this entry and `frappe-types/global` share one
+ * registry, which apps fill with `interface FrappeDocTypes { … }`.
  *
  * `/// <reference types="jquery" />` above is load-bearing, not decorative.
  * Frappe ships jQuery 3.7 and hundreds of these declarations are typed in terms
@@ -66,23 +72,29 @@ export type {
 	DocField,
 	DocFieldFormatter,
 	DocFieldMap,
+	DocFieldName,
+	DocFieldValue,
 	DocInfo,
 	DocInfoAssignment,
 	DocInfoRow,
+	DocOf,
 	DocPerm,
 	DocTypeAction,
 	DocTypeDashboardData,
 	DocTypeLink,
 	DocTypeMeta,
+	DocTypeName,
 	DocTypeState,
 	FieldType,
 	FieldTypeLike,
 	FieldTypeName,
+	FormDocTypeOf,
 	FormatterOptions,
 	FrappeCheck,
 	FrappeCheckLoose,
 	FrappeDoc,
 	FrappeDocBase,
+	FrappeDocFields,
 	FrappeMetaNamespace,
 	FrappeModelMetaGlobals,
 	FrappeModelNamespace,
@@ -101,6 +113,7 @@ export type {
 	OpenMappedDocOptions,
 	PartialDocField,
 	Permission,
+	RegisteredDoc,
 	SelectOption,
 	TableFieldType,
 } from "./model";
@@ -205,6 +218,10 @@ export type {
 	DialogSize,
 	DisplayStatus,
 	EditableTitleClass,
+	FormEventHandler,
+	FormEventHandlerRegistry,
+	FormEvents,
+	FormSetValueInput,
 	FormatterFn,
 	Formatters,
 	FrappeUiFormNamespace,
@@ -218,6 +235,7 @@ export type {
 	LinkFormatters,
 	ScriptManager,
 	SortableInstance,
+	StandardFormEvents,
 	ToolbarActionStatus,
 	UndoManager,
 } from "./ui/form";
@@ -372,6 +390,7 @@ export type {
 	FrappeListClassName,
 	FrappeListDataAttribute,
 	FrappeListDoc,
+	FrappeListDocFields,
 	FrappeQueryReportGlobals,
 	FrappeViewName,
 	FrappeViewsNamespace,
@@ -379,6 +398,7 @@ export type {
 	GetListView,
 	ListColumn,
 	ListColumnType,
+	ListDocOf,
 	ListFilter,
 	ListFilterTuple,
 	ListLayout,
