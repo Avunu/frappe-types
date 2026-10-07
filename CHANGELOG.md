@@ -1,5 +1,14 @@
 # Changelog
 
+## [16.5.0](https://github.com/Avunu/frappe-types/compare/v16.4.1...v16.5.0) (2026-10-07)
+
+
+### Features
+
+* add frappe-types gen-registry; run unit tests and audit:drift in CI ([#28](https://github.com/Avunu/frappe-types/issues/28)) ([8b23d43](https://github.com/Avunu/frappe-types/commit/8b23d43f163e6578b38b704584978553a48ca524))
+* declare the desk API the Avunu apps use, and make audit-consumer honest about it ([#30](https://github.com/Avunu/frappe-types/issues/30)) ([284936e](https://github.com/Avunu/frappe-types/commit/284936e9afd93fb0e54b2eee51ef63d314a8b13d))
+* tsconfig presets, typed JSDoc for desk scripts, doctype registry and web entry ([#29](https://github.com/Avunu/frappe-types/issues/29)) ([da59ab4](https://github.com/Avunu/frappe-types/commit/da59ab418cd55a5c5d060a14c57765b468e2ef9c))
+
 ## [16.4.1](https://github.com/Avunu/frappe-types/compare/v16.4.0...v16.4.1) (2026-10-06)
 
 
