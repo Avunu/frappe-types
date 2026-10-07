@@ -9,6 +9,10 @@
 // to happen in a consumer that cannot `as any` its way out — which is the whole
 // premise of this package.
 //
+// Which paths a file uses is decided by scripts/lib/scan-source.mjs: code, plus
+// the content of any string that is itself JavaScript, never prose that merely
+// mentions a frappe name.
+//
 // Run it from a consumer's CI, or here against the apps you maintain.
 
 import { readFile } from "node:fs/promises";
@@ -18,6 +22,7 @@ import { glob } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { withAncestors } from "./lib/extract-frappe.mjs";
 import { probePaths } from "./lib/probe.mjs";
+import { scanSource } from "./lib/scan-source.mjs";
 
 const { values, positionals } = parseArgs({
 	allowPositionals: true,
@@ -30,48 +35,6 @@ const { values, positionals } = parseArgs({
 if (!positionals.length) {
 	console.error("usage: node scripts/audit-consumer.mjs <app-path> [<app-path>...] [--strict]");
 	process.exit(2);
-}
-
-const IDENT = "[A-Za-z_$][A-Za-z0-9_$]*";
-const re_frappe = new RegExp(`(?:^|[^\\w.$])(frappe(?:\\.${IDENT})+)`, "g");
-// Other desk globals a consumer leans on. These are single identifiers, so they
-// are probed as-is rather than as dotted paths.
-const OTHER_GLOBALS = ["__", "locals", "cur_frm", "cur_list", "cur_dialog", "cur_page", "erpnext"];
-const re_other = new RegExp(`(?:^|[^\\w.$])(${OTHER_GLOBALS.join("|")})(?![\\w$])`, "g");
-
-/** Comments hold prose about frappe APIs, not calls to them. */
-function stripComments(src) {
-	return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
-}
-
-/**
- * Remove PYTHON dotted paths that only ever appear inside string literals.
- *
- * `frappe.auth.get_logged_user` and `frappe.client.get_list` look exactly like
- * member expressions to a regex, but a grep of `frappe/public/js` at v16.33.0
- * finds neither as a JS object: `frappe.client` appears only as the `method:` of
- * a server call (`frappe/public/js/frappe/db.js:44,61,70,86,98,102`) and
- * `frappe.auth` only as a REST path. Declaring them on the `frappe` global to
- * make this audit go green would be a fabrication — see the `Frappe` interface's
- * own note in `src/index.d.ts`.
- *
- * Two forms are stripped, and ONLY these two, both of which are unambiguous:
- *
- *  1. `/api/method/<dotted.path>` — a URL, wherever it occurs.
- *  2. A quoted string whose ENTIRE content is a dotted `frappe.…` path — the
- *     `frappe.call({method})` / `frappe.xcall(…)` / `frappe.db.*` idiom.
- *
- * Everything else in a string survives on purpose: the CDP harnesses in
- * `carbon_frappe/scripts/tables/*.ts` ship real browser code as template
- * literals (`frappe.query_report.datatable.destroy()`), and those ARE member
- * expressions that the typeset must cover. A whole-file string strip would hide
- * them.
- */
-function stripServerMethodPaths(code) {
-	const DOTTED = "[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)+";
-	return code
-		.replace(new RegExp(`/api/method/${DOTTED}`, "g"), "/api/method/")
-		.replace(new RegExp(`(['"\`])\\s*(frappe\\.${DOTTED})\\s*\\1`, "g"), "$1$1");
 }
 
 const usage = new Map();
@@ -96,16 +59,14 @@ for (const app of positionals) {
 			continue;
 		}
 		scanned++;
-		const code = stripComments(src);
-		const scannable = stripServerMethodPaths(code);
-		for (const m of scannable.matchAll(re_frappe)) {
-			if (/\.\d/.test(m[1])) continue;
-			const list = usage.get(m[1]) ?? [];
-			const rel = path.relative(process.cwd(), abs);
+		const found = scanSource(src, { vue: entry.endsWith(".vue") });
+		const rel = path.relative(process.cwd(), abs);
+		for (const p of found.paths) {
+			const list = usage.get(p) ?? [];
 			if (!list.includes(rel)) list.push(rel);
-			usage.set(m[1], list);
+			usage.set(p, list);
 		}
-		for (const m of scannable.matchAll(re_other)) globalsSeen.add(m[1]);
+		for (const g of found.globals) globalsSeen.add(g);
 	}
 }
 
