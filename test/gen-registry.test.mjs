@@ -216,6 +216,66 @@ describe("fixture bench", () => {
 	});
 });
 
+// Regression fixtures for what module-scoped generators get wrong on a real bench (seen
+// running github.com/frappe/frappe-types over frappe and erpnext, where these DocTypes
+// produced .ts files that do not parse or do not compile). edge_app's DocTypes are
+// trimmed copies of the real JSON — the fields kept are the ones that broke — plus
+// india_compliance-style hyphenated names.
+describe("edge cases from real DocTypes", () => {
+	const EDGE_GOLDEN = path.join(FIXTURES, "expected", "edge_app.d.ts");
+	const result = generate({ appsDir: APPS, app: "edge_app" });
+
+	test("matches the golden file, with no warnings", () => {
+		if (process.env.UPDATE_GOLDEN === "1") writeFileSync(EDGE_GOLDEN, result.text);
+		assert.equal(result.text, readFileSync(EDGE_GOLDEN, "utf8"), "output changed; if intended, re-run with UPDATE_GOLDEN=1 and review the diff");
+		assert.deepEqual(result.warnings, []);
+	});
+
+	test("Select options containing double quotes are escaped string literals", () => {
+		// DocType.naming_rule and Customize Form.naming_rule: `By "Naming Series" field`.
+		assert.match(result.text, /\tnaming_rule\?: "Set by user" \| "Autoincrement" \| "By fieldname" \| "By \\"Naming Series\\" field" \| /);
+		assert.match(result.text, /\tnaming_rule\?: "Set by user" \| "By fieldname" \| "By \\"Naming Series\\" field" \| /);
+		// Bank Statement Import Log.detected_amount_format: several quoted words per option.
+		assert.match(result.text, /"Amount column has \\"CR\\"\/\\"DR\\" values" \| /);
+		assert.match(result.text, /"Transaction type column has \\"Deposit\\"\/\\"Withdrawal\\" values" \| /);
+	});
+
+	test("Duration is a number of seconds, not a string", () => {
+		for (const f of ["avg_response_time", "resolution_time", "first_response_time"]) {
+			assert.match(result.text, new RegExp(`\\t${f}\\?: number \\| null;`), f);
+		}
+	});
+
+	test("hyphenated DocType names keep their name as the key and drop the hyphen from the interface", () => {
+		assert.match(result.text, /\t"e-Invoice Log": FrappeDocTypeFields\.eInvoiceLog;/);
+		assert.match(result.text, /\titems: FrappeChildRow<"e-Waybill Log Item">\[\];/);
+		assert.match(result.text, /\tparenttype: "e-Waybill Log";/);
+		assert.match(result.text, /^export type eInvoiceLog = FrappeDocTypeFields\.eInvoiceLog;$/m);
+	});
+
+	test("DocTypes that declare a standard field (idx, parent) leave it to the standard declaration", () => {
+		// Custom DocPerm declares `parent` (Data), Desktop Icon and Web Page declare `idx` (Int).
+		assert.match(result.text, /\tinterface CustomDocPerm \{[^}]*\t\/\/ parent \(Data\) — a standard field, typed by frappe-types\n/);
+		assert.match(result.text, /\tinterface DesktopIcon \{[^}]*\t\/\/ idx \(Int\) — a standard field, typed by frappe-types\n/);
+		assert.match(result.text, /\tinterface WebPage \{[^}]*\t\/\/ idx \(Int\) — a standard field, typed by frappe-types\n/);
+		assert.doesNotMatch(result.text, /^\t+(idx|parent)\??: /m);
+		// Reserved words are fine as property names (Custom DocPerm's select, delete, import).
+		assert.match(result.text, /\tdelete\?: 0 \| 1;\n[^\n]*\n\t+import\?: 0 \| 1;/);
+	});
+
+	test("the golden file compiles under strict consumer options", async () => {
+		// What consumer code can do with each edge field, under both compilers, is asserted
+		// by test/types/gen-registry-edge.
+		assert.equal(await tsc([EDGE_GOLDEN]), "");
+	});
+
+	test("test/types/gen-registry-edge generates from this fixture bench", () => {
+		const spec = JSON.parse(readFileSync(path.join(ROOT, "test", "types", "gen-registry-edge", "gen-registry.json"), "utf8"));
+		assert.equal(path.resolve(ROOT, spec.bench), APPS);
+		assert.equal(spec.app, "edge_app");
+	});
+});
+
 describe("field typing", () => {
 	/** @type {string[]} */
 	const warnings = [];

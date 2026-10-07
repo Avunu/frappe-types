@@ -1,0 +1,25 @@
+{
+ "doctype": "DocType",
+ "name": "e-Waybill Log",
+ "module": "Edge Cases",
+ "istable": 0,
+ "issingle": 0,
+ "fields": [
+  {
+   "fieldname": "e_waybill_number",
+   "fieldtype": "Data",
+   "label": "e-Waybill Number"
+  },
+  {
+   "fieldname": "is_cancelled",
+   "fieldtype": "Check",
+   "label": "Is Cancelled"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "e-Waybill Log Item"
+  }
+ ]
+}

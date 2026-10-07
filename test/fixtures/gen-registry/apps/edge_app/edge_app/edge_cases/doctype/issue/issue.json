@@ -1,0 +1,37 @@
+{
+ "doctype": "DocType",
+ "name": "Issue",
+ "module": "Edge Cases",
+ "autoname": "naming_series:",
+ "istable": 0,
+ "issingle": 0,
+ "fields": [
+  {
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "label": "Subject",
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Open\nReplied\nOn Hold\nResolved\nClosed"
+  },
+  {
+   "fieldname": "avg_response_time",
+   "fieldtype": "Duration",
+   "label": "Average Response Time"
+  },
+  {
+   "fieldname": "resolution_time",
+   "fieldtype": "Duration",
+   "label": "Resolution Time"
+  },
+  {
+   "fieldname": "first_response_time",
+   "fieldtype": "Duration",
+   "label": "First Response Time"
+  }
+ ]
+}

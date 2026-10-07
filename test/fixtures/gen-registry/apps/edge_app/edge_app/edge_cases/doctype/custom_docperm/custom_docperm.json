@@ -1,0 +1,52 @@
+{
+ "doctype": "DocType",
+ "name": "Custom DocPerm",
+ "module": "Edge Cases",
+ "autoname": "hash",
+ "istable": 0,
+ "issingle": 0,
+ "fields": [
+  {
+   "fieldname": "role",
+   "fieldtype": "Link",
+   "label": "Role",
+   "options": "Role",
+   "reqd": 1
+  },
+  {
+   "fieldname": "if_owner",
+   "fieldtype": "Check",
+   "label": "If user is the owner"
+  },
+  {
+   "fieldname": "permlevel",
+   "fieldtype": "Int",
+   "label": "Level"
+  },
+  {
+   "fieldname": "read",
+   "fieldtype": "Check",
+   "label": "Read"
+  },
+  {
+   "fieldname": "select",
+   "fieldtype": "Check",
+   "label": "Select"
+  },
+  {
+   "fieldname": "delete",
+   "fieldtype": "Check",
+   "label": "Delete"
+  },
+  {
+   "fieldname": "import",
+   "fieldtype": "Check",
+   "label": "Import"
+  },
+  {
+   "fieldname": "parent",
+   "fieldtype": "Data",
+   "label": "Reference Document Type"
+  }
+ ]
+}
