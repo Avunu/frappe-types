@@ -1,5 +1,7 @@
 # frappe-types
 
+> Not affiliated with [github.com/frappe/frappe-types](https://github.com/frappe/frappe-types), the `frappe_types` bench app; this is an npm package of desk JS API types and does not need that app. See [Relation to frappe/frappe-types and frappe-ui frappeTypes](#relation-to-frappefrappe-types-and-frappe-ui-frappetypes).
+
 TypeScript definitions for the **Frappe Framework desk JS API** — the `window.frappe` global that every desk page, doctype client script, custom app bundle and theme is written against.
 
 Frappe ships no types for the desk JS API. This package is a hand-maintained, **source-verified** typeset: every declaration is derived by reading the frappe version it targets, and carries a `file.js:line` citation back to the code it describes.
@@ -52,9 +54,22 @@ Each frappe major lives on its own branch (`version-16`, `version-15`), mirrorin
 
 **It is** the browser-side desk API: `frappe.call`, the `frappe.ui.form.*` class hierarchy, the `frappe.views.*` list/report views, `frappe.model` / `frappe.meta` and the `DocField` / doc shapes, `frappe.utils` / `frappe.dom` / `frappe.router`, `frappe.DataTable`, `frappe.Chart`, the `__()` translator, and ambient declarations for the deep imports desk apps rely on (`import Grid from "frappe/public/js/frappe/form/grid"`).
 
-**It is not** types for frappe's Python API, for [frappe-ui](https://github.com/frappe/frappe-ui), or a hand-written model of your own doctypes — generate those from your app's doctype JSON with the bundled [`frappe-types gen-registry`](#generating-the-registry-frappe-types-gen-registry). The [`FrappeDocTypes` registry](#typing-your-doctypes-frappedoctypes) is where they plug in.
+**It is not** types for frappe's Python API, for [frappe-ui](https://github.com/frappe/frappe-ui) SPAs ([see below](#relation-to-frappefrappe-types-and-frappe-ui-frappetypes)), or a hand-written model of your own doctypes — generate those from your app's doctype JSON with the bundled [`frappe-types gen-registry`](#generating-the-registry-frappe-types-gen-registry). The [`FrappeDocTypes` registry](#typing-your-doctypes-frappedoctypes) is where they plug in.
 
 **It is not official.** It is not affiliated with or endorsed by Frappe Technologies. When frappe publishes its own types, use those.
+
+### Relation to frappe/frappe-types and frappe-ui frappeTypes
+
+Two existing tools also turn DocTypes into TypeScript. They solve a different problem, and this package does not replace them:
+
+- **[frappe/frappe-types](https://github.com/frappe/frappe-types)** is a bench app (`frappe_types`). Installed on a site in developer mode, it writes one `.ts` file per DocType, as `export interface`s in a folder per module, into a path configured per app, when a DocType is saved, or on demand with `bench --site … generate-types-for-doctype` / `generate-types-for-module`. It needs a running site, and because it reads the site's meta it can include Custom Fields that exist only in that site's database.
+- **frappe-ui's `frappeTypes` Vite plugin** runs when the Vite dev server starts and writes `export interface`s for the DocTypes you list into the SPA's source (`src/types/doctypes.ts` by default), reading their JSON from the bench's `apps/` folder.
+
+Both produce **module-scoped interfaces for SPA frontends** (frappe-ui / Vue apps that import their document types). If that is what you are building, use them.
+
+This package's [`frappe-types gen-registry`](#generating-the-registry-frappe-types-gen-registry) is for **desk scripts**: the doctype, list and report JavaScript (or TypeScript) that runs inside `/app` against `window.frappe`. It emits **global augmentations** of the [`FrappeDocTypes` registry](#typing-your-doctypes-frappedoctypes) and the `FrappeDocTypeFields` namespace, so `frappe.ui.form.on("Sales Order", …)`, `frappe.ui.form.FormEvents<"Sales Order">` in JSDoc (`checkJs`) and `Form<"Sales Order">` in TypeScript all see the closed document with no import. It runs **offline** from the bench's `apps/` tree, with no site, database or dev server; reads the Custom Fields and Property Setters apps ship in files (`<module>/custom/*.json`, `fixtures/*.json`) and applies them in frappe's sync order; and has a `--check` mode so CI fails when the committed file drifts from the JSON. It cannot see [database-only customisations](#customisations-that-exist-only-in-a-sites-database).
+
+This npm package is not the `frappe_types` bench app, does not install or need it, and shares only the name.
 
 ### Coverage is partial, and says so
 
@@ -203,6 +218,8 @@ The registry is shared by both entry points, `frappe-types/global` and the modul
 
 Writing the registry by hand is fine for a few doctypes. For a whole app, the package ships a command that writes it from the files `bench migrate` reads: the DocType JSON of your app (and, if you ask, its sibling apps), plus the Custom Fields and Property Setters the apps ship.
 
+It types desk scripts through the global registry, offline. For module-scoped interfaces in a frappe-ui SPA, see [Relation to frappe/frappe-types and frappe-ui frappeTypes](#relation-to-frappefrappe-types-and-frappe-ui-frappetypes).
+
 ```bash
 npx frappe-types gen-registry --bench ~/frappe-bench --app my_app --out types/doctypes.d.ts
 npx frappe-types gen-registry --bench ~/frappe-bench --app my_app --include-siblings erpnext,hrms --out types/doctypes.d.ts
@@ -287,16 +304,7 @@ Every value field is optional (`?:`): a doc created in the browser carries only 
 **Limits.**
 
 - **Several generated files in one program** (an app's own, and one another app ships, say) work, because every file registers `"Customer": FrappeDocTypeFields.Customer` and interfaces merge: each file's fields add up. A field two files declare must be declared the same way in both, though. Where they disagree, typically because one app's Property Setter changes a field the other file was generated without, TypeScript reports TS2717 (or TS2687, for `?`) on that field. Generate the files on the same bench, or type the apps together with one `--include-siblings` run, which applies their customisations in install order.
-- **Customisations made in the database** (Customize Form, a Custom Field created in the UI) are in no file and cannot be seen, and a registered document is closed, so reading one is a compile error. Export them as fixtures to have them generated, or add them to the entry's interface from a `.d.ts` file of your own:
-
-  ```ts
-  // types/doctypes-extra.d.ts. A script (no import/export), so the namespace is global.
-  declare namespace FrappeDocTypeFields {
-  	interface SalesOrder {
-  		custom_added_in_the_ui?: string | null;
-  	}
-  }
-  ```
+- **Customisations made in the database** (Customize Form, a Custom Field created in the UI) are in no file and cannot be seen. See [below](#customisations-that-exist-only-in-a-sites-database).
 - **`autoname: autoincrement`** DocTypes have a numeric `name` on the wire; the registry types it `string`. The interface's doc comment says so.
 - **`parenttype`** lists the DocTypes whose JSON on this bench has a Table of the child. A parent that exists only in the database, or in an app that is not on the bench, is missing from it.
 - **Loose spots are warnings**: a fieldtype the generator does not know (typed `unknown`), a table whose child DocType is on no app on the bench (typed `ChildDoc[]`), a Custom Field on a DocType nothing defines (its custom fields only). `--strict` turns them into a non-zero exit.
@@ -311,6 +319,29 @@ npx frappe-types gen-registry --bench ../.. --app my_app --out types/doctypes.d.
 `--check` is a byte comparison: the output is deterministic (sorted, no timestamps, no absolute paths). But it is deterministic **given the bench**. The output depends on every app on the bench, not only on your app's JSON: customised and child DocTypes are pulled in from whichever app defines them, and a child's `parenttype` lists the parents found in every app. So the bench CI runs `--check` on must hold the same apps, at the same branches, as the bench the file was generated on. The header names the apps whose DocType JSON and customisations went into the file, which is the first thing to compare when `--check` fails on CI but not locally. A sibling missing from the CI bench also shows up in the warnings `--check` prints (a customised DocType or a child table that no app on the bench defines). `--strict` makes those warnings fail the run on their own, so a file generated on an incomplete bench cannot pass either.
 
 The command is plain JavaScript with no dependencies, so it runs from `node_modules` with the node you already have (node refuses to strip TypeScript types under `node_modules`, which rules out shipping it as `.ts`); its JSDoc is type-checked by `tsconfig.bin.json` as part of `npm run check`. `checks.types` runs the packed command, from the file list `npm pack` would ship, against the fixture bench and compiles its output with both presets.
+
+#### Customisations that exist only in a site's database
+
+`gen-registry` reads files, not a site. A Custom Field added through Customize Form or the Custom Field list, or a Property Setter made there, lives only in that site's database until someone exports it, so the generator never sees it. Since a registered document is closed, code that reads such a field (`frm.doc.custom_added_in_the_ui`) is a compile error rather than a silent `unknown`.
+
+Two ways out:
+
+- **Ship it as a file.** Export the customisation as a fixture (`fixtures` in `hooks.py`, then `bench export-fixtures`) or into `<module>/custom/<doctype>.json`, and re-run the generator. The site and the types then agree, and `--check` keeps them agreeing.
+- **Declare it by hand.** `FrappeDocTypeFields` is a global namespace of interfaces, so a `.d.ts` file of your own merges fields into the generated entry:
+
+  ```ts
+  // types/doctypes-extra.d.ts. A script (no import/export), so the namespace is global.
+  declare namespace FrappeDocTypeFields {
+  	interface SalesOrder {
+  		/** Added with Customize Form on the production site; not exported as a fixture. */
+  		custom_added_in_the_ui?: string | null;
+  	}
+  }
+  ```
+
+  Include it next to the generated file. A field that both files declare must be declared the same way (TS2717 otherwise), so do not redeclare a field the generator already emits. For a DocType that exists only in the database, declare the interface and register it: `interface FrappeDocTypes { "My DB DocType": FrappeDocTypeFields.MyDBDocType }`.
+
+A possible future addition is an opt-in `--meta-json <file>` input: a dump of a site's DocType meta (what `frappe.get_meta` returns), read alongside the files, so a CI job with database access could type those fields too. It is not implemented; the generator stays offline by default.
 
 ### Web forms and website pages: `frappe-types/web`
 
