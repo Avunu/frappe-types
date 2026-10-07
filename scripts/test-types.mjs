@@ -20,9 +20,18 @@
 // `// @ts-expect-error`, which tsc reports when the expected error does not
 // occur — so this one exit code covers both directions.
 //
+// Each project runs under EVERY compiler in `COMPILERS`: the repo's own
+// TypeScript, and the oldest release the README promises to support (5.8, the
+// `erasableSyntaxOnly` floor of the presets), installed as the aliased
+// devDependency `typescript-5.8` so it resolves offline from package-lock.json
+// like everything else. The two disagree in ways that matter to consumers —
+// TypeScript 5.x measures generic variance differently from 7 — so a fixture
+// that only passes on one of them is a failure.
+//
 //   node scripts/test-types.mjs            # every project
 //   node scripts/test-types.mjs desk-js    # just the named ones
 //   node scripts/test-types.mjs --keep     # leave the scratch tree for inspection
+//   node scripts/test-types.mjs --tsc=5.8  # just one compiler (by COMPILERS key)
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync } from "node:fs";
@@ -31,11 +40,27 @@ import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const FIXTURES = path.join(ROOT, "test", "types");
-const TSC = path.join(ROOT, "node_modules", "typescript", "bin", "tsc");
+/** Every compiler the fixtures must pass under, keyed by a short label. */
+const COMPILERS = {
+	current: path.join(ROOT, "node_modules", "typescript", "bin", "tsc"),
+	"5.8": path.join(ROOT, "node_modules", "typescript-5.8", "bin", "tsc"),
+};
 
 const args = process.argv.slice(2);
 const keep = args.includes("--keep");
 const only = args.filter((a) => !a.startsWith("--"));
+const tscFlag = args.find((a) => a.startsWith("--tsc="))?.slice("--tsc=".length);
+if (tscFlag !== undefined && !(tscFlag in COMPILERS)) {
+	console.error(`unknown --tsc=${tscFlag}; expected one of ${Object.keys(COMPILERS).join(", ")}`);
+	process.exit(2);
+}
+const compilers = Object.entries(COMPILERS).filter(([label]) => tscFlag === undefined || label === tscFlag);
+for (const [label, tsc] of compilers) {
+	if (!existsSync(tsc)) {
+		console.error(`compiler "${label}" is not installed at ${tsc}; run npm ci`);
+		process.exit(2);
+	}
+}
 
 const projects = readdirSync(FIXTURES, { withFileTypes: true })
 	.filter((d) => d.isDirectory() && existsSync(path.join(FIXTURES, d.name, "tsconfig.json")))
@@ -88,18 +113,22 @@ try {
 	for (const name of projects) {
 		const dir = path.join(scratch, name);
 		cpSync(path.join(FIXTURES, name), dir, { recursive: true });
-		const res = spawnSync(process.execPath, [TSC, "-p", path.join(dir, "tsconfig.json"), "--pretty", "false"], {
-			cwd: dir,
-			encoding: "utf8",
-		});
-		const output = `${res.stdout ?? ""}${res.stderr ?? ""}`.trim();
-		if (res.status === 0) {
-			console.log(`ok   ${name}`);
-		} else {
-			failed++;
-			console.log(`FAIL ${name}`);
-			// Paths in the scratch tree read better relative to the fixture source.
-			console.log(output.split(dir + path.sep).join(`test/types/${name}/`).replace(/^/gm, "     "));
+		for (const [label, tsc] of compilers) {
+			const version = execFileSync(process.execPath, [tsc, "-v"], { encoding: "utf8" }).trim().replace(/^Version /, "");
+			const res = spawnSync(process.execPath, [tsc, "-p", path.join(dir, "tsconfig.json"), "--pretty", "false"], {
+				cwd: dir,
+				encoding: "utf8",
+			});
+			const output = `${res.stdout ?? ""}${res.stderr ?? ""}`.trim();
+			const tag = `${name} (tsc ${version})`;
+			if (res.status === 0) {
+				console.log(`ok   ${tag}`);
+			} else {
+				failed++;
+				console.log(`FAIL ${tag}`);
+				// Paths in the scratch tree read better relative to the fixture source.
+				console.log(output.split(dir + path.sep).join(`test/types/${name}/`).replace(/^/gm, "     "));
+			}
 		}
 	}
 } finally {
@@ -108,7 +137,9 @@ try {
 }
 
 if (failed) {
-	console.error(`\n${failed} type test project(s) failed`);
+	console.error(`\n${failed} type test run(s) failed`);
 	process.exit(1);
 }
-console.log(`\n${projects.length} type test project(s) passed against the packed file list`);
+console.log(
+	`\n${projects.length} type test project(s) passed under ${compilers.length} compiler(s) against the packed file list`
+);

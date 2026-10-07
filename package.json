@@ -60,7 +60,8 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "typescript-5.8": "npm:typescript@~5.8.3"
   },
   "scripts": {
     "check": "tsc --noEmit",
@@ -72,7 +73,7 @@
     "audit:drift": "node scripts/audit-drift.mjs",
     "remap:citations": "node scripts/remap-citations.mjs",
     "consumers": "node scripts/audit-consumer.mjs",
-    "upgrade": "npx npm-check-updates -u --reject @types/jquery && npm install"
+    "upgrade": "npx npm-check-updates -u --reject @types/jquery,typescript-5.8 && npm install"
   },
   "publishConfig": {
     "access": "public",
