@@ -82,13 +82,17 @@ export const settingsName: "Selling Settings" = settings.name;
 export const payloadKey = so.payload.key;
 
 // Fields that only the database knows about (Customize Form) are added by augmenting
-// the generated module, which is what its exported interfaces are for.
-declare module "./doctypes" {
-	interface SalesOrder {
-		custom_added_in_the_ui?: string | null;
+// the global namespace the entries live in.
+declare global {
+	namespace FrappeDocTypeFields {
+		interface SalesOrder {
+			custom_added_in_the_ui?: string | null;
+		}
 	}
 }
 export const fromCustomizeForm: string | null | undefined = so.custom_added_in_the_ui;
+// The module's export is the same interface, augmentation included.
+export const viaExport: string | null | undefined = ({} as SalesOrderFields).custom_added_in_the_ui;
 
 // A table whose child DocType is not on the bench falls back to ChildDoc.
 declare const stop: DocOf<"Delivery Stop">;

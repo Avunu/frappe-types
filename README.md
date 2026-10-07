@@ -208,7 +208,7 @@ npx frappe-types gen-doctypes --bench ~/frappe-bench --app my_app --out types/do
 npx frappe-types gen-doctypes --bench ~/frappe-bench --app my_app --include-siblings erpnext,hrms --out types/doctypes.d.ts
 ```
 
-The output follows the registry contract above: one `export interface` per DocType that lists its data fields and nothing else, registered by DocType name. Table fields are `FrappeChildRow<…>[]`, and a child DocType's `parenttype` names every DocType on the bench with a Table of it, so child-table events get the right parent form.
+The output follows the registry contract above: one interface per DocType that lists its data fields and nothing else, registered by DocType name. The interfaces live in a global namespace, `FrappeDocTypeFields`, named after frappe's controller classes, and the module also exports each one under that name. Table fields are `FrappeChildRow<…>[]`, and a child DocType's `parenttype` names every DocType on the bench with a Table of it, so child-table events get the right parent form.
 
 ```ts
 // types/doctypes.d.ts: an excerpt of test/fixtures/gen-doctypes/expected/my_app.d.ts
@@ -220,30 +220,35 @@ import type * as $ft from "frappe-types";
 
 declare global {
 	interface FrappeDocTypes {
-		"Sales Order": SalesOrder;
-		"Sales Order Item": SalesOrderItem;
+		"Sales Order": FrappeDocTypeFields.SalesOrder;
+		"Sales Order Item": FrappeDocTypeFields.SalesOrderItem;
+	}
+
+	namespace FrappeDocTypeFields {
+		interface SalesOrder {
+			/** Status · Select */
+			status?: "Draft" | "On Hold" | "Completed" | "" | null;
+			/** Is Return · Check */
+			is_return?: 0 | 1;
+			/** Grand Total · Currency */
+			grand_total?: number | null;
+			/** Items · Table → Sales Order Item */
+			items: FrappeChildRow<"Sales Order Item">[];
+			/** Delivery Run · Link → Delivery Run · Custom Field, my_app/my_app/my_app/custom/sales_order.json */
+			custom_delivery_run?: string | null;
+		}
+
+		interface SalesOrderItem {
+			/** The DocTypes on this bench with a Table of Sales Order Item: the forms its events run on. */
+			parenttype: "Delivery Run" | "Sales Order";
+			/** Quantity · Float */
+			qty?: number | null;
+		}
 	}
 }
 
-export interface SalesOrder {
-	/** Status · Select */
-	status?: "Draft" | "On Hold" | "Completed" | "" | null;
-	/** Is Return · Check */
-	is_return?: 0 | 1;
-	/** Grand Total · Currency */
-	grand_total?: number | null;
-	/** Items · Table → Sales Order Item */
-	items: FrappeChildRow<"Sales Order Item">[];
-	/** Delivery Run · Link → Delivery Run · Custom Field, my_app/my_app/my_app/custom/sales_order.json */
-	custom_delivery_run?: string | null;
-}
-
-export interface SalesOrderItem {
-	/** The DocTypes on this bench with a Table of Sales Order Item: the forms its events run on. */
-	parenttype: "Delivery Run" | "Sales Order";
-	/** Quantity · Float */
-	qty?: number | null;
-}
+export type SalesOrder = FrappeDocTypeFields.SalesOrder;
+export type SalesOrderItem = FrappeDocTypeFields.SalesOrderItem;
 ```
 
 Add the file to the `include` of the tsconfig that checks your code (the preset examples above already include `types/**/*.d.ts`). From then on `frm.doc` in `frappe.ui.form.on("Sales Order", …)`, `frappe.ui.form.FormEvents<"Sales Order">` in JSDoc and `DocOf<"Sales Order">` in TypeScript are the closed document: the standard fields from frappe-types plus the fields above. The interfaces are the registry ENTRIES, not whole documents; reach for `DocOf<…>` (or `frappe.Doc<…>` in JSDoc) when you want a document type.
@@ -281,13 +286,12 @@ Every value field is optional (`?:`): a doc created in the browser carries only 
 
 **Limits.**
 
-- **One generated file per program.** The registry maps each DocType name to one interface, so two generated files that both register `"Customer"`, or both reach a shared child table such as `Has Role`, are conflicting declarations of the same property (TS2717). To type code that needs several apps, generate ONE file for all of them with `--include-siblings`. An app that ships its generated file to other apps cannot combine it with theirs.
-- **Customisations made in the database** (Customize Form, a Custom Field created in the UI) are in no file and cannot be seen, and a registered document is closed, so reading one is a compile error. Export them as fixtures to have them generated, or add them by augmenting the generated module from a `.d.ts` file of your own:
+- **Several generated files in one program** (an app's own, and one another app ships, say) work, because every file registers `"Customer": FrappeDocTypeFields.Customer` and interfaces merge: each file's fields add up. A field two files declare must be declared the same way in both, though. Where they disagree, typically because one app's Property Setter changes a field the other file was generated without, TypeScript reports TS2717 (or TS2687, for `?`) on that field. Generate the files on the same bench, or type the apps together with one `--include-siblings` run, which applies their customisations in install order.
+- **Customisations made in the database** (Customize Form, a Custom Field created in the UI) are in no file and cannot be seen, and a registered document is closed, so reading one is a compile error. Export them as fixtures to have them generated, or add them to the entry's interface from a `.d.ts` file of your own:
 
   ```ts
-  // types/doctypes-extra.d.ts
-  export {};
-  declare module "./doctypes" {
+  // types/doctypes-extra.d.ts. A script (no import/export), so the namespace is global.
+  declare namespace FrappeDocTypeFields {
   	interface SalesOrder {
   		custom_added_in_the_ui?: string | null;
   	}

@@ -111,18 +111,29 @@
 //                                         varchar/text/date columns, all strings on the wire
 //
 // WHAT IS EMITTED: one module, written against the `FrappeDocTypes` registry contract
-// (src/registry.d.ts). Each DocType is an `export interface` named the way frappe names
-// its controller class — spaces and hyphens removed (frappe/model/base_document.py:113) —
-// that lists the DocType's DATA fields and nothing else: no index signature and no
-// standard fields, which `DocOf` / `RegisteredDoc` (src/model.d.ts) add, so a registered
-// document is closed and a misspelt fieldname is a compile error. A child DocType's
-// interface declares `parenttype` as the literal names of every DocType on the bench with
-// a Table of it, which is how `FormEvents<"Child">` finds the parent form. A
+// (src/registry.d.ts). Each DocType is an interface in the GLOBAL namespace
+// `FrappeDocTypeFields`, named the way frappe names its controller class — spaces and
+// hyphens removed (frappe/model/base_document.py:113) — that lists the DocType's DATA
+// fields and nothing else: no index signature and no standard fields, which `DocOf` /
+// `RegisteredDoc` (src/model.d.ts) add, so a registered document is closed and a
+// misspelt fieldname is a compile error. A child DocType's interface declares
+// `parenttype` as the literal names of every DocType on the bench with a Table of it,
+// which is how `FormEvents<"Child">` finds the parent form. A
 // `declare global { interface FrappeDocTypes { ... } }` block registers each one under
-// its DocType name. A program holds ONE such file: two that register the same DocType
-// are conflicting declarations of one property (TS2717); type several apps with one
-// `--include-siblings` run. Output is byte-for-byte deterministic: no timestamps, no
-// absolute paths, everything sorted.
+// its DocType name, and the module re-exports each as a type alias of the same name.
+//
+// WHY A GLOBAL NAMESPACE: so that several generated files can share one program (an app
+// that ships its file, and the app that uses it, say). Every file registers
+// `"Customer": FrappeDocTypeFields.Customer` — the same type — so the registry entries do
+// not conflict, and the interfaces themselves MERGE: each file's fields add up, and a
+// field both files declare must be declared the same way. A field the files disagree on
+// (a Property Setter one app applies and the other's generation did not see) is a
+// TS2717/TS2687 on that field, which is a real disagreement about the site. Had the
+// entries been module-local interfaces, any difference at all, one app's Custom Field,
+// would have been a TS2717 on the whole DocType.
+//
+// Output is byte-for-byte deterministic: no timestamps, no absolute paths, everything
+// sorted.
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
@@ -640,6 +651,12 @@ export function fieldType(field, rowType, warnings, where) {
 const UNKNOWN_ROW = "$ft.ChildDoc";
 
 /**
+ * The global namespace that holds the entries. Shared by every generated file, so its
+ * interfaces merge across files (see "WHY A GLOBAL NAMESPACE" above).
+ */
+export const NAMESPACE = "FrappeDocTypeFields";
+
+/**
  * Read the apps and render the module.
  * @param {GenerateOptions} options
  * @returns {GenerateResult}
@@ -778,6 +795,10 @@ export function generate({ appsDir, app, siblings = [] }) {
 		warnings.length = before;
 	}
 
+	// Interfaces merge across generated files BY NAME, so a DocType's name must not depend
+	// on what else is in the file. It does only when two DocTypes share a class name
+	// ("Sales Order" and "SalesOrder"): the later one, in name order, gets a numeric
+	// suffix, so two files that disagree on which of them they hold can disagree on it.
 	/** @type {Map<string, string>} */
 	const names = new Map();
 	const used = new Set();
@@ -809,26 +830,28 @@ export function generate({ appsDir, app, siblings = [] }) {
 		"// the Custom Fields and Property Setters of the apps above. `DocOf<DocType>` adds the",
 		"// standard fields. Fields added in the database (Customize Form) are in no file and",
 		"// so are not here: a registered document is closed, so add any your code reads by",
-		"// augmenting this module. A program holds ONE generated file. See the frappe-types",
-		'// README, "Generating the registry".',
+		"// augmenting `FrappeDocTypeFields`. Other generated files (other apps') can share the",
+		'// program: see the frappe-types README, "Generating the registry".',
 		"",
 		// Also puts frappe-types, and with it the registry and FrappeChildRow, in the program.
 		'import type * as $ft from "frappe-types";',
 		"",
 		"declare global {",
 		"\t/**",
-		"\t * DocType name -> its data fields. One generated file per program: a second file that",
-		"\t * registers the same DocType is a conflicting declaration (TS2717). Type several apps",
-		"\t * with one `--include-siblings` run instead.",
+		"\t * DocType name -> its data fields. Every entry is an interface of the global",
+		"\t * `FrappeDocTypeFields` namespace, so a second generated file that registers the same",
+		"\t * DocType declares the same entry, and its fields merge into the same interface.",
 		"\t */",
 		"\tinterface FrappeDocTypes {",
-		...ordered.map((spec) => `\t\t${JSON.stringify(spec.name)}: ${nameOf(spec.name)};`),
+		...ordered.map((spec) => `\t\t${JSON.stringify(spec.name)}: ${NAMESPACE}.${nameOf(spec.name)};`),
 		"\t}",
-		"}",
+		"",
+		"\t/** The data fields of each registered DocType, by frappe's controller class name. */",
+		`\tnamespace ${NAMESPACE} {`,
 	];
 
-	for (const spec of ordered) {
-		lines.push("");
+	ordered.forEach((spec, i) => {
+		if (i > 0) lines.push("");
 		const doc = [`DocType ${JSON.stringify(spec.name)}${spec.app ? ` — ${spec.app}, module ${spec.module}` : ""}.`];
 		if (spec.file) doc.push(`\`${spec.file}\``);
 		const why = pulledIn.get(spec.name);
@@ -837,17 +860,17 @@ export function generate({ appsDir, app, siblings = [] }) {
 		if (spec.autoname === "autoincrement") {
 			doc.push("`autoname: autoincrement`: the server sends `name` as a number (frappe/model/naming.py:161-162), though the registry types it string.");
 		}
-		lines.push("/**", ...doc.map((d) => ` * ${commentText(d)}`), " */");
-		lines.push(`export interface ${nameOf(spec.name)} {`);
-		if (spec.issingle) lines.push(`\tname: ${JSON.stringify(spec.name)};`);
+		lines.push("\t\t/**", ...doc.map((d) => `\t\t * ${commentText(d)}`), "\t\t */");
+		lines.push(`\t\tinterface ${nameOf(spec.name)} {`);
+		if (spec.issingle) lines.push(`\t\t\tname: ${JSON.stringify(spec.name)};`);
 		if (spec.istable) {
 			const of = [...(parents.get(spec.name) ?? [])].sort(cmp);
 			lines.push(
 				of.length > 0
-					? `\t/** The DocTypes on this bench with a Table of ${commentText(spec.name)}: the forms its events run on. */`
-					: `\t/** No DocType on this bench has a Table of ${commentText(spec.name)}. */`,
+					? `\t\t\t/** The DocTypes on this bench with a Table of ${commentText(spec.name)}: the forms its events run on. */`
+					: `\t\t\t/** No DocType on this bench has a Table of ${commentText(spec.name)}. */`,
 			);
-			lines.push(`\tparenttype: ${of.length > 0 ? of.map((p) => JSON.stringify(p)).join(" | ") : "string"};`);
+			lines.push(`\t\t\tparenttype: ${of.length > 0 ? of.map((p) => JSON.stringify(p)).join(" | ") : "string"};`);
 		}
 		const seen = new Set();
 		for (const f of spec.fields) {
@@ -857,17 +880,21 @@ export function generate({ appsDir, app, siblings = [] }) {
 			const t = fieldType(f, rowType, warnings, where);
 			if (!t) continue;
 			if (BASE_MEMBERS.has(f.fieldname) || f.fieldname.startsWith("__")) {
-				lines.push(`\t// ${f.fieldname} (${commentText(f.fieldtype)}) — a standard field, typed by frappe-types`);
+				lines.push(`\t\t\t// ${f.fieldname} (${commentText(f.fieldtype)}) — a standard field, typed by frappe-types`);
 				continue;
 			}
 			const label = f.label ? `${commentText(f.label)} · ` : "";
 			const target = (f.fieldtype === "Link" || ruleOf(f.fieldtype)?.kind === "table") && f.options ? ` → ${commentText(f.options)}` : "";
 			const custom = f.customFrom ? ` · Custom Field, ${f.customFrom}` : "";
-			lines.push(`\t/** ${label}${commentText(f.fieldtype)}${target}${custom} */`);
-			lines.push(`\t${propertyKey(f.fieldname)}${t.optional ? "?" : ""}: ${t.type};`);
+			lines.push(`\t\t\t/** ${label}${commentText(f.fieldtype)}${target}${custom} */`);
+			lines.push(`\t\t\t${propertyKey(f.fieldname)}${t.optional ? "?" : ""}: ${t.type};`);
 		}
-		lines.push("}");
-	}
+		lines.push("\t\t}");
+	});
+	lines.push("\t}", "}");
+	// The entries under their own names too, for `import type { SalesOrder } from "./doctypes"`.
+	if (ordered.length > 0) lines.push("");
+	for (const spec of ordered) lines.push(`export type ${nameOf(spec.name)} = ${NAMESPACE}.${nameOf(spec.name)};`);
 	lines.push("");
 	return { text: lines.join("\n"), warnings: [...new Set(warnings)], doctypes: ordered.length };
 }

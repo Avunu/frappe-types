@@ -7,153 +7,164 @@
 // the Custom Fields and Property Setters of the apps above. `DocOf<DocType>` adds the
 // standard fields. Fields added in the database (Customize Form) are in no file and
 // so are not here: a registered document is closed, so add any your code reads by
-// augmenting this module. A program holds ONE generated file. See the frappe-types
-// README, "Generating the registry".
+// augmenting `FrappeDocTypeFields`. Other generated files (other apps') can share the
+// program: see the frappe-types README, "Generating the registry".
 
 import type * as $ft from "frappe-types";
 
 declare global {
 	/**
-	 * DocType name -> its data fields. One generated file per program: a second file that
-	 * registers the same DocType is a conflicting declaration (TS2717). Type several apps
-	 * with one `--include-siblings` run instead.
+	 * DocType name -> its data fields. Every entry is an interface of the global
+	 * `FrappeDocTypeFields` namespace, so a second generated file that registers the same
+	 * DocType declares the same entry, and its fields merge into the same interface.
 	 */
 	interface FrappeDocTypes {
-		"Delivery Run": DeliveryRun;
-		"Delivery Stop": DeliveryStop;
-		"Payment Terminal": PaymentTerminal;
-		"Sales Order": SalesOrder;
-		"Sales Order Item": SalesOrderItem;
-		"Sales Order Tag": SalesOrderTag;
-		"Selling Settings": SellingSettings;
+		"Delivery Run": FrappeDocTypeFields.DeliveryRun;
+		"Delivery Stop": FrappeDocTypeFields.DeliveryStop;
+		"Payment Terminal": FrappeDocTypeFields.PaymentTerminal;
+		"Sales Order": FrappeDocTypeFields.SalesOrder;
+		"Sales Order Item": FrappeDocTypeFields.SalesOrderItem;
+		"Sales Order Tag": FrappeDocTypeFields.SalesOrderTag;
+		"Selling Settings": FrappeDocTypeFields.SellingSettings;
+	}
+
+	/** The data fields of each registered DocType, by frappe's controller class name. */
+	namespace FrappeDocTypeFields {
+		/**
+		 * DocType "Delivery Run" — my_app, module My App.
+		 * `my_app/my_app/my_app/doctype/delivery_run/delivery_run.json`
+		 * `autoname: autoincrement`: the server sends `name` as a number (frappe/model/naming.py:161-162), though the registry types it string.
+		 */
+		interface DeliveryRun {
+			/** Route Code · Data */
+			"route-code"?: string | null;
+			/** Sales Order · Link → Sales Order */
+			sales_order?: string | null;
+			/** Stops · Table → Delivery Stop */
+			stops: FrappeChildRow<"Delivery Stop">[];
+			/** Lines · Table → Sales Order Item */
+			lines: FrappeChildRow<"Sales Order Item">[];
+			/** Duration · Duration */
+			duration?: number | null;
+			/** Started At · Datetime */
+			started_at?: string | null;
+			/** Widget · Fancy Widget */
+			widget?: unknown;
+		}
+
+		/**
+		 * DocType "Delivery Stop" — my_app, module My App.
+		 * `my_app/my_app/my_app/doctype/delivery_stop/delivery_stop.json`
+		 */
+		interface DeliveryStop {
+			/** The DocTypes on this bench with a Table of Delivery Stop: the forms its events run on. */
+			parenttype: "Delivery Run";
+			/** Address · Small Text */
+			address?: string | null;
+			/** Signature · Signature */
+			signature?: string | null;
+			/** Parcels · Table → Parcel Line */
+			parcels: $ft.ChildDoc[];
+		}
+
+		/**
+		 * DocType "Payment Terminal".
+		 * Included because it is customised by my_app/my_app/fixtures/custom_field.json; its DocType JSON is not on this bench, so only its custom fields are typed.
+		 */
+		interface PaymentTerminal {
+			/** Terminal · Data · Custom Field, my_app/my_app/fixtures/custom_field.json */
+			custom_terminal_id?: string | null;
+		}
+
+		/**
+		 * DocType "Sales Order" — base_app, module Selling.
+		 * `base_app/base_app/selling/doctype/sales_order/sales_order.json`
+		 * Included because it is customised by my_app/my_app/my_app/custom/sales_order.json.
+		 */
+		interface SalesOrder {
+			/** Series · Select */
+			naming_series?: string | null;
+			/** Customer · Link → Customer */
+			customer?: string;
+			/** Status · Select */
+			status?: "Draft" | "On Hold" | "Completed" | "" | null;
+			/** Date · Date */
+			transaction_date?: string | null;
+			/** Is Return · Check */
+			is_return?: 0 | 1;
+			/** Total Quantity · Int */
+			total_qty?: number | null;
+			/** Grand Total · Currency */
+			grand_total?: number | null;
+			/** Rating · Rating */
+			rating?: number | null;
+			/** External Ref · Data */
+			external_ref?: string;
+			/** Items · Table → Sales Order Item */
+			items: FrappeChildRow<"Sales Order Item">[];
+			/** Tags · Table MultiSelect → Sales Order Tag */
+			tags: FrappeChildRow<"Sales Order Tag">[];
+			/** Notes *\/ with a comment terminator · Text Editor */
+			notes?: string | null;
+			/** Payload · JSON */
+			payload?: unknown;
+			// idx (Int) — a standard field, typed by frappe-types
+			/** Delivery Run · Link → Delivery Run · Custom Field, my_app/my_app/my_app/custom/sales_order.json */
+			custom_delivery_run?: string | null;
+			/** Priority · Select · Custom Field, my_app/my_app/my_app/custom/sales_order.json */
+			custom_priority?: "Low" | "High" | "" | null;
+		}
+
+		/**
+		 * DocType "Sales Order Item" — base_app, module Selling.
+		 * `base_app/base_app/selling/doctype/sales_order_item/sales_order_item.json`
+		 * Included because it is a child table of Delivery Run.lines.
+		 */
+		interface SalesOrderItem {
+			/** The DocTypes on this bench with a Table of Sales Order Item: the forms its events run on. */
+			parenttype: "Delivery Run" | "Sales Order";
+			/** Item · Link → Item */
+			item_code?: string | null;
+			/** Quantity · Float */
+			qty?: number | null;
+			/** UOM · Select */
+			uom?: "Nos" | "Kg" | "" | null;
+		}
+
+		/**
+		 * DocType "Sales Order Tag" — base_app, module Selling.
+		 * `base_app/base_app/selling/doctype/sales_order_tag/sales_order_tag.json`
+		 * Included because it is a child table of Sales Order.tags.
+		 */
+		interface SalesOrderTag {
+			/** The DocTypes on this bench with a Table of Sales Order Tag: the forms its events run on. */
+			parenttype: "Sales Order";
+			/** Tag · Link → Tag */
+			tag?: string | null;
+		}
+
+		/**
+		 * DocType "Selling Settings" — base_app, module Selling.
+		 * `base_app/base_app/selling/doctype/selling_settings/selling_settings.json`
+		 * Included because it is customised by my_app/my_app/fixtures/custom_field.json.
+		 * Single: its one document is named after the DocType.
+		 */
+		interface SellingSettings {
+			name: "Selling Settings";
+			/** Sales Order Required · Select */
+			so_required?: "No" | "Yes" | "Only On Install" | "" | null;
+			/** Allow Negative Rates · Check */
+			allow_negative_rates?: 0 | 1;
+			/** Default Run · Link → Delivery Run · Custom Field, my_app/my_app/fixtures/custom_field.json */
+			custom_default_run?: string | null;
+		}
 	}
 }
 
-/**
- * DocType "Delivery Run" — my_app, module My App.
- * `my_app/my_app/my_app/doctype/delivery_run/delivery_run.json`
- * `autoname: autoincrement`: the server sends `name` as a number (frappe/model/naming.py:161-162), though the registry types it string.
- */
-export interface DeliveryRun {
-	/** Route Code · Data */
-	"route-code"?: string | null;
-	/** Sales Order · Link → Sales Order */
-	sales_order?: string | null;
-	/** Stops · Table → Delivery Stop */
-	stops: FrappeChildRow<"Delivery Stop">[];
-	/** Lines · Table → Sales Order Item */
-	lines: FrappeChildRow<"Sales Order Item">[];
-	/** Duration · Duration */
-	duration?: number | null;
-	/** Started At · Datetime */
-	started_at?: string | null;
-	/** Widget · Fancy Widget */
-	widget?: unknown;
-}
-
-/**
- * DocType "Delivery Stop" — my_app, module My App.
- * `my_app/my_app/my_app/doctype/delivery_stop/delivery_stop.json`
- */
-export interface DeliveryStop {
-	/** The DocTypes on this bench with a Table of Delivery Stop: the forms its events run on. */
-	parenttype: "Delivery Run";
-	/** Address · Small Text */
-	address?: string | null;
-	/** Signature · Signature */
-	signature?: string | null;
-	/** Parcels · Table → Parcel Line */
-	parcels: $ft.ChildDoc[];
-}
-
-/**
- * DocType "Payment Terminal".
- * Included because it is customised by my_app/my_app/fixtures/custom_field.json; its DocType JSON is not on this bench, so only its custom fields are typed.
- */
-export interface PaymentTerminal {
-	/** Terminal · Data · Custom Field, my_app/my_app/fixtures/custom_field.json */
-	custom_terminal_id?: string | null;
-}
-
-/**
- * DocType "Sales Order" — base_app, module Selling.
- * `base_app/base_app/selling/doctype/sales_order/sales_order.json`
- * Included because it is customised by my_app/my_app/my_app/custom/sales_order.json.
- */
-export interface SalesOrder {
-	/** Series · Select */
-	naming_series?: string | null;
-	/** Customer · Link → Customer */
-	customer?: string;
-	/** Status · Select */
-	status?: "Draft" | "On Hold" | "Completed" | "" | null;
-	/** Date · Date */
-	transaction_date?: string | null;
-	/** Is Return · Check */
-	is_return?: 0 | 1;
-	/** Total Quantity · Int */
-	total_qty?: number | null;
-	/** Grand Total · Currency */
-	grand_total?: number | null;
-	/** Rating · Rating */
-	rating?: number | null;
-	/** External Ref · Data */
-	external_ref?: string;
-	/** Items · Table → Sales Order Item */
-	items: FrappeChildRow<"Sales Order Item">[];
-	/** Tags · Table MultiSelect → Sales Order Tag */
-	tags: FrappeChildRow<"Sales Order Tag">[];
-	/** Notes *\/ with a comment terminator · Text Editor */
-	notes?: string | null;
-	/** Payload · JSON */
-	payload?: unknown;
-	// idx (Int) — a standard field, typed by frappe-types
-	/** Delivery Run · Link → Delivery Run · Custom Field, my_app/my_app/my_app/custom/sales_order.json */
-	custom_delivery_run?: string | null;
-	/** Priority · Select · Custom Field, my_app/my_app/my_app/custom/sales_order.json */
-	custom_priority?: "Low" | "High" | "" | null;
-}
-
-/**
- * DocType "Sales Order Item" — base_app, module Selling.
- * `base_app/base_app/selling/doctype/sales_order_item/sales_order_item.json`
- * Included because it is a child table of Delivery Run.lines.
- */
-export interface SalesOrderItem {
-	/** The DocTypes on this bench with a Table of Sales Order Item: the forms its events run on. */
-	parenttype: "Delivery Run" | "Sales Order";
-	/** Item · Link → Item */
-	item_code?: string | null;
-	/** Quantity · Float */
-	qty?: number | null;
-	/** UOM · Select */
-	uom?: "Nos" | "Kg" | "" | null;
-}
-
-/**
- * DocType "Sales Order Tag" — base_app, module Selling.
- * `base_app/base_app/selling/doctype/sales_order_tag/sales_order_tag.json`
- * Included because it is a child table of Sales Order.tags.
- */
-export interface SalesOrderTag {
-	/** The DocTypes on this bench with a Table of Sales Order Tag: the forms its events run on. */
-	parenttype: "Sales Order";
-	/** Tag · Link → Tag */
-	tag?: string | null;
-}
-
-/**
- * DocType "Selling Settings" — base_app, module Selling.
- * `base_app/base_app/selling/doctype/selling_settings/selling_settings.json`
- * Included because it is customised by my_app/my_app/fixtures/custom_field.json.
- * Single: its one document is named after the DocType.
- */
-export interface SellingSettings {
-	name: "Selling Settings";
-	/** Sales Order Required · Select */
-	so_required?: "No" | "Yes" | "Only On Install" | "" | null;
-	/** Allow Negative Rates · Check */
-	allow_negative_rates?: 0 | 1;
-	/** Default Run · Link → Delivery Run · Custom Field, my_app/my_app/fixtures/custom_field.json */
-	custom_default_run?: string | null;
-}
+export type DeliveryRun = FrappeDocTypeFields.DeliveryRun;
+export type DeliveryStop = FrappeDocTypeFields.DeliveryStop;
+export type PaymentTerminal = FrappeDocTypeFields.PaymentTerminal;
+export type SalesOrder = FrappeDocTypeFields.SalesOrder;
+export type SalesOrderItem = FrappeDocTypeFields.SalesOrderItem;
+export type SalesOrderTag = FrappeDocTypeFields.SalesOrderTag;
+export type SellingSettings = FrappeDocTypeFields.SellingSettings;

@@ -100,7 +100,7 @@ describe("fixture bench", () => {
 		]);
 		// other_app is on the bench, but neither requested nor referenced — and its
 		// customisations are not installed on the site this app runs on.
-		assert.doesNotMatch(result.text, /Unrelated|custom_from_other_app/);
+		assert.doesNotMatch(result.text, /Unrelated|custom_from_other_app|custom_from_side_app/);
 		// a module folder modules.txt does not list is never synced by frappe
 		assert.doesNotMatch(result.text, /Ghost/);
 	});
@@ -115,7 +115,7 @@ describe("fixture bench", () => {
 
 	test("--include-siblings types a sibling app in full", () => {
 		const both = generate({ appsDir: APPS, app: "my_app", siblings: ["base_app"] });
-		assert.match(both.text, /"Sales Order": SalesOrder;/);
+		assert.match(both.text, /"Sales Order": FrappeDocTypeFields\.SalesOrder;/);
 		// Pulled in as a sibling, not "because" of anything.
 		assert.doesNotMatch(both.text, /Included because it is customised by my_app\/my_app\/my_app\/custom\/sales_order\.json/);
 		assert.doesNotMatch(both.text, /Ghost|Unrelated/);
@@ -149,8 +149,8 @@ describe("fixture bench", () => {
 	test("a child DocType's parenttype names every DocType on the bench with a Table of it", () => {
 		// Sales Order Item is pulled in through Delivery Run.lines; Sales Order (base_app,
 		// customised) has a Table of it too.
-		assert.match(result.text, /export interface SalesOrderItem \{\n\t\/\*\*[^\n]*\*\/\n\tparenttype: "Delivery Run" \| "Sales Order";/);
-		assert.match(result.text, /export interface SalesOrderTag \{\n\t\/\*\*[^\n]*\*\/\n\tparenttype: "Sales Order";/);
+		assert.match(result.text, /\tinterface SalesOrderItem \{\n\t+\/\*\*[^\n]*\*\/\n\t+parenttype: "Delivery Run" \| "Sales Order";/);
+		assert.match(result.text, /\tinterface SalesOrderTag \{\n\t+\/\*\*[^\n]*\*\/\n\t+parenttype: "Sales Order";/);
 		// Entries list data fields only: no base interface, no index signature, no doctype.
 		assert.doesNotMatch(result.text, / extends |\[fieldname: string\]|\tdoctype: /);
 		assert.match(result.text, /\titems: FrappeChildRow<"Sales Order Item">\[\];/);
@@ -167,6 +167,45 @@ describe("fixture bench", () => {
 
 	test("the golden file compiles under strict consumer options", async () => {
 		assert.equal(await tsc([GOLDEN]), "");
+	});
+
+	test("two apps' generated files share a program: their fields merge", async () => {
+		// other_app and side_app each add a Custom Field to base_app's Sales Order, and both
+		// files register Sales Order and its two child tables.
+		const dir = mkdtempSync(path.join(tmpdir(), "ft-gen-two-"));
+		try {
+			const other = path.join(dir, "other_app.d.ts");
+			const side = path.join(dir, "side_app.d.ts");
+			writeFileSync(other, generate({ appsDir: APPS, app: "other_app" }).text);
+			writeFileSync(side, generate({ appsDir: APPS, app: "side_app" }).text);
+			const use = path.join(dir, "use.ts");
+			writeFileSync(
+				use,
+				[
+					'import type { DocOf } from "frappe-types";',
+					"declare const so: DocOf<\"Sales Order\">;",
+					"export const a: string | null | undefined = so.custom_from_other_app;",
+					"export const b: number | null | undefined = so.custom_from_side_app;",
+					"// @ts-expect-error still closed",
+					"export const typo = so.custmer;",
+					"",
+				].join("\n"),
+			);
+			assert.equal(await tsc([other, side, use]), "");
+
+			// A field the two files disagree on is an error on THAT field, not on the DocType:
+			// my_app's Property Setters change status and customer, which other_app's
+			// generation did not see.
+			const mine = path.join(dir, "my_app.d.ts");
+			writeFileSync(mine, generate({ appsDir: APPS, app: "my_app" }).text);
+			const errors = (await tsc([mine, other])).split("\n").filter((l) => /error TS/.test(l));
+			assert.deepEqual(
+				errors.map((l) => /error (TS\d+):.*?Property '([^']+)'/.exec(l)?.slice(1).join(" ")),
+				["TS2717 customer", "TS2717 status"],
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 
 	test("test/types/gen-doctypes generates from this fixture bench", () => {
@@ -417,7 +456,7 @@ describe("against frappe", { skip: "skip" in frappe ? frappe.skip : false }, () 
 			const result = generate({ appsDir: dir, app: "frappe" });
 			assert.deepEqual(result.warnings, []);
 			assert.ok(result.doctypes > 250, `only ${result.doctypes} DocTypes found`);
-			assert.match(result.text, /"ToDo": ToDo;/);
+			assert.match(result.text, /"ToDo": FrappeDocTypeFields\.ToDo;/);
 			assert.match(result.text, /status\?: "Open" \| "Closed" \| "Cancelled" \| "" \| null;/);
 			const out = path.join(dir, "doctypes.d.ts");
 			writeFileSync(out, result.text);
