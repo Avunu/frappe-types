@@ -54,7 +54,7 @@ Each frappe major lives on its own branch (`version-16`, `version-15`), mirrorin
 
 **It is** the browser-side desk API: `frappe.call`, the `frappe.ui.form.*` class hierarchy, the `frappe.views.*` list/report views, `frappe.model` / `frappe.meta` and the `DocField` / doc shapes, `frappe.utils` / `frappe.dom` / `frappe.router`, `frappe.DataTable`, `frappe.Chart`, the `__()` translator, and ambient declarations for the deep imports desk apps rely on (`import Grid from "frappe/public/js/frappe/form/grid"`).
 
-**It is not** types for frappe's Python API, for [frappe-ui](https://github.com/frappe/frappe-ui) SPAs ([see below](#relation-to-frappefrappe-types-and-frappe-ui-frappetypes)), or a hand-written model of your own doctypes — generate those from your app's doctype JSON with the bundled [`frappe-types gen-registry`](#generating-the-registry-frappe-types-gen-registry). The [`FrappeDocTypes` registry](#typing-your-doctypes-frappedoctypes) is where they plug in.
+**It is not** types for frappe's Python API or for the [frappe-ui](https://github.com/frappe/frappe-ui) component library, nor a hand-written model of your own doctypes — generate those from your app's doctype JSON with the bundled [`frappe-types gen-registry`](#generating-the-registry-frappe-types-gen-registry). The [`FrappeDocTypes` registry](#typing-your-doctypes-frappedoctypes) is where they plug in. That generator targets desk scripts; for the module-scoped DocType interfaces a frappe-ui SPA imports, [see below](#relation-to-frappefrappe-types-and-frappe-ui-frappetypes) (the desk API types themselves still work in an SPA through the import entry above).
 
 **It is not official.** It is not affiliated with or endorsed by Frappe Technologies. When frappe publishes its own types, use those.
 
@@ -68,8 +68,6 @@ Two existing tools also turn DocTypes into TypeScript. They solve a different pr
 Both produce **module-scoped interfaces for SPA frontends** (frappe-ui / Vue apps that import their document types). If that is what you are building, use them.
 
 This package's [`frappe-types gen-registry`](#generating-the-registry-frappe-types-gen-registry) is for **desk scripts**: the doctype, list and report JavaScript (or TypeScript) that runs inside `/app` against `window.frappe`. It emits **global augmentations** of the [`FrappeDocTypes` registry](#typing-your-doctypes-frappedoctypes) and the `FrappeDocTypeFields` namespace, so `frappe.ui.form.on("Sales Order", …)`, `frappe.ui.form.FormEvents<"Sales Order">` in JSDoc (`checkJs`) and `Form<"Sales Order">` in TypeScript all see the closed document with no import. It runs **offline** from the bench's `apps/` tree, with no site, database or dev server; reads the Custom Fields and Property Setters apps ship in files (`<module>/custom/*.json`, `fixtures/*.json`) and applies them in frappe's sync order; and has a `--check` mode so CI fails when the committed file drifts from the JSON. It cannot see [database-only customisations](#customisations-that-exist-only-in-a-sites-database).
-
-This npm package is not the `frappe_types` bench app, does not install or need it, and shares only the name.
 
 ### Coverage is partial, and says so
 

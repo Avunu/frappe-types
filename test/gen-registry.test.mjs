@@ -216,11 +216,14 @@ describe("fixture bench", () => {
 	});
 });
 
-// Regression fixtures for what module-scoped generators get wrong on a real bench (seen
-// running github.com/frappe/frappe-types over frappe and erpnext, where these DocTypes
-// produced .ts files that do not parse or do not compile). edge_app's DocTypes are
-// trimmed copies of the real JSON — the fields kept are the ones that broke — plus
-// india_compliance-style hyphenated names.
+// Regression fixtures for what module-scoped generators get wrong on a real bench. Run
+// over frappe and erpnext, github.com/frappe/frappe-types produced .ts files for these
+// DocTypes that do not parse (double quotes inside Select options), do not compile
+// (duplicate idx/parent, hyphenated names), or type a field wrongly (Duration as string).
+// frappe-ui's frappeTypes generator escapes Select options and types Duration as `any`;
+// of these it breaks only on the hyphenated names. edge_app's DocTypes are trimmed copies
+// of the real JSON — the fields kept are the ones that broke — plus india_compliance-style
+// hyphenated names.
 describe("edge cases from real DocTypes", () => {
 	const EDGE_GOLDEN = path.join(FIXTURES, "expected", "edge_app.d.ts");
 	const result = generate({ appsDir: APPS, app: "edge_app" });
