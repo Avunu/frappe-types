@@ -204,7 +204,7 @@ declare module "frappe-types" {
 }
 ```
 
-The namespaces are `Frappe` (the root), `FrappeUiNamespace` (`frappe.ui`), `FrappeUiFormNamespace` (`frappe.ui.form`), `FrappeViewsNamespace` (`frappe.views`) and `FrappeBoot` (`frappe.boot`). Put the file in the tsconfig's `include`, and pass it to `audit-consumer.mjs --types`.
+The namespaces are `Frappe` (the root), `FrappeUiNamespace` (`frappe.ui`), `FrappeUiFormNamespace` (`frappe.ui.form`), `FrappeViewsNamespace` (`frappe.views`) and `FrappeBoot` (`frappe.boot`). Put the file in the tsconfig's `include`, and pass it to `audit-consumer.mjs --types`, which runs from a clone of this repository (see "Can my app compile against this?" under [Maintaining it across frappe versions](#maintaining-it-across-frappe-versions)).
 
 Two things the presets ask of a desk script that subclasses a frappe class:
 
@@ -436,7 +436,7 @@ Before the pin, the audit went looking for a checkout: `../frappe` is tried befo
 | coverage | the ratchet against the pinned frappe |
 | frappe-major | the package major is the frappe major |
 | verified-against | package.json's frappe.verifiedAgainst matches the pin |
-| unit | `npm run test:unit`, including the doctype generator's rules against the pinned frappe |
+| unit | `npm run test:unit`: the unit tests in `test/*.test.mjs` (doctype generator, citation remapper, frappe reader, source scanner, type-checker probe), including the generator's rules against the pinned frappe |
 | drift | `audit:drift --strict` against the pinned frappe and drift-baseline.json (below) |
 
 `nix build` produces the tarball npm would publish, for inspecting exactly what ships. Whether `files` ships what consumers need is asserted by `checks.types`, which builds its scratch package from `npm pack`'s file list, requires the presets, the web entry and both `bin/` files to be in it, and runs the packed command. It is not how a release is published: `publish.yml` runs `npm publish` so that OIDC trusted publishing and the provenance attestation apply.
@@ -491,6 +491,14 @@ node scripts/audit-consumer.mjs ../carbon_frappe --strict
 node scripts/audit-consumer.mjs ../esign --strict --types "../esign/types/*.d.ts"
 ```
 
+The audit is a script in this repository, not part of the npm package (`files` ships the declarations, the presets and the `frappe-types` bin, not `scripts/`), so an app runs it from a clone, checked out at the branch for its frappe major:
+
+```bash
+git clone --branch version-16 https://github.com/Avunu/frappe-types.git
+cd frappe-types && npm ci
+node scripts/audit-consumer.mjs /path/to/my_app --strict --types "/path/to/my_app/types/*.d.ts"
+```
+
 Every line it prints is a compile error waiting to happen in an app built under `strict` — which is the premise of this package, and how its own scope gets set. Each path lands in one of three lists:
 
 | list | means | fails |
@@ -499,7 +507,7 @@ Every line it prints is a compile error waiting to happen in an app built under 
 | declared-but-untyped | it resolves to `unknown` (or `any`), so the first call or member access on it fails | `--fail-on-untyped` |
 | declared-but-optional | it resolves through a member that is optional on purpose, such as a lazily loaded namespace; narrow it first | never |
 
-`--types` (repeatable, a file or a glob) adds the app's own declaration files to the check, so names the app declares for itself count once it has declared them; see [Names your app adds](#names-your-app-adds). Inside those files `frappe-types` resolves to this checkout.
+`--types` (repeatable, a file or a glob) adds the app's own declaration files to the check, so names the app declares for itself count once it has declared them; see [Names your app adds](#names-your-app-adds). Inside those files `frappe-types` resolves to this checkout, as an import specifier and in `/// <reference types="frappe-types/…" />` alike, even when the app has its own copy installed.
 
 Which paths a file uses is decided by a small lexer (`scripts/lib/scan-source.mjs`), not a regex over the text: it reads the code, and the content of a string only when that content is itself JavaScript (V8 compiles it without running it), such as browser code a test harness sends with ``page.eval(`…`)``. Prose that mentions a frappe name (`"frappe.exceptions.ValidationError: Boom"`, a URL glob, a test title) and strings that are just a server method path (`"frappe.client.get_list"`) are not uses.
 

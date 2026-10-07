@@ -21,13 +21,18 @@
 // `--types` adds an app's own declaration files to the program, so that names
 // the app defines for itself (its controls, its views, its `frappe.*` helpers)
 // count as declared once the app has declared them. Repeat it, or pass a glob.
-// Inside those files `frappe-types` resolves to this checkout.
+// Inside those files `frappe-types` resolves to this checkout, both as an
+// import specifier (`import type … from "frappe-types/global"`) and in a
+// `/// <reference types="frappe-types/…" />`, even when the app has its own
+// copy installed (scripts/lib/probe.mjs).
 //
 // Which paths a file uses is decided by scripts/lib/scan-source.mjs: code, plus
 // the content of any string that is itself JavaScript, never prose that merely
 // mentions a frappe name.
 //
-// Run it from a consumer's CI, or here against the apps you maintain.
+// It is not part of the published package (package.json `files` ships the
+// declarations and presets only), so run it from a clone of this repository:
+// here against the apps you maintain, or from a consumer's CI after cloning.
 
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
