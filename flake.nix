@@ -129,13 +129,19 @@
           # The package major must be the frappe major (scripts/check-frappe-major.mjs).
           frappe-major = mkCheck "frappe-major" "npm run check:major";
 
-          # The script unit tests, including the doctype generator's. With FRAPPE_PATH set
-          # (mkCheck sets it to the pin), test/gen-registry.test.mjs also checks the
-          # generator's fieldtype rules against the pinned frappe's own lists, and
-          # generates and compiles frappe's DocTypes. Because FRAPPE_PATH is set, a pin
-          # that is not a usable frappe tree of this major FAILS that layer instead of
-          # skipping it. The tests that need `git` skip themselves: the sandbox has none.
-          unit = mkCheck "unit" "npm run test:unit";
+          # The script unit tests (test/*.test.mjs): the doctype generator, the citation
+          # remapper, the frappe source reader, audit-consumer's source scanner and the
+          # type-checker probe behind the audits. Without this, a regression in any of
+          # them passes every other check, because those only run the tools rather than
+          # test them. With FRAPPE_PATH set (mkCheck sets it to the pin),
+          # test/gen-registry.test.mjs also checks the generator's fieldtype rules
+          # against the pinned frappe's own lists, and generates and compiles frappe's
+          # DocTypes. Because FRAPPE_PATH is set, a pin that is not a usable frappe tree
+          # of this major FAILS that layer instead of skipping it. The remapper and
+          # reader tests build throwaway git repositories, so this check also needs git.
+          unit = (mkCheck "unit" "npm run test:unit").overrideAttrs (old: {
+            nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.git ];
+          });
 
           # Has frappe moved, in the places these declarations stand on, since the
           # baseline was recorded? Against the PINNED tree, which has no git history, so

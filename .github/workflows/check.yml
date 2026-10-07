@@ -8,7 +8,7 @@ name: check
 #   checks.coverage         the coverage ratchet, against the PINNED frappe
 #   checks.frappe-major     the package major is the frappe major
 #   checks.verified-against package.json's frappe.verifiedAgainst matches the pin
-#   checks.unit             the script unit tests, incl. gen-registry against the PINNED frappe
+#   checks.unit             the script unit tests (audit tooling; gen-registry against the PINNED frappe)
 #   checks.drift            audit:drift --strict: the PINNED frappe vs drift-baseline.json
 #
 # WHY NIX RATHER THAN `npm ci && npm run test`. Most of those checks are claims
