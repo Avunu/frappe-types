@@ -2,7 +2,14 @@
 // base preset: the ambient globals, the type-space namespace and named imports
 // in one program.
 
-import type { DocOf, Form, FormEvents, ListViewSettings, FrappeDoc } from "frappe-types";
+import type {
+	DocOf,
+	Form,
+	FormEvents,
+	FrappeDoc,
+	FrappeListViewSettings,
+	ListViewSettings,
+} from "frappe-types";
 
 const events: FormEvents<"Project"> = {
 	refresh(frm) {
@@ -43,6 +50,30 @@ export function legacy(frm: Form, events: FormEvents): void {
 	void events;
 	if (cur_frm) void cur_frm.doc.name;
 }
+
+// Code that compiled against 16.4.1 keeps compiling.
+
+// A wrapper that forwards set_value's own (open) argument types.
+export function forward(frm: Form, field: string | Record<string, unknown>, value: unknown): Promise<unknown> {
+	return frm.set_value(field, value);
+}
+export const object_with_second = (frm: Form) => frm.set_value({ a: 1 }, null);
+
+// The deprecated list-settings names: a formatter may return undefined (the
+// Subject column falls back to doc.name), and button.action is always there.
+export const old_settings: FrappeListViewSettings = {
+	formatters: { subject: (value) => (value ? String(value) : undefined) },
+};
+export function click(settings: FrappeListViewSettings, doc: Parameters<NonNullable<FrappeListViewSettings["get_form_link"]>>[0]): void {
+	settings.button?.action(doc);
+}
+
+// __onload is cast to an app's own interface, which has no index signature.
+interface ProjectOnload {
+	is_website_generator: boolean;
+}
+export const onload = (frm: Form<"Project">) => frm.doc.__onload as ProjectOnload | undefined;
+export const onload_open = (frm: Form) => frm.doc.__onload as ProjectOnload;
 
 // @ts-expect-error a registered doc is closed
 export const bad = (frm: Form<"Project">) => frm.doc.projct_name;

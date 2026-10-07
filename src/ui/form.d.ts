@@ -44,11 +44,11 @@ import type {
 	ChildDoc,
 	DocField,
 	DocFieldName,
-	DocFieldValue,
 	DocOf,
 	DocTypeMeta,
 	FormatterOptions,
 	FormDocTypeOf,
+	FormSetValueArgs,
 	FrappeDoc,
 	Permission,
 } from "../model";
@@ -1789,7 +1789,8 @@ export declare class FormController {
  * doctype's {@link DocOf} — closed, with typed fields — and
  * {@link Form.set_value} checks fieldnames and values against it. A `Form<"ToDo">`
  * is still assignable to `Form`, so every API typed against the plain `Form`
- * accepts it.
+ * accepts it — on TypeScript 5.8 as well as 7, which is why no member may put
+ * `DT` in a type-parameter constraint (see {@link FormSetValueArgs}).
  */
 export declare class Form<DT extends string = string> {
 	constructor(
@@ -2018,23 +2019,15 @@ export declare class Form<DT extends string = string> {
 	 * frappe/public/js/frappe/form/form.js:1863-1927. One field and its value,
 	 * or a `{fieldname: value}` map (:1917-1926 walks the object form and ignores
 	 * the second argument). For a registered `DT` the fieldname must be one of
-	 * its fields and the value must fit that field's type; otherwise any
-	 * fieldname and value are accepted, as before. A Table field also takes
-	 * partial rows: frappe clears the table and `add_child`s a fresh row per
-	 * element, copying everything but the standard fields (:1869-1897).
+	 * its own fields — never a standard one like `name` or `idx`, which frappe
+	 * throws on (:1910-1912) — and the value must fit that field's type;
+	 * otherwise any fieldname and value are accepted, as before. A Table field
+	 * also takes partial rows: frappe clears the table and `add_child`s a fresh
+	 * row per element, copying everything but the standard fields (:1869-1897).
+	 * See {@link FormSetValueArgs} for the exact rules, and for why this is one
+	 * rest-tuple signature rather than overloads.
 	 */
-	set_value<F extends DocFieldName<DT>>(
-		field: F,
-		value: FormSetValueInput<DocFieldValue<DT, F>>,
-		if_missing?: boolean,
-		skip_dirty_trigger?: boolean
-	): Promise<unknown>;
-	set_value(
-		values: { [F in DocFieldName<DT>]?: FormSetValueInput<DocFieldValue<DT, F>> },
-		value?: undefined,
-		if_missing?: boolean,
-		skip_dirty_trigger?: boolean
-	): Promise<unknown>;
+	set_value(...args: FormSetValueArgs<DT>): Promise<unknown>;
 	/** frappe/public/js/frappe/form/form.js:1929-1978. */
 	call(
 		opts: string | Record<string, unknown>,

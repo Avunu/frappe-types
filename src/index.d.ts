@@ -69,6 +69,7 @@
 // ---------------------------------------------------------------------------
 export type {
 	ChildDoc,
+	ChildRowOf,
 	DocField,
 	DocFieldFormatter,
 	DocFieldMap,
@@ -89,6 +90,8 @@ export type {
 	FieldTypeLike,
 	FieldTypeName,
 	FormDocTypeOf,
+	FormFieldName,
+	FormSetValueArgs,
 	FormatterOptions,
 	FrappeCheck,
 	FrappeCheckLoose,

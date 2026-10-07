@@ -13,7 +13,8 @@ interface FrappeDocTypes {
 		customer: string;
 		transaction_date: string;
 		grand_total: number;
-		items: FrappeDocTypes["Sales Order Item"][];
+		items: FrappeChildRow<"Sales Order Item">[];
+		packed_items: FrappeChildRow<"Packed Item">[];
 	};
 	"Sales Order Item": {
 		parenttype: "Sales Order";
@@ -21,5 +22,16 @@ interface FrappeDocTypes {
 		qty: number;
 		rate: number;
 		amount: number;
+	};
+	Quotation: {
+		party_name: string;
+		grand_total: number;
+		packed_items: FrappeChildRow<"Packed Item">[];
+	};
+	// A child table of two parents: its events run on either parent's form.
+	"Packed Item": {
+		parenttype: "Sales Order" | "Quotation";
+		item_code: string;
+		qty: number;
 	};
 }

@@ -1415,6 +1415,19 @@ export type FrappeAssetsJson = Record<string, string>;
 // built could not be stored in `frappe.listview_settings`. The members only this
 // copy had were folded into `views.d.ts`; the old names remain as aliases so
 // existing imports keep compiling.
+//
+// Where the two copies disagreed, the merged type keeps what frappe does: a
+// formatter may return `undefined` (the Subject text falls back to `doc.name`,
+// `frappe/public/js/frappe/list/list_view.js:1874-1876`) and `button.action`
+// is required (called unguarded, `frappe/public/js/frappe/list/list_view.js:2161`),
+// both as the old copy had them. What the aliases do NOT carry over from the
+// old copy, because `views.d.ts` already declared it narrower at 16.4.1:
+// `filters` entries are `[fieldname, operator, value]` or
+// `[doctype, fieldname, operator, value, hidden?]` tuples, not any
+// `readonly unknown[]` (`frappe/public/js/frappe/list/list_view.js:138-143`);
+// `get_indicator` may return `null`/`undefined`, which `frappe.get_indicator`
+// treats as "no indicator" (`frappe/public/js/frappe/model/indicator.js:88-90`);
+// and `onload`/`refresh` receive the list view as a `BaseList`, not `unknown`.
 // ---------------------------------------------------------------------------
 
 /** @deprecated The same type as {@link ListViewSettingsButton}; use that name. */

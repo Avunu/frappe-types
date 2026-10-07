@@ -16,7 +16,9 @@
  * (Section/Column/Tab Break) hold no value and have no place here. Standard
  * fields (`name`, `owner`, `docstatus`, `idx`, the `__*` client flags, …) are
  * added for you from {@link import("./model").FrappeDocFields}, so list only the
- * doctype's own fields:
+ * doctype's own fields. A Table field's rows get them through
+ * {@link FrappeChildRow} (below), so type the field with it rather than with
+ * the child's bare entry:
  *
  * ```ts
  * // types/doctypes.d.ts — also a script, so no `declare global` is needed
@@ -25,6 +27,10 @@
  *     status: "Open" | "Closed" | "Cancelled";
  *     description: string;
  *     allocated_to?: string | null;
+ *   };
+ *   "Sales Order": {
+ *     customer: string;
+ *     items: FrappeChildRow<"Sales Order Item">[];
  *   };
  *   // A child table: `parenttype` names the doctype(s) it is a table OF. That
  *   // is what `frappe.ui.form.FormEvents<"Sales Order Item">` uses to type
@@ -53,3 +59,16 @@
  * particular site's doctypes.
  */
 interface FrappeDocTypes {}
+
+/**
+ * The type to give a Table field in `FrappeDocTypes`: a row of registered child
+ * doctype `DT`, with the standard fields every row carries (`name`, `idx`,
+ * `doctype`, `parent`, `parentfield`, …) on top of the child's own — see
+ * {@link import("./model").ChildRowOf}. Writing the bare registry entry
+ * (`FrappeDocTypes["Sales Order Item"][]`) instead would leave `row.name` and
+ * `row.idx` undeclared.
+ *
+ * A global type, like the registry: the `import()` type query keeps this file
+ * a script.
+ */
+type FrappeChildRow<DT extends Extract<keyof FrappeDocTypes, string>> = import("./model").ChildRowOf<DT>;

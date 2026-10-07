@@ -221,10 +221,11 @@ export interface ListViewSettingsButton<DT extends string = string> {
 	show(doc: ListDocOf<DT>): boolean;
 	/**
 	 * `frappe/public/js/frappe/list/list_view.js:2157-2164` — the click handler,
-	 * called UNGUARDED with the row's doc, so a button without it throws when
-	 * clicked. Optional here only because the type has always allowed omitting it.
+	 * called UNGUARDED with the row's doc (`this.settings.button.action(doc)` at
+	 * :2161), so a button without it throws when clicked. Required, as it was on
+	 * the `FrappeListViewSettingsButton` that typed `frappe.listview_settings`.
 	 */
-	action?(doc: ListDocOf<DT>): void;
+	action(doc: ListDocOf<DT>): void;
 }
 
 /**
@@ -281,8 +282,12 @@ export interface ListViewSettings<DT extends string = string> {
 	 * Per-fieldname cell renderer, returning HTML.
 	 * `frappe/public/js/frappe/list/list_view.js:1545-1547` `this.settings.formatters[fieldname](value, df, doc)`
 	 * (never for the Subject column) and `frappe/public/js/frappe/list/list_view.js:1869-1871` for the Subject text.
+	 * `undefined` is allowed because the Subject text treats any falsy result as
+	 * "use `doc.name`" (`frappe/public/js/frappe/list/list_view.js:1874-1876`); in
+	 * any other column it is interpolated as-is (`frappe/public/js/frappe/list/list_view.js:1567`) and
+	 * renders as the text `undefined`.
 	 */
-	formatters?: Record<string, (value: unknown, df: DocField, doc: ListDocOf<DT>) => string>;
+	formatters?: Record<string, (value: unknown, df: DocField, doc: ListDocOf<DT>) => string | undefined>;
 	/** `frappe/public/js/frappe/list/list_view.js:1816-1818` — overrides the row's link href. */
 	get_form_link?(doc: ListDocOf<DT>): string;
 	/**

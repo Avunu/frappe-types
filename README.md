@@ -70,7 +70,7 @@ If something you need is missing, that is expected at this stage. [Open an issue
 
 ## Checking an app with it
 
-Three things ship next to the declarations: two `tsconfig` presets, a type-space `frappe` namespace that JSDoc can name, and a `FrappeDocTypes` registry that types `frm.doc` from your doctypes. The presets use `erasableSyntaxOnly`, so they need TypeScript 5.8 or later.
+Three things ship next to the declarations: two `tsconfig` presets, a type-space `frappe` namespace that JSDoc can name, and a `FrappeDocTypes` registry that types `frm.doc` from your doctypes. The presets use `erasableSyntaxOnly`, so they need TypeScript 5.8 or later. The type tests run on both TypeScript 5.8 and the current release.
 
 ### tsconfig presets
 
@@ -170,11 +170,11 @@ Some rules about form events. Each one matches what frappe does at runtime:
 
 - **Every function in the map is an event handler.** frappe registers each function-valued key of the map under that key's name, and it calls each one as `(frm, cdt, cdn)`. That includes a helper you only call through `frm.trigger("helper")`. A handler whose second parameter is not a string is therefore an error. Put helpers with other signatures outside the map.
 - **Child-table events run on the parent's form.** `frappe.ui.form.on("Sales Order Item", { qty(frm, cdt, cdn) {} })` receives the Sales Order form. Your registry tells the types which parent that is (next section). For an unregistered child doctype, `frm` is a plain `Form`.
-- **Registering a doctype makes its document closed.** On a registered doctype, `frm.doc.custmer_name` is an error instead of an `unknown`, and `frm.set_value("status", "Typo")` is checked against the field's type. Unregistered doctypes keep the open `FrappeDoc`, so existing code keeps compiling.
+- **Registering a doctype makes its document closed.** On a registered doctype, `frm.doc.custmer_name` is an error instead of an `unknown`, and `frm.set_value("status", "Typo")` is checked against the field's type. `set_value` takes only the doctype's own fields: frappe throws on a standard field such as `name` or `idx`, because those are not in the form's layout. On a child table with several parents, `set_value` takes only the fields every parent has. Unregistered doctypes keep the open `FrappeDoc` and the open `set_value`, so existing code keeps compiling.
 
 ### Typing your doctypes: `FrappeDocTypes`
 
-`FrappeDocTypes` is a global interface, empty in this package, that you extend with your doctypes. Each property is keyed by the doctype's name exactly as frappe spells it. Its value lists the doctype's data fields: no layout fields, and no standard fields, because `name`, `owner`, `modified`, `docstatus`, `idx` and the `__*` client flags are added for you.
+`FrappeDocTypes` is a global interface, empty in this package, that you extend with your doctypes. Each property is keyed by the doctype's name exactly as frappe spells it. Its value lists the doctype's data fields: no layout fields, and no standard fields, because `name`, `owner`, `modified`, `docstatus`, `idx` and the `__*` client flags are added for you. Type a Table field as `FrappeChildRow<"Child DocType">[]`, not as the child's bare entry, so its rows get the standard row fields (`name`, `idx`, `doctype`, `parent`, `parentfield`) too.
 
 ```ts
 // types/doctypes.d.ts. This is a script (no import/export), so the interface merges directly.
@@ -183,7 +183,7 @@ interface FrappeDocTypes {
     customer_name: string;
     customer_group: string;
     disabled: 0 | 1;
-    credit_limits: FrappeDocTypes["Customer Credit Limit"][];
+    credit_limits: FrappeChildRow<"Customer Credit Limit">[];
   };
   // A child table names its parent doctype(s) in `parenttype`. That is how
   // FormEvents<"Customer Credit Limit"> knows `frm` is the Customer form.
@@ -197,7 +197,7 @@ interface FrappeDocTypes {
 
 In a file that is a module, wrap the same block in `declare global { … }`. `Check` fields are `0 | 1`. Fields that can be empty should include `null`: frappe stores an empty Link, Data or Date as `null` or leaves it out. Custom Fields are not in a doctype's JSON, so add any your code reads to the entry yourself. Interface merging lets a second declaration add them.
 
-The registry is shared by both entry points, `frappe-types/global` and the module entry, so one declaration types `frappe.ui.form.on(...)` in desk JavaScript and `Form<"Customer">` in compiled TypeScript. `Form<"Customer">` is still assignable to `Form`, and a registered document is still assignable to `FrappeDoc`, so APIs typed against the open shapes accept the typed ones.
+The registry is shared by both entry points, `frappe-types/global` and the module entry, so one declaration types `frappe.ui.form.on(...)` in desk JavaScript and `Form<"Customer">` in compiled TypeScript. `Form<"Customer">` is still assignable to `Form`, and a registered document is still assignable to `FrappeDoc`, so APIs typed against the open shapes accept the typed ones. A `FrappeChildRow` is also assignable to `ChildDoc`, so `frappe.model.set_value(row.doctype, row.name, "qty", 1)` compiles for a row of `frm.doc.credit_limits`.
 
 ### Web forms and website pages: `frappe-types/web`
 

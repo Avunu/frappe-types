@@ -13,6 +13,12 @@ frappe.ui.form.on("ToDo", {
 		void frm.set_value("status", "Done");
 		// @ts-expect-error wrong value type in the object form
 		void frm.set_value({ priority: 3 });
+		// @ts-expect-error a standard field is not in fields_dict; frappe throws
+		void frm.set_value("name", "x");
+		// @ts-expect-error a standard field in the object form
+		void frm.set_value({ idx: 2 });
+		// @ts-expect-error the object form takes no second argument
+		void frm.set_value({ status: "Closed" }, "Open");
 		// @ts-expect-error not a Form method
 		frm.refresh_feld("status");
 	},
@@ -49,6 +55,22 @@ frappe.ui.form.on("Sales Order Item", {
 	qty(frm) {
 		// @ts-expect-error `frm` is the parent's form, so the child's own fields are not on frm.doc
 		void frm.doc.item_code;
+	},
+});
+
+frappe.ui.form.on("Packed Item", {
+	qty(frm) {
+		// `frm` may be a Quotation, which has no `customer`.
+		// @ts-expect-error a field only one of the parents has
+		void frm.set_value("customer", "x");
+		// @ts-expect-error ... and with a wrong value
+		void frm.set_value("customer", 12345);
+		// @ts-expect-error the same field in the object form
+		void frm.set_value({ customer: "x" });
+		// @ts-expect-error a field both parents have, with a wrong value
+		void frm.set_value("grand_total", "x");
+		// @ts-expect-error reading it is an error too
+		void frm.doc.customer;
 	},
 });
 
