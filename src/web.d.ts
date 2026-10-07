@@ -72,7 +72,20 @@ export interface WebFormEvents {
  * Only the keys frappe's own web form scripts read are named. Every other
  * field of the Web Form doctype is there too, under the open signature.
  */
-export interface WebFormDoc {
+export interface WebFormDoc extends WebFormDocFields {
+	[field: string]: unknown;
+}
+
+/**
+ * The named keys of {@link WebFormDoc}, without its index signature.
+ *
+ * Kept separate so {@link WebForm} can `Omit` from it: `Omit` over a type with
+ * a string index signature keeps only the signature, because `keyof` of such a
+ * type is `string | number`. `WebForm` used to `Omit` from `WebFormDoc`
+ * directly, which typed `frappe.web_form.doc_type` and `frappe.web_form.name`
+ * as `unknown`.
+ */
+export interface WebFormDocFields {
 	/** The Web Form's name. */
 	name: string;
 	/** The doctype the web form writes — read at `frappe/public/js/frappe/web_form/webform_script.js:30`. */
@@ -95,7 +108,6 @@ export interface WebFormDoc {
 	login_required?: FrappeCheck;
 	/** `frappe/public/js/frappe/web_form/webform_script.js:35`. */
 	allow_delete?: FrappeCheck;
-	[field: string]: unknown;
 }
 
 /**
@@ -116,7 +128,9 @@ export interface WebFormDoc {
  */
 export interface WebForm
 	extends Omit<FieldGroup, "doc" | "is_new">,
-		Omit<WebFormDoc, "web_form_fields" | "is_new"> {
+		Omit<WebFormDocFields, "web_form_fields" | "is_new"> {
+	/** The Web Form's other fields, copied from {@link WebFormDoc} like the named ones. */
+	[field: string]: unknown;
 	/**
 	 * NOT a reliable flag — read `frappe.web_form_doc.is_new` instead.
 	 * `prepare()` copies `web_form_doc` onto the instance
@@ -132,8 +146,12 @@ export interface WebForm
 	is_new: true | FieldGroup["is_new"];
 	/** `frappe/public/js/frappe/web_form/web_form.js:10-11`. See {@link WebFormEvents}. */
 	events: WebFormEvents;
-	/** `frappe/public/js/frappe/web_form/web_form.js:19` — `reference_doc || {}`. */
-	doc: FrappeDocBase;
+	/**
+	 * `frappe/public/js/frappe/web_form/web_form.js:19` — `reference_doc || {}`.
+	 * `save()` copies the form's values onto it and stamps `doctype` and
+	 * `web_form_name` before posting it (`frappe/public/js/frappe/web_form/web_form.js:409-411`).
+	 */
+	doc: FrappeDocBase & { web_form_name?: string };
 	/** `frappe/public/js/frappe/web_form/web_form.js:12` — index of the visible page of a multi-step form. */
 	current_section: number;
 	/** `frappe/public/js/frappe/web_form/web_form.js:13`, `:86` — true when the form has page breaks. */
