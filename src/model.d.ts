@@ -41,6 +41,7 @@
 // The import is type-only and `core.d.ts` imports from `./model` in turn; a
 // type-only cycle between two `.d.ts` modules is legal and has no emit.
 // ---------------------------------------------------------------------------
+/// <reference path="./registry.d.ts" />
 import type { FrappeIndicator } from "./core";
 
 /* -------------------------------------------------------------------------- */
@@ -526,8 +527,26 @@ export type PartialDocField = Partial<DocField> & { fieldname: string };
  * Standard fields from `frappe/public/js/frappe/model/model.js:66-78`
  * (`std_fields_list`) and `:80` (`child_table_field_list`). The `__*` flags are
  * client-side bookkeeping, set by `model/sync.js` and `model/create_new.js`.
+ *
+ * The named members live on {@link FrappeDocFields}, which has no index
+ * signature; this interface adds the open bag on top. The split exists so a
+ * doctype registered in {@link FrappeDocTypes} can be typed WITHOUT the bag —
+ * see {@link RegisteredDoc}.
  */
-export interface FrappeDocBase {
+export interface FrappeDocBase extends FrappeDocFields {
+	/** See the note on {@link DocField} — documents are open bags. */
+	[fieldname: string]: unknown;
+}
+
+/**
+ * The standard fields and client-side flags every frappe document can carry —
+ * {@link FrappeDocBase} minus its index signature.
+ *
+ * Standard fields from `frappe/public/js/frappe/model/model.js:66-78`
+ * (`std_fields_list`) and `:80` (`child_table_field_list`). The `__*` flags are
+ * client-side bookkeeping, set by `model/sync.js` and `model/create_new.js`.
+ */
+export interface FrappeDocFields {
 	doctype?: string;
 
 	owner?: string;
@@ -566,9 +585,18 @@ export interface FrappeDocBase {
 	__newname?: string;
 	/** `model/sync.js:38`, `:61-64` — the pre-save local name, echoed back by the server. */
 	localname?: string;
-
-	/** See the note on {@link DocField} — documents are open bags. */
-	[fieldname: string]: unknown;
+	/**
+	 * Server-side `onload` payload: `frappe/desk/form/load.py:416` resets it to
+	 * an empty dict and `Document.set_onload` (`frappe/model/document.py:1868-1869`)
+	 * fills it. Read by the form, e.g. `frappe/public/js/frappe/form/form.js:1320`.
+	 * Its keys are whatever the doctype's controller put there.
+	 *
+	 * Typed as `object`, not `Record<string, unknown>`, so the usual
+	 * `doc.__onload as MyOnload` still compiles for an `interface MyOnload`: an
+	 * interface has no implicit index signature, so it is not comparable to a
+	 * `Record`, but every object type is comparable to `object`.
+	 */
+	__onload?: object;
 }
 
 /**
@@ -611,6 +639,203 @@ export interface ChildDoc extends FrappeDoc {
 	 */
 	_sortable?: false;
 }
+
+/* -------------------------------------------------------------------------- */
+/* The doctype registry                                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The name of every doctype an app has registered in the global
+ * `FrappeDocTypes` interface (see `registry.d.ts`). `never` until something is
+ * registered.
+ */
+export type DocTypeName = Extract<keyof FrappeDocTypes, string>;
+
+/**
+ * The fields an app registered for `DT`, as written in `FrappeDocTypes`.
+ * `{}` for a doctype that is not registered.
+ */
+export type DocTypeFields<DT extends string> = DT extends DocTypeName ? FrappeDocTypes[DT] : {};
+
+/**
+ * Flattens an intersection into one anonymous object type. That is not only
+ * cosmetic: an anonymous object type is assignable to an index signature
+ * (`FrappeDoc`'s `[fieldname: string]: unknown`) when all its properties are,
+ * whereas an interface never is. It is what lets a registered document flow
+ * into every API that takes a plain {@link FrappeDoc}.
+ */
+type Flatten<T> = { [K in keyof T]: T[K] };
+
+/**
+ * The document type of a REGISTERED doctype: the standard fields of
+ * {@link FrappeDocFields}, the fields the app listed in `FrappeDocTypes`, and a
+ * guaranteed `name` plus `doctype` — the same two {@link FrappeDoc} requires,
+ * with `doctype` narrowed to the literal name.
+ *
+ * Deliberately WITHOUT `FrappeDoc`'s index signature: a key that is in neither
+ * list is a compile error, which is the point of registering. A registered
+ * field that shares a name with a standard one (a child row's `parenttype`,
+ * typically) replaces the standard declaration rather than intersecting with
+ * it.
+ */
+export type RegisteredDoc<DT extends DocTypeName> = Flatten<
+	Omit<FrappeDocFields, "name" | "doctype" | keyof FrappeDocTypes[DT]> &
+		FrappeDocTypes[DT] & { name: string; doctype: DT }
+>;
+
+/**
+ * The document type for doctype `DT`: {@link RegisteredDoc} when `DT` is
+ * registered in `FrappeDocTypes`, otherwise the open {@link FrappeDoc}. The
+ * wide `string` (an unknown doctype at compile time) is never a registered
+ * name, so it is always `FrappeDoc`.
+ *
+ * Distributes over a union: `DocOf<"A" | "B">` is `DocOf<"A"> | DocOf<"B">`.
+ *
+ * `DT` appears only as the CHECKED type of the conditional, never in its
+ * `extends` clause. That is load-bearing: TypeScript relates two
+ * instantiations of a conditional type only when their `extends` clauses are
+ * identical, so a `DT` there (a `string extends DT ? …` guard, say) makes every
+ * type that holds a `DocOf<DT>` — `Form<DT>` above all — invariant in `DT`, and
+ * `Form<"ToDo">` stops being assignable to `Form`. The same holds for the other
+ * conditional types below.
+ */
+export type DocOf<DT extends string> = DT extends DocTypeName
+	? RegisteredDoc<DT>
+	: FrappeDoc;
+
+/**
+ * The data fieldnames of `DT` — the keys of {@link DocOf}`<DT>` — or `string`
+ * when `DT` is not registered (any fieldname may exist).
+ */
+export type DocFieldName<DT extends string> = DT extends DocTypeName
+	? Extract<keyof RegisteredDoc<DT>, string>
+	: string;
+
+/**
+ * The value type of field `F` on `DT`'s document — `unknown` when `DT` is not
+ * registered, or `F` is not one of its fields.
+ */
+export type DocFieldValue<DT extends string, F extends string> = DT extends DocTypeName
+	? F extends keyof RegisteredDoc<DT>
+		? RegisteredDoc<DT>[F]
+		: unknown
+	: unknown;
+
+/**
+ * The fieldnames {@link import("./ui/form").Form.set_value} accepts on a form of
+ * registered doctype(s) `DT`: the fields the app listed in `FrappeDocTypes` —
+ * never the standard ones from {@link FrappeDocFields}.
+ *
+ * `set_value` looks every fieldname up in the form's `fields_dict`
+ * (`frappe/public/js/frappe/form/form.js:1866`), which holds only the layout's
+ * meta fields (`frappe/public/js/frappe/form/form.js:291`,
+ * `frappe/public/js/frappe/form/layout.js:242`); a miss msgprints and throws
+ * `frm.set_value: '<field>' does not exist in the form`
+ * (`frappe/public/js/frappe/form/form.js:1910-1912`). `name`, `owner`,
+ * `docstatus`, `idx`, the child-row linkage and the `__*` client flags are
+ * never docfields, so none of them can be set this way.
+ *
+ * NOT distributive: for a union `DT` (a child table with several parents) it is
+ * the fields EVERY member has, since the form may be any one of them.
+ */
+export type FormFieldName<DT extends DocTypeName> = Exclude<
+	Extract<keyof FrappeDocTypes[DT], string>,
+	keyof FrappeDocFields
+>;
+
+/**
+ * The argument list of {@link import("./ui/form").Form.set_value} for a form of
+ * doctype `DT` (frappe/public/js/frappe/form/form.js:1863-1927).
+ *
+ * - When `DT` is NOT registered (the default `string`, or any doctype missing
+ *   from `FrappeDocTypes`), it is the open signature: a fieldname or a
+ *   `{fieldname: value}` map, and any value.
+ * - When every member of `DT` is registered, it is one field from
+ *   {@link FormFieldName} with a value of that field's type — or a map of such
+ *   fields, with no second argument (the object form ignores it, :1917-1926).
+ *   For a union `DT` a field's value may be of any member's type for it.
+ *
+ * A Table field also takes partial rows; see {@link import("./ui/form").FormSetValueInput}.
+ *
+ * WHY A REST TUPLE AND NOT OVERLOADS: `set_value<F extends …DT…>(field: F, …)`
+ * puts `DT` in a type-parameter constraint, and TypeScript 5.x then measures
+ * `Form` as INVARIANT in `DT` — `Form<"ToDo">` stops being assignable to the
+ * plain `Form` every other API takes. As the checked type of a conditional,
+ * `DT` keeps `Form` covariant on 5.8 and 7 alike (see {@link DocOf}).
+ */
+export type FormSetValueArgs<DT extends string> = [DT] extends [DocTypeName]
+	? RegisteredFormSetValueArgs<Extract<DT, DocTypeName>>
+	: [
+			field: string | Record<string, unknown>,
+			value?: unknown,
+			if_missing?: boolean,
+			skip_dirty_trigger?: boolean,
+		];
+
+/** {@link FormSetValueArgs} for registered doctype(s) `DT`. */
+type RegisteredFormSetValueArgs<DT extends DocTypeName> =
+	| {
+			[F in FormFieldName<DT>]: [
+				field: F,
+				value: import("./ui/form").FormSetValueInput<FrappeDocTypes[DT][F]>,
+				if_missing?: boolean,
+				skip_dirty_trigger?: boolean,
+			];
+	  }[FormFieldName<DT>]
+	| [
+			values: {
+				[F in FormFieldName<DT>]?: import("./ui/form").FormSetValueInput<FrappeDocTypes[DT][F]>;
+			},
+			value?: undefined,
+			if_missing?: boolean,
+			skip_dirty_trigger?: boolean,
+	  ];
+
+/**
+ * A row of a registered child doctype `DT` as it sits in its parent's Table
+ * field — what to write for a Table field in `FrappeDocTypes`, through the
+ * global alias `FrappeChildRow<DT>` (`items: FrappeChildRow<"Sales Order Item">[]`).
+ *
+ * {@link RegisteredDoc} plus the guarantees every row carries: frappe stores
+ * the standard fields (`frappe/public/js/frappe/model/model.js:66-78`) and the
+ * child-row linkage (`:80`) on each row, and `frappe.model.get_new_doc` sets
+ * `parent`, `parentfield`, `parenttype` and `idx` on a row it creates
+ * (`frappe/public/js/frappe/model/create_new.js:21-29`) — the same four
+ * {@link ChildDoc} requires, so a row is assignable to it. `parenttype` keeps
+ * the registry's literal parent name(s) when the entry declares them.
+ */
+export type ChildRowOf<DT extends DocTypeName> = Flatten<
+	Omit<RegisteredDoc<DT>, "idx" | "parent" | "parentfield" | "parenttype"> & {
+		idx: number;
+		parent: string;
+		parentfield: string;
+		parenttype: FrappeDocTypes[DT] extends { parenttype: infer P extends string } ? P : string;
+	}
+>;
+
+/**
+ * The doctype whose FORM a handler registered for `DT` runs on.
+ *
+ * Child-table events — a child field's change, `<table>_add`,
+ * `<table>_remove`, `form_render` — are registered on the CHILD doctype
+ * (`frappe.ui.form.on("Sales Order Item", …)`) but frappe calls them with the
+ * PARENT's form: `ScriptManager#trigger` always passes `me.frm`
+ * (`frappe/public/js/frappe/form/script_manager.js:109`), and the grid fires
+ * them through the parent's script manager with the child doctype as `cdt`
+ * (`frappe/public/js/frappe/form/grid.js:1199`,
+ * `frappe/public/js/frappe/form/grid_row.js:100-113`,
+ * `frappe/public/js/frappe/form/form.js:373`).
+ *
+ * A registry entry says it is a child table by declaring `parenttype` — the
+ * standard field every child row carries (`frappe/public/js/frappe/model/model.js:80`)
+ * — as the literal name(s) of its parent doctype(s). This resolves to those
+ * names; for anything else it is `DT` itself.
+ */
+export type FormDocTypeOf<DT extends string> = DT extends DocTypeName
+	? FrappeDocTypes[DT] extends { parenttype: infer P extends string }
+		? P
+		: DT
+	: DT;
 
 /**
  * An element of `Grid#data` / the `doc` of a `GridRow`.

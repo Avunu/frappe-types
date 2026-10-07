@@ -1,0 +1,7 @@
+{
+	"extends": "frappe-types/tsconfig/base.json",
+	"compilerOptions": {
+		"types": []
+	},
+	"include": ["**/*.ts"]
+}

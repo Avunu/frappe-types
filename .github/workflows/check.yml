@@ -4,6 +4,7 @@ name: check
 # laptop measure the same tree:
 #
 #   checks.typecheck        tsc --noEmit, with skipLibCheck OFF
+#   checks.types            the test/types/ consumer fixtures, against the packed file list
 #   checks.coverage         the coverage ratchet, against the PINNED frappe
 #   checks.frappe-major     the package major is the frappe major
 #   checks.verified-against package.json's frappe.verifiedAgainst matches the pin

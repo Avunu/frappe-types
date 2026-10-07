@@ -1,5 +1,7 @@
 /// <reference types="jquery" />
 /// <reference path="./modules.d.ts" />
+/// <reference path="./registry.d.ts" />
+/// <reference path="./namespace.d.ts" />
 
 /**
  * frappe-types — the package's **ambient** entry point.
@@ -14,7 +16,7 @@
  * identifiers, plus the `Window` members the desk template and desk bundles
  * install.
  *
- * ## The two `/// <reference>`s above are load-bearing
+ * ## The `/// <reference>`s above are load-bearing
  *
  * 1. **`types="jquery"`.** Frappe ships jQuery 3.7 (`frappe/package.json`) and
  *    hundreds of declarations in this package are typed as `JQuery`,
@@ -34,6 +36,13 @@
  *    this reference it is never loaded into the program and every deep import
  *    is `TS2307`. Keep `modules.d.ts` a SCRIPT (no top-level `import`/`export`);
  *    read its header for what breaks if that changes.
+ * 3. **`path="./registry.d.ts"`.** The global `FrappeDocTypes` interface apps
+ *    register their doctypes in. `model.d.ts` references it too; naming it here
+ *    keeps the ambient entry's dependency on it explicit.
+ * 4. **`path="./namespace.d.ts"`.** The TYPE-space `frappe` namespace
+ *    (`frappe.ui.form.FormEvents<"ToDo">`, `frappe.views.ListViewSettings`, …)
+ *    that JSDoc in desk scripts names. Like `modules.d.ts`, nothing imports
+ *    it, so this reference is the only thing that loads it.
  *
  * ## `window.frappe` is OPTIONAL; the bare `frappe` is NOT
  *

@@ -112,6 +112,17 @@
           # because being explicit here is the entire point of the exercise.
           coverage = mkCheck "coverage" "node scripts/audit-coverage.mjs --frappe ${frappe} --strict --top 25";
 
+          # The consumer-side contract: the fixture projects under test/types/ —
+          # JSDoc desk scripts under the desk-js preset, compiled TS under the base
+          # preset, web form scripts, the bare module entry — each checked by
+          # `tsc -p` against the file list `npm pack` would publish. Negative cases
+          # are inline `@ts-expect-error`s, so too-permissive declarations fail here
+          # as surely as too-strict ones (scripts/test-types.mjs). Each project runs
+          # under the repo's TypeScript and under 5.8, the oldest release the README
+          # supports (the `typescript-5.8` alias in package-lock.json, fetched by
+          # importNpmLock like every other dependency).
+          types = mkCheck "types" "npm run test:types";
+
           # The package major must be the frappe major (scripts/check-frappe-major.mjs).
           frappe-major = mkCheck "frappe-major" "npm run check:major";
 

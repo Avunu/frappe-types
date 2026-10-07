@@ -1,0 +1,7 @@
+{
+	"extends": "frappe-types/tsconfig/desk-js.json",
+	"compilerOptions": {
+		"types": ["frappe-types/web"]
+	},
+	"include": ["**/*.js"]
+}
