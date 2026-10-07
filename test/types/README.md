@@ -8,7 +8,7 @@ publish it: the script copies the packed file list into a scratch
 
 | project | config | proves |
 | --- | --- | --- |
-| `desk-js/` | `extends: frappe-types/tsconfig/desk-js.json` | JSDoc-annotated desk scripts (doctype, child table, list, report) check under strict `checkJs`, with a `FrappeDocTypes` registry; Table-field rows typed with `FrappeChildRow`; a child table with two parents; typed forms passed to `Form`-typed APIs |
+| `desk-js/` | `extends: frappe-types/tsconfig/desk-js.json` | JSDoc-annotated desk scripts (doctype, child table, list, report, page) check under strict `checkJs`, with a `FrappeDocTypes` registry; Table-field rows typed with `FrappeChildRow`; a child table with two parents; typed forms passed to `Form`-typed APIs; subclasses of frappe classes (sort selector, quick entry, print view, view switcher); app-owned names declared by augmenting the package (`app_types.d.ts`) |
 | `compiled/` | `extends: frappe-types/tsconfig/base.json` + `types: ["frappe-types/global"]` | compiled TypeScript using the globals, the type-space namespace and named imports together |
 | `desk-js-empty/` | `desk-js.json`, no registry | an app that registers no doctypes: `Form<"Customer">` is accepted wherever the plain `Form` is, and `set_value` keeps its open 16.4 signature |
 | `web/` | `desk-js.json` + `types: ["frappe-types/web"]` | web form client scripts |
