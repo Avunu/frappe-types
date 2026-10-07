@@ -677,11 +677,19 @@ type Flatten<T> = { [K in keyof T]: T[K] };
  * field that shares a name with a standard one (a child row's `parenttype`,
  * typically) replaces the standard declaration rather than intersecting with
  * it.
+ *
+ * WHY `extends infer Fields`: the entry is bound to `Fields` so that the
+ * intersection is only built once `DT` is a concrete name. Intersecting the
+ * generic `FrappeDocTypes[DT]` directly makes TypeScript (5.8 and 7 alike)
+ * resolve the registry's property types while it is still resolving this
+ * alias; when the registry's FIRST entry has a `FrappeChildRow<…>` field, which
+ * leads back here through {@link ChildRowOf}, that fails as TS2456 ("circularly
+ * references itself") on this alias and TS2502 on the field. As the checked type
+ * of the conditional, `DT` keeps `Form<DT>` covariant (see {@link DocOf}).
  */
-export type RegisteredDoc<DT extends DocTypeName> = Flatten<
-	Omit<FrappeDocFields, "name" | "doctype" | keyof FrappeDocTypes[DT]> &
-		FrappeDocTypes[DT] & { name: string; doctype: DT }
->;
+export type RegisteredDoc<DT extends DocTypeName> = FrappeDocTypes[DT] extends infer Fields
+	? Flatten<Omit<FrappeDocFields, "name" | "doctype" | keyof Fields> & Fields & { name: string; doctype: DT }>
+	: never;
 
 /**
  * The document type for doctype `DT`: {@link RegisteredDoc} when `DT` is
