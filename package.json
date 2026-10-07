@@ -36,6 +36,9 @@
     "./deep-modules": {
       "types": "./src/deep-modules.d.ts"
     },
+    "./web": {
+      "types": "./src/web.d.ts"
+    },
     "./tsconfig/*": "./tsconfig/*",
     "./package.json": "./package.json"
   },

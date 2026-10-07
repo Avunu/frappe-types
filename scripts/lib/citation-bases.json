@@ -177,6 +177,11 @@
       "notCore": {
         "cellmanager.js": "frappe-datatable"
       }
+    },
+    "src/web.d.ts": {
+      "declared": "none: the header names no base; every citation in it is a full path",
+      "bases": ["frappe/public/js/frappe/", "frappe/"],
+      "basis": "full-path-evidence: every full-path citation in the file is under frappe/public/js/frappe/ or frappe/"
     }
   }
 }
