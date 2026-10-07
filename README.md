@@ -177,13 +177,54 @@ const report = {
 frappe.provide("frappe.query_reports")["Sales Summary"] = report;
 ```
 
-The namespace provides `frappe.Doc<DT>`, `frappe.ListDoc<DT>`, `frappe.DocType`, `frappe.FieldName<DT>` and `frappe.FieldValue<DT, F>`. It also provides `frappe.ui.Dialog`, `DialogOptions`, `FieldGroup`, `FieldGroupOptions` and `Page`; `frappe.ui.form.Form<DT>`, `FormEvents<DT>`, `FormEventHandler`, `StandardFormEvents`, `Controller`, `Control` and `ControlOptions`; and `frappe.views.ListViewSettings<DT>`, `ListView`, `ReportView`, `QueryReport`, `QueryReportSettings`, `QueryReportColumn` and `QueryReportFilter`. Each is an alias of a named export of `frappe-types`, so compiled TypeScript can import the same types instead (`import type { FormEvents } from "frappe-types"`).
+The namespace provides `frappe.Doc<DT>`, `frappe.ListDoc<DT>`, `frappe.DocType`, `frappe.FieldName<DT>` and `frappe.FieldValue<DT, F>`. It also provides `frappe.ui.Dialog`, `DialogOptions`, `FieldGroup`, `FieldGroupOptions`, `Page`, `SortSelector`, `SortSelectorOptions` and `GroupBy`; `frappe.ui.form.Form<DT>`, `FormEvents<DT>`, `FormEventHandler`, `StandardFormEvents`, `Controller`, `Control`, `ControlOptions`, `QuickEntryForm`, `QuickEntryAfterInsert`, `PrintView` and `PrintViewTarget`; and `frappe.views.ListViewSettings<DT>`, `ListView`, `ReportView`, `ListViewSelect`, `PageWrapper`, `QueryReport`, `QueryReportSettings`, `QueryReportColumn` and `QueryReportFilter`. Each is an alias of a named export of `frappe-types`, so compiled TypeScript can import the same types instead (`import type { FormEvents } from "frappe-types"`).
 
 Some rules about form events. Each one matches what frappe does at runtime:
 
 - **Every function in the map is an event handler.** frappe registers each function-valued key of the map under that key's name, and it calls each one as `(frm, cdt, cdn)`. That includes a helper you only call through `frm.trigger("helper")`. A handler whose second parameter is not a string is therefore an error. Put helpers with other signatures outside the map.
 - **Child-table events run on the parent's form.** `frappe.ui.form.on("Sales Order Item", { qty(frm, cdt, cdn) {} })` receives the Sales Order form. Your registry tells the types which parent that is (next section). For an unregistered child doctype, `frm` is a plain `Form`.
 - **Registering a doctype makes its document closed.** On a registered doctype, `frm.doc.custmer_name` is an error instead of an `unknown`, and `frm.set_value("status", "Typo")` is checked against the field's type. `set_value` takes only the doctype's own fields: frappe throws on a standard field such as `name` or `idx`, because those are not in the form's layout. On a child table with several parents, `set_value` takes only the fields every parent has. Unregistered doctypes keep the open `FrappeDoc` and the open `set_value`, so existing code keeps compiling.
+
+### Names your app adds
+
+frappe-types declares frappe's names and no one else's. An app that hangs its own class or helper on a frappe namespace (a control, a quick entry form, a view, a `frappe.boot` key from its `boot_session` hook) declares it in its own `.d.ts`, by augmenting the interface it extends:
+
+```ts
+// types/frappe-app.d.ts. A module (it imports), so this merges into the package.
+import type { BaseControl, QuickEntryForm } from "frappe-types";
+
+declare module "frappe-types" {
+  interface FrappeUiFormNamespace {
+    ControlFontSelect: typeof BaseControl;
+    WorkdayQuickEntryForm?: typeof QuickEntryForm;
+  }
+  interface Frappe {
+    esign_context?: { token: string };
+  }
+}
+```
+
+The namespaces are `Frappe` (the root), `FrappeUiNamespace` (`frappe.ui`), `FrappeUiFormNamespace` (`frappe.ui.form`), `FrappeViewsNamespace` (`frappe.views`) and `FrappeBoot` (`frappe.boot`). Put the file in the tsconfig's `include`, and pass it to `audit-consumer.mjs --types`.
+
+Two things the presets ask of a desk script that subclasses a frappe class:
+
+- **`/** @override */` on each method that overrides one.** The presets turn on `noImplicitOverride`, which applies to JavaScript through JSDoc.
+- **Narrow a class that only some pages have before extending it.** `frappe.ui.form.PrintView` exists only on the print page, `frappe.ui.GroupBy` only once a report has loaded, and every `frappe.views` class only once its bundle has; they are optional. Take the class into a constant and check it:
+
+```js
+const Base = frappe.ui.form.PrintView;
+if (Base) {
+  frappe.ui.form.PrintView = class extends Base {
+    /**
+     * @override
+     * @param {frappe.ui.form.PrintViewTarget} frm
+     */
+    show(frm) {
+      return super.show(frm);
+    }
+  };
+}
+```
 
 ### Typing your doctypes: `FrappeDocTypes`
 
@@ -447,9 +488,20 @@ npm run remap:citations -- --new-tag v16.50.0 --apply --stamp              # AFT
 
 ```bash
 node scripts/audit-consumer.mjs ../carbon_frappe --strict
+node scripts/audit-consumer.mjs ../esign --strict --types "../esign/types/*.d.ts"
 ```
 
-Every line it prints is a compile error waiting to happen in an app built under `strict` — which is the premise of this package, and how its own scope gets set.
+Every line it prints is a compile error waiting to happen in an app built under `strict` — which is the premise of this package, and how its own scope gets set. Each path lands in one of three lists:
+
+| list | means | fails |
+| --- | --- | --- |
+| undeclared | the checker cannot resolve the path | `--strict` |
+| declared-but-untyped | it resolves to `unknown` (or `any`), so the first call or member access on it fails | `--fail-on-untyped` |
+| declared-but-optional | it resolves through a member that is optional on purpose, such as a lazily loaded namespace; narrow it first | never |
+
+`--types` (repeatable, a file or a glob) adds the app's own declaration files to the check, so names the app declares for itself count once it has declared them; see [Names your app adds](#names-your-app-adds). Inside those files `frappe-types` resolves to this checkout.
+
+Which paths a file uses is decided by a small lexer (`scripts/lib/scan-source.mjs`), not a regex over the text: it reads the code, and the content of a string only when that content is itself JavaScript (V8 compiles it without running it), such as browser code a test harness sends with ``page.eval(`…`)``. Prose that mentions a frappe name (`"frappe.exceptions.ValidationError: Boom"`, a URL glob, a test title) and strings that are just a server method path (`"frappe.client.get_list"`) are not uses.
 
 ### Upgrading to a new frappe major
 
