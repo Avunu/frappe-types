@@ -21,11 +21,11 @@
     "frappe": {
       "flake": false,
       "locked": {
-        "lastModified": 1791293338,
-        "narHash": "sha256-Cvs/QzkiXCvjtb9FBp5+wfxDD51dO6/jeezsn1FXJsM=",
+        "lastModified": 1791388903,
+        "narHash": "sha256-FrZDWwha2amcAlR33W7IkJWrwSt4HDj/WAwfabPLjWg=",
         "owner": "frappe",
         "repo": "frappe",
-        "rev": "f20f92d29706510551b4438cc196b0323a7f1a92",
+        "rev": "6b450a166e076dd842e4db7ea0843f62881e62ac",
         "type": "github"
       },
       "original": {
@@ -37,11 +37,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1791260994,
-        "narHash": "sha256-Miqqk/ammqnTUxaoCyvtwoPeLbI1ksFyLxi/CazZpWY=",
+        "lastModified": 1791456040,
+        "narHash": "sha256-H83yz/do+hjOO0uujHyH8RgtIQP2v7Mw+cLwcZK/xKc=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4",
+        "rev": "e7439b6b14ad3cc35d05608ebca9bce01a25f5f8",
         "type": "github"
       },
       "original": {
