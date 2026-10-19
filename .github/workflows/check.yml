@@ -34,7 +34,7 @@ on:
 
 jobs:
   flake:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || fromJSON('["self-hosted","nixos"]') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -43,6 +43,7 @@ jobs:
       # here and just has `determinate-nixd` try to log into FlakeHub for a repo
       # that isn't registered there, logging a failure annotation on every run.
       - uses: DeterminateSystems/nix-installer-action@v23
+        if: runner.environment == 'github-hosted'
         with:
           determinate: false
 
@@ -53,6 +54,7 @@ jobs:
       # are what this recovers between runs. Fork pull requests get a read-only token
       # and degrade to pull-only on their own, so no fork guard is needed.
       - uses: DeterminateSystems/magic-nix-cache-action@v15
+        if: runner.environment == 'github-hosted'
         with:
           # Perf/diagnostic telemetry to Determinate Systems is on by default.
           diagnostic-endpoint: ""
