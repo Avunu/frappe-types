@@ -69,7 +69,7 @@
  * So: guard with `window.frappe`, then use `frappe`. Both resolve to one
  * {@link Frappe} type.
  *
- * Verified against **frappe v16.50.0**.
+ * Verified against **frappe v16.54.0**.
  *
  * @packageDocumentation
  */
@@ -118,7 +118,7 @@ declare global {
 	/** `frappe/public/js/frappe/translate.js:26` — `window.__ = frappe._;` */
 	var __: TranslateFunction;
 
-	/** `frappe/public/js/frappe/ui/messages.js:333` — `window.msgprint = frappe.msgprint`. */
+	/** `frappe/public/js/frappe/ui/messages.js:329` — `window.msgprint = frappe.msgprint`. */
 	var msgprint: Frappe["msgprint"];
 
 	/** `frappe/public/js/frappe/provide.js:21` — `frappe.provide("locals")`. */
@@ -244,7 +244,7 @@ declare global {
 		 */
 		frappe?: Frappe;
 
-		/** `ui/messages.js:333`. Optional for the same headless reason as `__`. */
+		/** `ui/messages.js:329`. Optional for the same headless reason as `__`. */
 		msgprint?: Frappe["msgprint"];
 
 		/** See the bare `DataTable` above — non-optional so it can be reassigned. */

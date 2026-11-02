@@ -31,7 +31,7 @@
  * The reference makes `@types/jquery` (a hard dependency of this package) ride
  * along, so no second `types` entry is needed.
  *
- * Verified against **frappe v16.50.0**. Every declaration cites `file.js:line`
+ * Verified against **frappe v16.54.0**. Every declaration cites `file.js:line`
  * (full-path, `frappe/public/js/frappe/…`, wherever this file was re-read for a
  * later release).
  *
@@ -57,7 +57,7 @@
  * rather than the module level: `FrappeCore` and `FrappeModelMetaGlobals` both
  * declared them with different signatures, which made {@link Frappe}'s `extends`
  * clause a hard `TS2320` and meant no composite `Frappe` type could be formed at
- * all. `./model` owns them now (`frappe/public/js/frappe/model/model.js:908-910` only *aliases* them
+ * all. `./model` owns them now (`frappe/public/js/frappe/model/model.js:904-906` only *aliases* them
  * onto the root); the generic parameter and every note from the `core.d.ts`
  * copy were folded into {@link FrappeModelMetaGlobals}.
  *
@@ -742,23 +742,23 @@ import type {
  * `frappe.ui.toolbar` — a namespace OBJECT, not the class.
  * `frappe/public/js/frappe/ui/toolbar/toolbar.js:4` creates it with
  * `frappe.provide("frappe.ui.toolbar")`, `:7` hangs the `Toolbar` class off it,
- * `:187-245` `$.extend`s the helpers on, and `:247-256` adds the throttled
+ * `:191-249` `$.extend`s the helpers on, and `:251-260` adds the throttled
  * `clear_cache`. Five more helpers are assigned further down (`show_about`,
  * `route_to_user`, `view_website`, `fetch_session_defaults`,
- * `setup_session_defaults`, `:258-327`) and are not declared here.
+ * `setup_session_defaults`, `:262-331`) and are not declared here.
  */
 export interface FrappeUiToolbarNamespace {
 	/** frappe/public/js/frappe/ui/toolbar/toolbar.js:7. */
 	Toolbar: typeof FrappeToolbar;
 	/**
-	 * frappe/public/js/frappe/ui/toolbar/toolbar.js:188-205. Inserts a
+	 * frappe/public/js/frappe/ui/toolbar/toolbar.js:192-209. Inserts a
 	 * `<li class="custom-menu">` before the menu's `.divider` — adding one first
-	 * when the menu already holds stock items and none exists (`frappe/public/js/frappe/ui/toolbar/toolbar.js:190-192`) — and
+	 * when the menu already holds stock items and none exists (`frappe/public/js/frappe/ui/toolbar/toolbar.js:194-196`) — and
 	 * returns the `<a>` it bound the handler to (`click` runs with `this` set to
-	 * that `<a>`, `frappe/public/js/frappe/ui/toolbar/toolbar.js:202-204`).
+	 * that `<a>`, `frappe/public/js/frappe/ui/toolbar/toolbar.js:206-208`).
 	 *
-	 * - `label` is injected as raw HTML (`frappe/public/js/frappe/ui/toolbar/toolbar.js:196-197`).
-	 * - `icon` is an icon **name** handed to `frappe.utils.icon` (`frappe/public/js/frappe/ui/toolbar/toolbar.js:196`), not
+	 * - `label` is injected as raw HTML (`frappe/public/js/frappe/ui/toolbar/toolbar.js:200-201`).
+	 * - `icon` is an icon **name** handed to `frappe.utils.icon` (`frappe/public/js/frappe/ui/toolbar/toolbar.js:200`), not
 	 *   a CSS class as it was at v16.33; a falsy `icon` renders no icon.
 	 * - On a menu with no `.divider` at all, jQuery's `insertBefore` on the empty
 	 *   target set inserts nothing and returns an empty set (jQuery 3.7.1,
@@ -771,26 +771,26 @@ export interface FrappeUiToolbarNamespace {
 		click: (this: HTMLElement) => void,
 		icon?: string
 	): JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/ui/toolbar/toolbar.js:206-208 — `$("#navbar-" + label.toLowerCase())`. */
+	/** frappe/public/js/frappe/ui/toolbar/toolbar.js:210-212 — `$("#navbar-" + label.toLowerCase())`. */
 	get_menu(label: string): JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/ui/toolbar/toolbar.js:209-213. A `string` is resolved through {@link FrappeUiToolbarNamespace.get_menu}; the divider is PREpended. */
+	/** frappe/public/js/frappe/ui/toolbar/toolbar.js:213-217. A `string` is resolved through {@link FrappeUiToolbarNamespace.get_menu}; the divider is PREpended. */
 	add_menu_divider(menu: string | JQuery<HTMLElement>): void;
 	/**
-	 * frappe/public/js/frappe/ui/toolbar/toolbar.js:214-228. **Throws** when
+	 * frappe/public/js/frappe/ui/toolbar/toolbar.js:218-232. **Throws** when
 	 * `.navbar-right` is absent — it calls `parent_element.insertBefore(...)` on
-	 * the result of `.get(0)` unguarded (`frappe/public/js/frappe/ui/toolbar/toolbar.js:215,227`). `icon` is an icon
-	 * **name** for `frappe.utils.icon(icon, "sm")` (`frappe/public/js/frappe/ui/toolbar/toolbar.js:222`), not an octicon class
+	 * the result of `.get(0)` unguarded (`frappe/public/js/frappe/ui/toolbar/toolbar.js:219,231`). `icon` is an icon
+	 * **name** for `frappe.utils.icon(icon, "sm")` (`frappe/public/js/frappe/ui/toolbar/toolbar.js:226`), not an octicon class
 	 * as it was at v16.33; `route` and `class_name` are injected as raw HTML, and
-	 * `class_name` is also title-cased into the link's `title` (`frappe/public/js/frappe/ui/toolbar/toolbar.js:217-220`).
+	 * `class_name` is also title-cased into the link's `title` (`frappe/public/js/frappe/ui/toolbar/toolbar.js:221-224`).
 	 */
 	add_icon_link(route: string, icon: string, index: number, class_name: string): void;
-	/** frappe/public/js/frappe/ui/toolbar/toolbar.js:229-235. Flips `localStorage.container_fullwidth` and fires `toggleFullWidth` on `<body>`. */
+	/** frappe/public/js/frappe/ui/toolbar/toolbar.js:233-239. Flips `localStorage.container_fullwidth` and fires `toggleFullWidth` on `<body>`. */
 	toggle_full_width(): void;
-	/** frappe/public/js/frappe/ui/toolbar/toolbar.js:236-239. */
+	/** frappe/public/js/frappe/ui/toolbar/toolbar.js:240-243. */
 	set_fullwidth_if_enabled(): void;
-	/** frappe/public/js/frappe/ui/toolbar/toolbar.js:240-244 — always returns `false` to cancel the event. */
+	/** frappe/public/js/frappe/ui/toolbar/toolbar.js:244-248 — always returns `false` to cancel the event. */
 	show_shortcuts(e: JQuery.TriggeredEvent): false;
-	/** frappe/public/js/frappe/ui/toolbar/toolbar.js:247-256 — `frappe.utils.throttle(…, 10000)`; clears assets, then reloads the page. */
+	/** frappe/public/js/frappe/ui/toolbar/toolbar.js:251-260 — `frappe.utils.throttle(…, 10000)`; clears assets, then reloads the page. */
 	clear_cache(): void;
 }
 
@@ -1030,7 +1030,7 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	Sidebar: typeof FrappeSidebar;
 	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:1 — one instance, `frappe.app.sidebar.sidebar_header`. */
 	SidebarHeader: typeof FrappeSidebarHeader;
-	/** frappe/public/js/frappe/ui/sidebar/dock.js:3 — the app rail; the instance is `frappe.app.sidebar.dock`, created on the first navigation. */
+	/** frappe/public/js/frappe/ui/sidebar/dock.js:4 — the app rail; the instance is `frappe.app.sidebar.dock`, created on the first navigation. */
 	Dock: typeof FrappeDock;
 	/** frappe/public/js/frappe/ui/sidebar/sidebar_panel.js:40 — a drawer beside the sidebar; the notifications panel is one. */
 	SidebarPanel: typeof FrappeSidebarPanel;
@@ -1079,13 +1079,15 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	 */
 	GroupBy: typeof GroupBy;
 	/**
-	 * frappe/public/js/frappe/views/reports/link_side_panel.js:16-40 — the click
-	 * handler both report views bind to Link cells
-	 * (frappe/public/js/frappe/views/reports/report_view.js:416-420). Previews the
+	 * frappe/public/js/frappe/views/reports/link_side_panel.js:16-41 — the click
+	 * handler both report views bind to Link cells, discarding its result
+	 * (frappe/public/js/frappe/views/reports/report_view.js:416-420) — handed
+	 * back to jQuery, a `false` would cancel the click. Previews the
 	 * linked document in the {@link SidePanel} and returns `true`, or returns
 	 * `false` and lets the click route as usual: when split view is off, on a
 	 * modified or non-left click, when the anchor has no `data-doctype` /
-	 * `data-name`, or when the cell's column is not Link or Dynamic Link.
+	 * `data-name`, when the cell's column is not Link or Dynamic Link, or when
+	 * it is a `name` (ID) column (frappe/public/js/frappe/views/reports/link_side_panel.js:30).
 	 * Defined at desk boot, like {@link FrappeUiNamespace.GroupBy}, by
 	 * `report.bundle.js` (frappe/public/js/report.bundle.js:1); only the panel
 	 * itself is loaded on demand.
@@ -1101,10 +1103,10 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	/** frappe/public/js/frappe/ui/side_panel.js:399. Lazy, from `side_panel.bundle.js`. See {@link SidePanel}. */
 	SidePanel?: typeof SidePanel;
 	/**
-	 * frappe/public/js/frappe/ui/side_panel.js:805-810 — the one {@link SidePanel},
+	 * frappe/public/js/frappe/ui/side_panel.js:814-819 — the one {@link SidePanel},
 	 * created on the first call. Lazy, from `side_panel.bundle.js`: load it with
 	 * `frappe.require("side_panel.bundle.js")` first, as
-	 * frappe/public/js/frappe/views/reports/link_side_panel.js:36-38 does.
+	 * frappe/public/js/frappe/views/reports/link_side_panel.js:37-39 does.
 	 */
 	get_side_panel?: () => SidePanel;
 }
@@ -1126,7 +1128,7 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
  * `frappe/public/js` at v16.50.0 finds `frappe.client` only ever as a *string*
  * — the `method:` of a server call (`frappe/public/js/frappe/db.js:44,61,70,86,98,102`)
  * — and `frappe.auth` not at all; it is the dotted path of the whitelisted
- * Python function `get_logged_user` (`frappe/auth.py:450-452`). Those three
+ * Python function `get_logged_user` (`frappe/auth.py:451-453`). Those three
  * interfaces are the argument and response shapes of the **Python** endpoints,
  * and are used as type arguments to `frappe.xcall` / `fetch`, e.g.
  *

@@ -5,7 +5,7 @@
  * `frappe.router` slice of the Frappe desk JS API, plus the `frappe.ui.Page`
  * class and the theme switcher's `frappe.ui` members.
  *
- * Target: **Frappe v16.50.0** (`git tag v16.50.0`, branch `version-16`).
+ * Target: **Frappe v16.54.0** (`git tag v16.54.0`, branch `version-16`).
  *
  * Every signature below was read out of the shipped source; the citations are
  * `path/to/file.js:line` relative to `apps/frappe/`. When frappe's own code is
@@ -193,14 +193,17 @@ export type FrappeValidationType =
  * `frappe.utils.icon()`'s `size` argument.
  *
  * `utils/utils.js:1521-1526`: a string becomes the class `icon-${size}`
- * (frappe ships `icon-xs` … `icon-xl`); an object is inlined as
- * `width: ${size.width}; height: ${size.height}` in the `style` attribute, so
- * the two members are raw CSS lengths, not numbers-as-px.
+ * (frappe ships `icon-xs` … `icon-xl`, plus `icon-rail` — 22px, new at v16.54.0
+ * for module glyphs in dock tiles, `frappe/public/scss/common/icons.scss:65-68`,
+ * passed by `frappe/public/js/frappe/ui/sidebar/dock.js:358-359`); an object is
+ * inlined as `width: ${size.width}; height: ${size.height}` in the `style`
+ * attribute, so the two members are raw CSS lengths, not numbers-as-px.
  */
 export type FrappeIconSize =
 	| "xs"
 	| "sm"
 	| "md"
+	| "rail"
 	| "lg"
 	| "xl"
 	// eslint-disable-next-line @typescript-eslint/ban-types
@@ -284,7 +287,7 @@ export interface FrappeGenerateRouteItem {
  * Checks as `0 | 1`.
  *
  * `frappe.boot.desktop_icons` is **only put in the boot payload when the site's
- * Desktop Settings page is "Desktop Icons"** (`frappe/boot.py:265-270`,
+ * Desktop Settings page is "Desktop Icons"** (`frappe/boot.py:266-271`,
  * `is_desktop_icons_page()` in `desktop_settings.py:93-95`); on the default
  * Apps screen it is absent, and the `get_desktop_icon*` helpers below throw
  * on it. The `Desktop Icon` DocType itself is flagged `deprecated` in
@@ -367,9 +370,9 @@ export interface FrappeAppLogoSource {
  * where the base was computed), and every entry carries the `module` it belongs
  * to (`frappe/public/js/frappe/utils/utils.js:1393-1404`); `get_route_for_icon`
  * reads its `items` (`:1420`). The entry is assembled by `as_boot_entry()` in
- * `frappe/desk/doctype/sidebar/sidebar.py:1538-1559` (`name`, `module`, `label`,
+ * `frappe/desk/doctype/sidebar/sidebar.py:1545-1566` (`name`, `module`, `label`,
  * `app`, `header_icon`, `module_onboarding`, `customized`, `computed`,
- * `workspaces`, `items`) inside `get_module_sidebars()` (`frappe/boot.py:609-647`);
+ * `workspaces`, `items`) inside `get_module_sidebars()` (`frappe/boot.py:610-648`);
  * only the two members `frappe.utils` reads are declared, so `items` stays
  * `unknown` and the rest rides on the index signature.
  */
@@ -1319,7 +1322,7 @@ export interface FrappeUtils {
 	 * returns the same object (`event_emitter.js:31-34`).
 	 *
 	 * This is how `frappe.router` acquires `on`/`off`/`once`/`trigger`
-	 * (`router.js:1052`), so a static declaration has to model the router as
+	 * (`router.js:1103`), so a static declaration has to model the router as
 	 * already carrying them — see {@link FrappeRouter}.
 	 *
 	 * The mixin's members are `init`, `trigger`, `once`, `on`, `off` — there is
@@ -1363,7 +1366,7 @@ export interface FrappeEventEmitter {
 
 	/**
 	 * `event_emitter.js:10-13`. Fires `evt` with a single payload argument.
-	 * `frappe.router` fires `trigger("change", this)` (`router.js:182`), i.e.
+	 * `frappe.router` fires `trigger("change", this)` (`router.js:201`), i.e.
 	 * the payload is the router itself.
 	 */
 	trigger(evt: string, data?: unknown): void;
@@ -1553,7 +1556,7 @@ export interface FrappeDom {
 
 /**
  * The desk view slugs `frappe.router.list_views` ships with
- * (`frappe/public/js/frappe/router.js:81-92`).
+ * (`frappe/public/js/frappe/router.js:87-98`).
  */
 export type FrappeListViewSlug =
 	| "list"
@@ -1569,16 +1572,16 @@ export type FrappeListViewSlug =
 
 /**
  * The route "factories" — the first element of a standard route
- * (`frappe/public/js/frappe/router.js:80`). `frappe.views[<TitleCase>Factory]`
+ * (`frappe/public/js/frappe/router.js:86`). `frappe.views[<TitleCase>Factory]`
  * must exist for the router to dispatch to it
- * (`frappe/public/js/frappe/router.js:450`).
+ * (`frappe/public/js/frappe/router.js:469`).
  */
 export type FrappeFactoryView = "form" | "list" | "report" | "tree" | "print" | "dashboard";
 
 /**
  * What the first segment of a route names, as decided by
  * {@link FrappeRouterBase.segment_kind}
- * (`frappe/public/js/frappe/router.js:259-284`), in the order the desk tries them:
+ * (`frappe/public/js/frappe/router.js:278-303`), in the order the desk tries them:
  *
  * - `"workspace"` — a key of `frappe.workspaces`;
  * - `"private"` — the literal segment `private`;
@@ -1593,7 +1596,7 @@ export type FrappeRouteSegmentKind = "workspace" | "private" | "doctype" | "page
 /**
  * An entry of `frappe.router.routes` — built in `setup()` from
  * `frappe.boot.user.can_read` and `frappe.boot.doctype_layouts`
- * (`frappe/public/js/frappe/router.js:119-131`).
+ * (`frappe/public/js/frappe/router.js:125-137`).
  */
 export interface FrappeDoctypeRoute {
 	doctype: string;
@@ -1604,14 +1607,14 @@ export interface FrappeDoctypeRoute {
 /**
  * A standard route: the array form frappe passes around internally, e.g.
  * `["Form", "User", "user-001"]` or `["List", "ToDo", "Report"]`.
- * `frappe/public/js/frappe/router.js:194-203` documents the mapping from URL
+ * `frappe/public/js/frappe/router.js:213-222` documents the mapping from URL
  * paths. It never carries the shell segment: `parse` takes that off first.
  */
 export type FrappeStandardRoute = string[];
 
 /**
  * One of the user's own private workspaces, as `private_workspace()` finds it in
- * `frappe.boot.allowed_workspaces` (`frappe/public/js/frappe/router.js:295-306`).
+ * `frappe.boot.allowed_workspaces` (`frappe/public/js/frappe/router.js:314-325`).
  * Only the four members that function reads are declared; the rest of the boot
  * row rides on the index signature.
  */
@@ -1628,14 +1631,15 @@ export interface FrappeRouterPrivateWorkspace {
 
 /**
  * The `frappe.router` object literal —
- * `frappe/public/js/frappe/router.js:73-1025`.
+ * `frappe/public/js/frappe/router.js:73-1076`.
  *
- * Everything below is a member of that literal **except** the three
- * runtime-assigned fields (`current_sub_path`, `meta`, `doctype_layout`),
- * which are set during routing and therefore declared optional.
+ * Everything below is a member of that literal **except** the four
+ * runtime-assigned fields (`current_sub_path`, `meta`, `doctype_layout`,
+ * `module_slugs`), which are set during setup or routing and therefore declared
+ * optional.
  *
  * The emitter half (`on`/`off`/`once`/`trigger`/`init`/`jq`) is mixed in at
- * `frappe/public/js/frappe/router.js:1052` via
+ * `frappe/public/js/frappe/router.js:1103` via
  * `frappe.utils.make_event_emitter(frappe.router)`; see {@link FrappeRouter}.
  *
  * ### The shell segment
@@ -1646,14 +1650,15 @@ export interface FrappeRouterPrivateWorkspace {
  * off before building the standard route, so {@link FrappeRouterBase.current_route}
  * never contains it, and `route()` writes it back into the address bar with
  * `history.replaceState` when it is missing
- * ({@link FrappeRouterBase.write_shell_into_url}). {@link FrappeRouterBase.current_sub_path}
- * and `window.location` do contain it.
+ * ({@link FrappeRouterBase.write_shell_into_url}). `window.location` does contain
+ * it; {@link FrappeRouterBase.current_sub_path} does only while the route is
+ * being parsed.
  */
 export interface FrappeRouterBase {
 	/**
 	 * The current standard route, e.g. `["Form", "ToDo", "abc"]`.
 	 * `frappe/public/js/frappe/router.js:74` initialises it to `null`; `route()`
-	 * assigns it (`frappe/public/js/frappe/router.js:175`) before the first
+	 * assigns it (`frappe/public/js/frappe/router.js:193`) before the first
 	 * `"change"` event fires, so any `"change"` handler sees an array.
 	 */
 	current_route: FrappeStandardRoute | null;
@@ -1667,9 +1672,19 @@ export interface FrappeRouterBase {
 	 * {@link FrappeRouterBase.setup_shell_routes}). The slug is
 	 * {@link FrappeRouterBase.shell_slug}, **not** {@link FrappeRouterBase.slug}.
 	 * The `private` slug is deliberately removed from it
-	 * (`frappe/public/js/frappe/router.js:155`).
+	 * (`frappe/public/js/frappe/router.js:169`).
 	 */
 	shell_routes: Record<string, string | undefined>;
+
+	/**
+	 * Assigned by {@link FrappeRouterBase.setup_shell_routes}
+	 * (`frappe/public/js/frappe/router.js:152-156`): the
+	 * {@link FrappeRouterBase.shell_slug} of every module in
+	 * `frappe.boot.module_app` (underscores read as spaces), so that
+	 * {@link FrappeRouterBase.begins_with_shell} still reads a segment naming a
+	 * shell this user cannot see as a shell. Absent before `setup()`.
+	 */
+	module_slugs?: Set<string>;
 
 	/**
 	 * The shell the URL on screen names, or `null` when it names none
@@ -1678,44 +1693,61 @@ export interface FrappeRouterBase {
 	 * {@link FrappeRouterBase.write_shell_into_url} when it writes one, and to
 	 * `frappe.ui.PRIVATE_SHELL` (`"Private"`,
 	 * `frappe/public/js/frappe/ui/sidebar/sidebar.js:25`) when `/desk/private/<route>`
-	 * is read as the Private shell (`frappe/public/js/frappe/router.js:226`). A shell
-	 * is a string key of `frappe.boot.module_sidebars`.
+	 * is read as the Private shell (`frappe/public/js/frappe/router.js:245`). Cleared
+	 * by {@link FrappeRouterBase.drop_shell_from_url} and
+	 * {@link FrappeRouterBase.choose_shell_again}. A shell is a string key of
+	 * `frappe.boot.module_sidebars`.
 	 */
 	current_shell: string | null;
 
-	/** `frappe/public/js/frappe/router.js:80`. See {@link FrappeFactoryView}. */
+	/**
+	 * `frappe/public/js/frappe/router.js:85`. Whether the route being resolved was
+	 * asked for from outside the sidebar: `route()` copies
+	 * `frappe.route_flags.jump` into it before parsing
+	 * (`frappe/public/js/frappe/router.js:190`), and
+	 * {@link FrappeRouterBase.choose_shell_again} sets it. The awesomebar sets that
+	 * flag (`frappe/public/js/frappe/ui/toolbar/awesome_bar.js:248,543`). The
+	 * sidebar's `shell_for_route` then keeps the shell on screen only if it lists
+	 * the entity (`frappe/public/js/frappe/ui/sidebar/sidebar.js:906-913`).
+	 */
+	is_jump: boolean;
+
+	/** `frappe/public/js/frappe/router.js:86`. See {@link FrappeFactoryView}. */
 	factory_views: string[];
 
-	/** `frappe/public/js/frappe/router.js:81-92`. See {@link FrappeListViewSlug}. */
+	/** `frappe/public/js/frappe/router.js:87-98`. See {@link FrappeListViewSlug}. */
 	list_views: string[];
 
 	/**
-	 * `frappe/public/js/frappe/router.js:93-106`. Slug → title-cased view name. Note
+	 * `frappe/public/js/frappe/router.js:99-112`. Slug → title-cased view name. Note
 	 * it carries two keys that are **not** in `list_views`: `file` and `home` (both
 	 * → `"Home"`). Lookups are unchecked
-	 * (`frappe/public/js/frappe/router.js:372,391,420`), so an unknown slug yields
+	 * (`frappe/public/js/frappe/router.js:391,410,439`), so an unknown slug yields
 	 * `undefined` and lands in the route array as such.
 	 */
 	list_views_route: Record<string, string | undefined>;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:107`. Reserved: always `{}`, and nothing
+	 * `frappe/public/js/frappe/router.js:113`. Reserved: always `{}`, and nothing
 	 * under `frappe/public/js` reads it.
 	 */
 	layout_mapped: Record<string, unknown>;
 
 	/**
-	 * Assigned by `route()` at `frappe/public/js/frappe/router.js:174`: the URL path
-	 * after `/desk/` as it stood when the route started (query string excluded,
-	 * segments decoded), **shell segment included** when the URL carried one — so
-	 * `""` is the desk landing. It is read before `write_shell_into_url` may
-	 * rewrite the address bar, so it can lag the URL by one shell segment. Absent
-	 * before the first route.
+	 * Assigned twice by `route()`. First at `frappe/public/js/frappe/router.js:192`:
+	 * the URL path after `/desk/` as it stood when the route started (query string
+	 * excluded, segments decoded), **shell segment included** when the URL carried
+	 * one. Then, once `write_shell_into_url` has run,
+	 * at `frappe/public/js/frappe/router.js:196`: the path on screen **without** its
+	 * shell segment ({@link FrappeRouterBase.path_on_screen}), decoded the same
+	 * way — so a settled router holds the shell-less path, and `""` is the desk
+	 * landing. 16.50 kept only the first value, which could lag the URL by one
+	 * shell segment. Absent before the first route.
 	 */
 	current_sub_path?: string;
 
 	/**
-	 * Assigned by `set_doctype_route()` at `frappe/public/js/frappe/router.js:346`
+	 * Assigned by `set_doctype_route()` at `frappe/public/js/frappe/router.js:365`
 	 * from `frappe.get_meta(doctype)`.
 	 *
 	 * Left `unknown` on purpose: the DocType meta shape is owned by the
@@ -1725,49 +1757,52 @@ export interface FrappeRouterBase {
 	meta?: unknown;
 
 	/**
-	 * Assigned by `set_doctype_route()` at `frappe/public/js/frappe/router.js:379`
+	 * Assigned by `set_doctype_route()` at `frappe/public/js/frappe/router.js:398`
 	 * (`undefined` for plain doctypes) and **reset to `null`** by
 	 * `convert_to_standard_route` for every route that is not a doctype route
-	 * (`frappe/public/js/frappe/router.js:245`), so stale layouts do not leak into
+	 * (`frappe/public/js/frappe/router.js:264`), so stale layouts do not leak into
 	 * workspace and page routes.
 	 */
 	doctype_layout?: string | null;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:109-117`. `true` when the path's first segment is `desk`.
+	 * `frappe/public/js/frappe/router.js:115-123`. `true` when the path's first segment is `desk`.
 	 * Returns **`undefined`** for an empty path and for a path whose first
 	 * segment is empty — it is not a total predicate.
 	 */
 	is_app_route(path: string | null | undefined): boolean | undefined;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:119-133`. Builds `routes` from boot info,
+	 * `frappe/public/js/frappe/router.js:125-139`. Builds `routes` from boot info,
 	 * then calls {@link FrappeRouterBase.setup_shell_routes}.
 	 */
 	setup(): void;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:138-156`. Rebuilds {@link FrappeRouterBase.shell_routes}
+	 * `frappe/public/js/frappe/router.js:144-170`. Rebuilds {@link FrappeRouterBase.shell_routes}
 	 * from the keys of `frappe.boot.module_sidebars` (`{}` when the boot carries
-	 * none) and removes the `private` slug from it, because `private` is also the
+	 * none), builds {@link FrappeRouterBase.module_slugs}, and removes the `private`
+	 * slug from `shell_routes`, because `private` is also the
 	 * word that marks one of the user's own pages and the two meanings are told
 	 * apart by position.
 	 */
 	setup_shell_routes(): void;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:158-183`. Resolves the URL, renders the
+	 * `frappe/public/js/frappe/router.js:172-202`. Resolves the URL, renders the
 	 * page, sets the title and finally fires `trigger("change", this)`. In order:
-	 * parse (which sets `current_route` and `current_shell`),
+	 * copy `frappe.route_flags.jump` into {@link FrappeRouterBase.is_jump}, parse
+	 * (which sets `current_route` and `current_shell`),
 	 * {@link FrappeRouterBase.respell_private_workspace},
-	 * {@link FrappeRouterBase.write_shell_into_url}, `set_history`, `render`,
+	 * {@link FrappeRouterBase.write_shell_into_url}, re-assign
+	 * {@link FrappeRouterBase.current_sub_path}, `set_history`, `render`,
 	 * `set_title`, then `"change"`. Resolves to `undefined` without doing anything
 	 * when `frappe.app` does not exist yet, or after a `re_route`.
 	 */
 	route(): Promise<void>;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:185-192`. URL (or `route`) → standard
+	 * `frappe/public/js/frappe/router.js:204-211`. URL (or `route`) → standard
 	 * route. Takes the shell off the front
 	 * ({@link FrappeRouterBase.take_shell_from}) and loads
 	 * `frappe.route_options` from the query string before converting.
@@ -1775,7 +1810,7 @@ export interface FrappeRouterBase {
 	parse(route?: string): Promise<FrappeStandardRoute>;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:194-248`. Dispatches on
+	 * `frappe/public/js/frappe/router.js:213-267`. Dispatches on
 	 * {@link FrappeRouterBase.segment_kind} of the first segment: a workspace
 	 * becomes `["Workspaces", <name>]`; `private` becomes `["Workspaces", "private"]`
 	 * or `["Workspaces", "private", <name>]` (or, when the second segment is not one
@@ -1788,7 +1823,7 @@ export interface FrappeRouterBase {
 	convert_to_standard_route(route: string[]): Promise<FrappeStandardRoute>;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:259-284`. What the first segment of a route
+	 * `frappe/public/js/frappe/router.js:278-303`. What the first segment of a route
 	 * names, or `null` when the desk has never heard of it (also `null` for a falsy
 	 * segment). One list, in the order the desk resolves — workspace first, because
 	 * a workspace slug and a doctype slug collide and the workspace has always won.
@@ -1798,7 +1833,7 @@ export interface FrappeRouterBase {
 	segment_kind(segment: string | null | undefined): FrappeRouteSegmentKind | null;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:295-306`. One of this user's own private
+	 * `frappe/public/js/frappe/router.js:314-325`. One of this user's own private
 	 * pages named by the segment that follows `private` in a URL: matched by title
 	 * slug first, then by the full `<title>-<user>` name slug (the old spelling).
 	 * `null` when there is none. Slugs here are {@link FrappeRouterBase.slug}.
@@ -1806,23 +1841,23 @@ export interface FrappeRouterBase {
 	private_workspace(segment: string): FrappeRouterPrivateWorkspace | null;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:313-333`. When the route is a private
+	 * `frappe/public/js/frappe/router.js:332-352`. When the route is a private
 	 * workspace and the address bar spells its page by the old full name, replaces
 	 * that segment with the title slug via `history.replaceState`. Touches only the
 	 * page segment, never a shell in front of it.
 	 */
 	respell_private_workspace(): void;
 
-	/** `frappe/public/js/frappe/router.js:335-338`. */
+	/** `frappe/public/js/frappe/router.js:354-357`. */
 	doctype_route_exist(route: string): FrappeDoctypeRoute | undefined;
 
-	/** `frappe/public/js/frappe/router.js:340-382`. Loads the doctype meta, then picks Form/List/Tree. */
+	/** `frappe/public/js/frappe/router.js:359-401`. Loads the doctype meta, then picks Form/List/Tree. */
 	set_doctype_route(route: string[]): Promise<FrappeStandardRoute>;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:384-428`. May **re-route** as a side effect when
+	 * `frappe/public/js/frappe/router.js:403-447`. May **re-route** as a side effect when
 	 * `force_re_route_to_default_view` disagrees with the URL
-	 * (`frappe/public/js/frappe/router.js:411-415`).
+	 * (`frappe/public/js/frappe/router.js:430-434`).
 	 */
 	get_standard_route_for_list(
 		route: string[],
@@ -1831,31 +1866,31 @@ export interface FrappeRouterBase {
 	): FrappeStandardRoute;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:430-433`. Pushes `current_route` onto
+	 * `frappe/public/js/frappe/router.js:449-452`. Pushes `current_route` onto
 	 * `frappe.route_history` and closes any open dialog. Declared with no parameters:
 	 * `route()` calls it as `this.set_history(sub_path)`
-	 * (`frappe/public/js/frappe/router.js:179`) but the implementation ignores the argument.
+	 * (`frappe/public/js/frappe/router.js:198`) but the implementation ignores the argument.
 	 */
 	set_history(): void;
 
-	/** `frappe/public/js/frappe/router.js:435-442`. */
+	/** `frappe/public/js/frappe/router.js:454-461`. */
 	render(): void;
 
-	/** `frappe/public/js/frappe/router.js:444-465`. Instantiates `frappe.views.<X>Factory` and shows it. */
+	/** `frappe/public/js/frappe/router.js:463-484`. Instantiates `frappe.views.<X>Factory` and shows it. */
 	render_page(): void;
 
-	/** `frappe/public/js/frappe/router.js:467-484`. `true` when a re-route was performed, else `undefined`. */
+	/** `frappe/public/js/frappe/router.js:486-503`. `true` when a re-route was performed, else `undefined`. */
 	re_route(sub_path: string): true | undefined;
 
-	/** `frappe/public/js/frappe/router.js:486-490`. Restores a remembered title for `sub_path`. */
+	/** `frappe/public/js/frappe/router.js:505-509`. Restores a remembered title for `sub_path`. */
 	set_title(sub_path: string): void;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:492-536`. Push-state navigation. Accepts
+	 * `frappe/public/js/frappe/router.js:511-555`. Push-state navigation. Accepts
 	 * `set_route("a","b","c")`, `set_route(["a","b","c"])` or
-	 * `set_route("a/b/c")` (`frappe/public/js/frappe/router.js:494-497,555-570`); a
+	 * `set_route("a/b/c")` (`frappe/public/js/frappe/router.js:513-516,574-589`); a
 	 * plain-object argument becomes `frappe.route_options`
-	 * (`frappe/public/js/frappe/router.js:659-667`). A leading `desk`/`app`
+	 * (`frappe/public/js/frappe/router.js:678-686`). A leading `desk`/`app`
 	 * segment is dropped, and so is a leading **shell** segment — except that a
 	 * route naming a shell other than the one on screen is a move into that shell and
 	 * keeps it ({@link FrappeRouterBase.keep_shell_moved_into}). `frappe.route_hash`
@@ -1863,7 +1898,7 @@ export interface FrappeRouterBase {
 	 * instead (with the route options stashed in `localStorage["route_options"]`).
 	 *
 	 * Resolves ~100 ms later, after `frappe.after_ajax` drains
-	 * (`frappe/public/js/frappe/router.js:529-535`); `frappe.route_flags` is reset to
+	 * (`frappe/public/js/frappe/router.js:548-554`); `frappe.route_flags` is reset to
 	 * `{}` when it settles.
 	 */
 	set_route(route: readonly (string | number | Record<string, unknown>)[]): Promise<void>;
@@ -1871,7 +1906,7 @@ export interface FrappeRouterBase {
 	set_route(...route: (string | number | Record<string, unknown>)[]): Promise<void>;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:543-548`. For a route that named a shell
+	 * `frappe/public/js/frappe/router.js:562-567`. For a route that named a shell
 	 * (taken off by {@link FrappeRouterBase.read_route_arguments}): `path` unchanged
 	 * when there is no shell, when it is the shell on screen
 	 * ({@link FrappeRouterBase.current_shell}) or when it is the sidebar's
@@ -1881,14 +1916,14 @@ export interface FrappeRouterBase {
 	keep_shell_moved_into(path: string, shell: string | null | undefined): string;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:550-552`. The route part of
+	 * `frappe/public/js/frappe/router.js:569-571`. The route part of
 	 * {@link FrappeRouterBase.read_route_arguments}: normalises the `arguments` array of
 	 * `set_route` and drops a leading shell. Elements may be plain objects (route options).
 	 */
 	get_route_from_arguments(route: unknown[]): (string | Record<string, unknown>)[];
 
 	/**
-	 * `frappe/public/js/frappe/router.js:555-609`. Normalises the `arguments` of
+	 * `frappe/public/js/frappe/router.js:574-628`. Normalises the `arguments` of
 	 * `set_route` (`[[...]]`, `["a/b?x=1"]` — whose query string is merged into
 	 * `frappe.route_options` — or a flat list), drops a leading `""`, `desk` or `app`,
 	 * and takes a leading shell off the route **without adopting it**, handing it back
@@ -1900,14 +1935,14 @@ export interface FrappeRouterBase {
 		shell: string | null;
 	};
 
-	/** `frappe/public/js/frappe/router.js:611-641`. Standard route → URL segments. */
+	/** `frappe/public/js/frappe/router.js:630-660`. Standard route → URL segments. */
 	convert_from_standard_route(route: readonly (string | Record<string, unknown>)[]): string[];
 
-	/** `frappe/public/js/frappe/router.js:643-652`. Lower-cases a factory view and slugs the doctype. */
+	/** `frappe/public/js/frappe/router.js:662-671`. Lower-cases a factory view and slugs the doctype. */
 	slug_parts(route: string[]): string[];
 
 	/**
-	 * `frappe/public/js/frappe/router.js:659-684`. Joins encoded segments into
+	 * `frappe/public/js/frappe/router.js:678-703`. Joins encoded segments into
 	 * `/desk/<path>`. A plain-object member is consumed as `frappe.route_options` and
 	 * dropped from the path. Always returns `"/desk"` when nothing is left. It
 	 * writes **no shell**: `write_shell_into_url` adds it once the route is parsed,
@@ -1917,45 +1952,56 @@ export interface FrappeRouterBase {
 	make_url(params: readonly (string | number | Record<string, unknown>)[]): string;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:694-703`. `history.pushState`/`replaceState`
-	 * (chosen by `frappe.route_flags.replace_route`) followed by `route()`. No-ops
-	 * when {@link FrappeRouterBase.path_on_screen} equals `path` and
-	 * `window.location.search` equals `query_params`.
+	 * `frappe/public/js/frappe/router.js:713-724`. `history.pushState`/`replaceState`
+	 * (chosen by `frappe.route_flags.replace_route`) followed by `route()`. When
+	 * {@link FrappeRouterBase.path_on_screen} equals `path` and
+	 * `window.location.search` equals `query_params` it no-ops, unless
+	 * `frappe.route_flags.jump` is set: then
+	 * {@link FrappeRouterBase.choose_shell_again}.
 	 */
 	push_state(path: string, query_params?: string): void;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:720-727`. The path on screen spelled the way
+	 * `frappe/public/js/frappe/router.js:732-738`. A jump to the route already on
+	 * screen: replaces the address bar with `url` (keeping the hash), clears
+	 * {@link FrappeRouterBase.current_shell}, sets {@link FrappeRouterBase.is_jump},
+	 * re-runs {@link FrappeRouterBase.write_shell_into_url} and fires `"change"`,
+	 * without re-rendering. `url` is a shell-less `/desk/...` path plus query string.
+	 */
+	choose_shell_again(url: string): void;
+
+	/**
+	 * `frappe/public/js/frappe/router.js:755-762`. The path on screen spelled the way
 	 * `make_url` would have spelled it: `window.location.pathname`, minus the shell
 	 * segment when {@link FrappeRouterBase.current_shell} is set. Lets `push_state`
 	 * tell "somewhere else" from "here, with the shell the router wrote".
 	 */
 	path_on_screen(): string;
 
-	/** `frappe/public/js/frappe/router.js:729-736`. Defaults to `window.location.pathname`. */
+	/** `frappe/public/js/frappe/router.js:764-771`. Defaults to `window.location.pathname`. */
 	get_sub_path_string(route?: string): string;
 
-	/** `frappe/public/js/frappe/router.js:738-746`. Removes a leading `/`, `desk/`, `#` or `!`. */
+	/** `frappe/public/js/frappe/router.js:773-781`. Removes a leading `/`, `desk/`, `#` or `!`. */
 	strip_prefix(route: string): string;
 
-	/** `frappe/public/js/frappe/router.js:748-753`. `strip_prefix` + per-segment `decodeURIComponent`. */
+	/** `frappe/public/js/frappe/router.js:783-788`. `strip_prefix` + per-segment `decodeURIComponent`. */
 	get_sub_path(route?: string): string;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:755-772`. Merges `location.search` (and a stashed
+	 * `frappe/public/js/frappe/router.js:790-807`. Merges `location.search` (and a stashed
 	 * `localStorage["route_options"]`, which it consumes) into
 	 * `frappe.route_options`.
 	 */
 	set_route_options_from_url(): void;
 
-	/** `frappe/public/js/frappe/router.js:774-785`. `decodeURIComponent` that swallows `URIError`. */
+	/** `frappe/public/js/frappe/router.js:809-820`. `decodeURIComponent` that swallows `URIError`. */
 	decode_component(r: string): string;
 
-	/** `frappe/public/js/frappe/router.js:787-789`. `name.toLowerCase().replace(/ /g, "-")`. Throws on a nullish name. */
+	/** `frappe/public/js/frappe/router.js:822-824`. `name.toLowerCase().replace(/ /g, "-")`. Throws on a nullish name. */
 	slug(name: string): string;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:800-802`. How a **shell** reaches a URL:
+	 * `frappe/public/js/frappe/router.js:835-837`. How a **shell** reaches a URL:
 	 * lower-cased, `&` spelled `" and "`, trimmed, whitespace runs → `-` — so
 	 * `Shift & Attendance` is `shift-and-attendance`. Deliberately not reversible: a
 	 * segment is turned back into a shell by looking it up in
@@ -1965,18 +2011,23 @@ export interface FrappeRouterBase {
 	shell_slug(name: string): string;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:824-832`. Takes a leading shell off a route
+	 * `frappe/public/js/frappe/router.js:859-870`. Takes a leading shell off a route
 	 * and remembers it in {@link FrappeRouterBase.current_shell}; with no leading
-	 * shell it sets `current_shell` to `null` and returns `route` itself. The rule is
+	 * shell it sets `current_shell` to `null` and returns `route` itself. A leading
+	 * shell this user cannot see (a {@link FrappeRouterBase.module_slugs} entry with
+	 * no {@link FrappeRouterBase.shell_routes} key) is still taken off, but
+	 * `current_shell` stays `null` and {@link FrappeRouterBase.drop_shell_from_url}
+	 * removes it from the address bar. The rule is
 	 * {@link FrappeRouterBase.begins_with_shell}: `/desk/stock/item` is the Item list
 	 * in the Stock shell, `/desk/item/ITEM-0001` is a form.
 	 */
 	take_shell_from(route: string[]): string[];
 
 	/**
-	 * `frappe/public/js/frappe/router.js:837-841`. Whether `route` begins with a
+	 * `frappe/public/js/frappe/router.js:875-880`. Whether `route` begins with a
 	 * shell segment that may be taken off its front: more than one segment, the
-	 * first is a key of {@link FrappeRouterBase.shell_routes}, its own
+	 * first is a key of {@link FrappeRouterBase.shell_routes} or in
+	 * {@link FrappeRouterBase.module_slugs}, its own
 	 * {@link FrappeRouterBase.segment_kind} is not `"doctype"` (a shell whose slug is
 	 * also a doctype slug is never taken off; a workspace of that slug does not
 	 * block it), and the second segment names something routable
@@ -1986,36 +2037,44 @@ export interface FrappeRouterBase {
 	begins_with_shell(route: readonly string[]): boolean;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:848-850`. The shell a URL for `route` should
+	 * `frappe/public/js/frappe/router.js:887-889`. The shell a URL for `route` should
 	 * name: delegates to `frappe.app.sidebar.shell_for_route(route)`
-	 * (`frappe/public/js/frappe/ui/sidebar/sidebar.js:863`), and answers `null`
+	 * (`frappe/public/js/frappe/ui/sidebar/sidebar.js:883`), and answers `null`
 	 * before there is a sidebar to ask — the first route of a cold load, or a site
 	 * whose setup is not complete.
 	 */
 	shell_for_route(route: readonly string[]): string | null;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:868-914`. Puts the shell into the address
+	 * `frappe/public/js/frappe/router.js:907-953`. Puts the shell into the address
 	 * bar when it is missing or names one that cannot show the route:
 	 * `/desk/item` becomes `/desk/stock/item`. `history.replaceState`, never
 	 * `set_route`, so it pushes no history entry and cannot loop. No segment is
 	 * added when the route already begins with its own shell's slug
 	 * (`/desk/build` is the Build workspace in the Build shell) or when the shell's
 	 * slug is also a doctype slug (the URL would be read back as the doctype)
-	 * (`:895-902`); a stale shell already in the URL is still removed, and
-	 * `current_shell` becomes `null` (`:875-877,908`). The URL's query string and
+	 * (`:934-941`); a stale shell already in the URL is still removed, and
+	 * `current_shell` becomes `null` (`:914-916,947`). The URL's query string and
 	 * hash are kept.
 	 */
 	write_shell_into_url(): void;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:918-920`. `!!segment_kind(segment)`: whether a
+	 * `frappe/public/js/frappe/router.js:957-965`. Drops the first segment after
+	 * `/desk/` from the address bar with `history.replaceState` (query string and
+	 * hash kept) and sets {@link FrappeRouterBase.current_shell} to `null`. Called
+	 * by {@link FrappeRouterBase.take_shell_from} for a shell this user cannot see.
+	 */
+	drop_shell_from_url(): void;
+
+	/**
+	 * `frappe/public/js/frappe/router.js:969-971`. `!!segment_kind(segment)`: whether a
 	 * segment names something the desk can route to on its own.
 	 */
 	route_names_something(segment: string | null | undefined): boolean;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:922-1024`. Shows the "external link" confirmation dialog when
+	 * `frappe/public/js/frappe/router.js:973-1075`. Shows the "external link" confirmation dialog when
 	 * `frappe.boot.show_external_link_warning` is `"Ask"`/`"Always"`.
 	 * Returns `true` when the click should be cancelled. Never throws — the
 	 * whole body is wrapped in a try/catch that returns `false`.
@@ -2025,10 +2084,11 @@ export interface FrappeRouterBase {
 
 /**
  * `frappe.router` as it actually exists at runtime: the literal plus the
- * event-emitter mixin applied at `frappe/public/js/frappe/router.js:1052`.
+ * event-emitter mixin applied at `frappe/public/js/frappe/router.js:1103`.
  *
  * The only event frappe itself fires is `"change"`, from `route()`
- * (`frappe/public/js/frappe/router.js:182`), with the router as the payload.
+ * (`frappe/public/js/frappe/router.js:201`) and from `choose_shell_again()`
+ * (`frappe/public/js/frappe/router.js:737`), with the router as the payload.
  *
  * Declared with **non-optional** `on`, deliberately: carbon_frappe guards its
  * subscriptions with `typeof frappe.router.on === "function"`
@@ -3514,7 +3574,7 @@ export interface CarbonTableAdapterSeams<Host = unknown, Row = unknown, Column =
  * - `link[rel=stylesheet]` — filtered on `desk.bundle` + `.css` and
  *   `/assets/carbon_frappe/` for the assets.json shadowing guard
  *   (`scripts/tables/cdp.ts:466-472`).
- * - `.onboarding-widget-box` (`frappe/public/js/frappe/widgets/onboarding_widget.js:466`),
+ * - `.onboarding-widget-box` (`frappe/public/js/frappe/widgets/onboarding_widget.js:489`),
  *   `.widget-group` (`frappe/public/js/frappe/widgets/widget_group.js:53`),
  *   `[data-widget-name]` (`frappe/public/js/frappe/widgets/base_widget.js:77`) — ERPNext
  *   onboarding panels, hidden so they cannot intercept `elementFromPoint`
@@ -3567,17 +3627,17 @@ export interface FrappeUtilsDomRouterGlobals {
 	dom: FrappeDom;
 	router: FrappeRouter;
 
-	// -- the router's "global functions for backward compatibility" (`frappe/public/js/frappe/router.js:1027-1040`)
+	// -- the router's "global functions for backward compatibility" (`frappe/public/js/frappe/router.js:1078-1091`)
 
-	/** `frappe/public/js/frappe/router.js:1028` — `frappe.router.current_route`. */
+	/** `frappe/public/js/frappe/router.js:1079` — `frappe.router.current_route`. */
 	get_route(): FrappeStandardRoute | null;
-	/** `frappe/public/js/frappe/router.js:1029` — `current_route.join("/")`. Throws before the first route, when `current_route` is still `null`. */
+	/** `frappe/public/js/frappe/router.js:1080` — `current_route.join("/")`. Throws before the first route, when `current_route` is still `null`. */
 	get_route_str(): string;
 	/**
-	 * `frappe/public/js/frappe/router.js:1030-1032` — `frappe.router.set_route`, with `arguments` passed
+	 * `frappe/public/js/frappe/router.js:1081-1083` — `frappe.router.set_route`, with `arguments` passed
 	 * through untouched; see {@link FrappeRouterBase.set_route} for the forms.
 	 */
 	set_route: FrappeRouterBase["set_route"];
-	/** `frappe/public/js/frappe/router.js:1034-1040` — the route before the current one, or `[]`. */
+	/** `frappe/public/js/frappe/router.js:1085-1091` — the route before the current one, or `[]`. */
 	get_prev_route(): FrappeStandardRoute | [];
 }

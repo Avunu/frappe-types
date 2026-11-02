@@ -102,7 +102,7 @@ jobs:
     # `defaultBranch` pointed at something that is not a release line is not a thing that
     # should be one click away.
     if: ${{ inputs.publish_sha == '' && startsWith(github.ref_name, 'version-') }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || fromJSON('["self-hosted","nixos"]') }}
     outputs:
       releases_created: ${{ steps.rp.outputs.releases_created }}
       # The commit the release tag points at — the merge of the release pull request.
@@ -152,7 +152,7 @@ jobs:
     # successful release-please run and rediscovering the pull request by label instead
     # means the verdict is re-asserted, and re-posted to the PR, every time.
     if: ${{ always() && needs.release-please.result == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || fromJSON('["self-hosted","nixos"]') }}
     permissions:
       contents: read
       pull-requests: read

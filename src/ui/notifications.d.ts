@@ -2,9 +2,10 @@
  * `frappe.ui.Notifications` — the desk's notification bell, and the panel (or
  * popover) it opens.
  *
- * Source of truth: frappe v16.50.0,
+ * Source of truth: frappe v16.54.0,
  * `frappe/public/js/frappe/ui/notifications/notifications.js`. Every declaration
- * and every citation below was re-read against the 16.50.0 release; the version
+ * and every citation below was re-read against the 16.50.0 release, and again
+ * against 16.54.0 wherever frappe changed the cited lines; the version
  * named above is moved by `scripts/remap-citations.mjs --stamp`, not by hand.
  * Citations are spelled with their full path so `scripts/audit-drift.mjs` can
  * check them.
@@ -18,16 +19,16 @@
  *
  * - the **sidebar** host — the default. `Sidebar.setup_notifications` calls
  *   `new frappe.ui.Notifications()` with no options
- *   (frappe/public/js/frappe/ui/sidebar/sidebar.js:669-673), so `wrapper` is
+ *   (frappe/public/js/frappe/ui/sidebar/sidebar.js:671-675), so `wrapper` is
  *   `$(".body-sidebar")` and the bell is the "Notification" row of the
  *   standard-items band, whose click runs
  *   `frappe.ui.sidebar_panels.toggle("notifications")`
- *   (frappe/public/js/frappe/ui/sidebar/sidebar.js:652-660). The body lives in a
+ *   (frappe/public/js/frappe/ui/sidebar/sidebar.js:654-662). The body lives in a
  *   `frappe.ui.SidebarPanel` named `notifications`
  *   (frappe/public/js/frappe/ui/notifications/notifications.js:35-46), so
  *   dismissal (outside click, `Escape`, page change) is the panel registry's job;
  * - the **desk** host — `{ popover: true, wrapper }`, used by the desktop screen
- *   (frappe/desk/page/desktop/desktop.js:232-237). There is only a bell, so the
+ *   (frappe/desk/page/desktop/desktop.js:231-236). There is only a bell, so the
  *   body is handed to a `frappe.ui.Popover`
  *   (frappe/public/js/frappe/ui/notifications/notifications.js:52-78).
  *
@@ -45,11 +46,11 @@
  * `NotificationsView.update_count_badge()` no longer resolves the badge relative
  * to `.body-sidebar`: it queries `$(".notification-count")` **document-wide, on
  * every call**, and writes into whatever it finds
- * (frappe/public/js/frappe/ui/notifications/notifications.js:423-439). The
+ * (frappe/public/js/frappe/ui/notifications/notifications.js:422-438). The
  * sidebar's Notification row, the dock's bell and the desktop navbar each carry
  * such an element. A theme that rebuilds those rows must keep an element with
  * that class somewhere, or the count is stored but never shown — the call
- * returns silently when the lookup is empty (frappe/public/js/frappe/ui/notifications/notifications.js:429), after `unread_count` has
+ * returns silently when the lookup is empty (frappe/public/js/frappe/ui/notifications/notifications.js:428), after `unread_count` has
  * been updated.
  */
 
@@ -68,7 +69,7 @@ export interface FrappeNotificationsTab {
 	 * `wrapper` for the popover host.
 	 */
 	parent: JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/ui/notifications/notifications.js:251 — `frappe.boot.notification_settings`, the same object for every view; `NotificationsView` writes `seen` into it (frappe/public/js/frappe/ui/notifications/notifications.js:453,459,481). */
+	/** frappe/public/js/frappe/ui/notifications/notifications.js:251 — `frappe.boot.notification_settings`, the same object for every view; `NotificationsView` writes `seen` into it (frappe/public/js/frappe/ui/notifications/notifications.js:452,458,480). */
 	settings: Record<string, unknown>;
 	/** frappe/public/js/frappe/ui/notifications/notifications.js:252 — `20`. */
 	max_length: number;
@@ -84,7 +85,7 @@ export interface FrappeNotificationsTab {
 
 /**
  * The `"notifications"` tab ("All") — `NotificationsView`,
- * frappe/public/js/frappe/ui/notifications/notifications.js:269-487. Reachable
+ * frappe/public/js/frappe/ui/notifications/notifications.js:269-486. Reachable
  * only as `frappe.ui.Notifications#tabs.notifications`.
  */
 export interface FrappeNotificationsView extends FrappeNotificationsTab {
@@ -95,19 +96,19 @@ export interface FrappeNotificationsView extends FrappeNotificationsTab {
 	 * is not the badge.
 	 */
 	notifications_icon: JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/ui/notifications/notifications.js:278,424 — seeded from `frappe.boot.notification_unread_count`. */
+	/** frappe/public/js/frappe/ui/notifications/notifications.js:278,423 — seeded from `frappe.boot.notification_unread_count`, which `frappe/sessions.py:167-169` counts afresh on every page load (it was cached with the rest of the bootinfo before v16.54.0). */
 	unread_count: number;
-	/** frappe/public/js/frappe/ui/notifications/notifications.js:474 — set after the first fetch on open; absent until then. */
+	/** frappe/public/js/frappe/ui/notifications/notifications.js:473 — set after the first fetch on open; absent until then. */
 	notifications_fetched?: boolean;
 	/**
-	 * frappe/public/js/frappe/ui/notifications/notifications.js:423-439. Stores
-	 * `count` (frappe/public/js/frappe/ui/notifications/notifications.js:424), then writes it (`"99+"` past 99) into **every**
+	 * frappe/public/js/frappe/ui/notifications/notifications.js:422-438. Stores
+	 * `count` (frappe/public/js/frappe/ui/notifications/notifications.js:423), then writes it (`"99+"` past 99) into **every**
 	 * `.notification-count` in the document — see the class note. Re-queried on
 	 * each call, so it also covers bells created after this view. A no-op for the
-	 * display when none exists (frappe/public/js/frappe/ui/notifications/notifications.js:429).
+	 * display when none exists (frappe/public/js/frappe/ui/notifications/notifications.js:428).
 	 */
 	update_count_badge(count: number): void;
-	/** frappe/public/js/frappe/ui/notifications/notifications.js:441-449 — persists `Notification Settings.seen` server-side; `cint(flag)` is what is sent. */
+	/** frappe/public/js/frappe/ui/notifications/notifications.js:440-448 — persists `Notification Settings.seen` server-side; `cint(flag)` is what is sent. */
 	toggle_seen(flag: boolean | number): void;
 }
 
