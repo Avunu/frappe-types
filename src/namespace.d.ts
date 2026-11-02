@@ -26,7 +26,7 @@
  * is the type of an instance of the class at `frappe.ui.form.Form`
  * (`frappe/public/js/frappe/form/form.js:64`), `frappe.views.QueryReport` of
  * the one at `frappe.views.QueryReport`
- * (`frappe/public/js/frappe/views/reports/query_report.js:30`) — plus a few
+ * (`frappe/public/js/frappe/views/reports/query_report.js:32`) — plus a few
  * names that exist only as types (`FormEvents`, `ListViewSettings`, `Doc`),
  * placed where a script author would look for them. Every alias points at a
  * named export of the module entry; the declarations, and their citations, are
@@ -127,7 +127,7 @@ declare global {
 				type QuickEntryForm = QuickEntryFormClass;
 				/** The `after_insert` callback of a quick entry dialog. */
 				type QuickEntryAfterInsert = QuickEntryAfterInsertType;
-				/** `frappe.ui.form.PrintView` — `frappe/printing/page/print/print.js:34`. */
+				/** `frappe.ui.form.PrintView` — `frappe/printing/page/print/print.js:38`. */
 				type PrintView = PrintViewClass;
 				/** What `PrintView#show` prints: a form, or the print page's stand-in for one. */
 				type PrintViewTarget = PrintViewTargetShape;
@@ -148,13 +148,13 @@ declare global {
 			type ListViewSelect = ListViewSelectClass;
 			/** An entry of `frappe.pages`: a routed page's element, where a page script assigns `on_page_load`. */
 			type PageWrapper = PageWrapperShape;
-			/** `frappe.views.QueryReport` — `frappe/public/js/frappe/views/reports/query_report.js:30`. */
+			/** `frappe.views.QueryReport` — `frappe/public/js/frappe/views/reports/query_report.js:32`. */
 			type QueryReport = QueryReportClass;
 			/** `frappe.query_reports[report_name]` — what a query report's `<report>.js` assigns. */
 			type QueryReportSettings = QueryReportSettingsShape;
 			/** A prepared query report column, as `formatter` receives it. */
 			type QueryReportColumn = QueryReportColumnShape;
-			/** One filter control of a query report, as `frappe.query_report.get_filter(...)` returns it (`frappe/public/js/frappe/views/reports/query_report.js:1599-1605`). */
+			/** One filter control of a query report, as `frappe.query_report.get_filter(...)` returns it (`frappe/public/js/frappe/views/reports/query_report.js:1610-1616`). */
 			type QueryReportFilter = QueryReportFilterControlShape;
 		}
 	}

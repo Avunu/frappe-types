@@ -27,6 +27,90 @@ What changed in frappe, in the places this typeset depends on, between the tag i
 
 <!-- NEW SECTIONS GO DIRECTLY BELOW THIS LINE, newest first -->
 
+## v16.50.0 -> v16.54.0
+
+- Baseline: `v16.50.0` (commit f20f92d297, 2026-10-06), read from git.
+- Audited: `v16.54.0` (commit 2fcb9397a1, 2026-10-27), read from git.
+- 1014 commits in `v16.50.0..v16.54.0`.
+- Produced by `node scripts/audit-drift.mjs --at v16.54.0 --from v16.50.0 --report md`.
+
+### Surface changes
+
+#### scss.bundles: each `*.bundle.scss` entry file and its `@import`s
+
+No change.
+
+#### hooks.includes: the include lists `frappe/hooks.py` assigns
+
+No change.
+
+#### icons: sprites, icon-font leftovers, `frappe.utils` helpers
+
+- `frappe/public/icons/module-icons.svg`
+  - symbols: 12 -> 24
+  - distinct: 12 -> 24
+  - idsSha256: e22c14e029b3... -> a2905934df18...
+  - prefix icon-: 12 -> 24
+
+In the audited tree, changed or not:
+
+- `frappe/public/icons/lucide/icons.svg`: 1853 symbols, 1853 distinct ids
+- `frappe/public/icons/timeless/icons.svg`: 141 symbols, 141 distinct ids
+- `frappe/public/icons/espresso/icons.svg`: 275 symbols, 261 distinct ids
+- `frappe/public/icons/desktop_icons/alphabets.svg`: 26 symbols, 26 distinct ids
+- `frappe/public/icons/module-icons.svg`: 24 symbols, 24 distinct ids
+- `frappe/public/css/octicons`: absent
+- `frappe/public/css/fonts/fontawesome`: present
+- bundles importing an icon-font stylesheet: none
+
+#### bundles: `*.bundle.*` entry files under `frappe/public`
+
+No change.
+
+#### boot: `bootinfo` keys assigned in `frappe/boot.py`
+
+- `frappe/boot.py: bootinfo.<key> =`
+  - removed `notification_unread_count`
+  - added `is_v2_site`
+
+### Citation integrity
+
+- 3788 full-path citations (3702 name a line) in 18 declaration files, covering 207 distinct frappe files.
+- Of those files: 67 changed since `v16.50.0`, 0 deleted, 140 unchanged.
+- Cited line anchors whose text differs between the two trees: 1682 of 4912 (34.2%) counting each line once; 1963 of 5829 (33.7%) counting every citation.
+  A line is compared by number, trimmed. A range contributes its two endpoints. 0 anchor(s) were past the end of the file at `v16.50.0` already and are left out.
+- Not checked: 1610 citation(s) with a line number whose path is relative or belongs to another repo (by first path segment, (bare): 1314, model: 100, tables: 57, utils: 48, carbon_frappe: 30, node_modules: 15, erpnext: 10, form: 9, 12 more). A relative citation such as `grid.js:412` means what its file's header says it means, and that is prose, so a file cited ONLY that way is neither resolved nor reported as deleted.
+
+#### Top 25 changed cited files by churn (lines added + deleted)
+
+| churn | file | citations | cited lines changed |
+| --- | --- | ---: | ---: |
+| +1804/-186 (1990) | `frappe/model/document.py` | 1 | 2/2 |
+| +566/-92 (658) | `frappe/printing/page/print/print.js` | 30 | 45/48 |
+| +90/-3 (93) | `frappe/core/doctype/user/user.py` | 4 | 0/5 |
+| +67/-13 (80) | `frappe/public/js/frappe/ui/sidebar/dock.js` | 26 | 39/39 |
+| +64/-14 (78) | `frappe/public/js/frappe/views/reports/query_report.js` | 131 | 138/143 |
+| +32/-37 (69) | `frappe/public/js/frappe/form/quick_entry.js` | 41 | 35/71 |
+| +41/-18 (59) | `frappe/public/js/frappe/widgets/onboarding_widget.js` | 1 | 1/1 |
+| +47/-12 (59) | `frappe/utils/__init__.py` | 2 | 4/4 |
+| +46/-12 (58) | `frappe/public/js/frappe/ui/sidebar/sidebar.js` | 130 | 98/195 |
+| +54/-3 (57) | `frappe/public/js/frappe/router.js` | 78 | 114/123 |
+| +28/-20 (48) | `frappe/public/js/frappe/form/grid_row.js` | 118 | 84/140 |
+| +24/-15 (39) | `frappe/public/js/frappe/ui/side_panel.js` | 15 | 7/22 |
+| +25/-14 (39) | `frappe/public/js/frappe/views/reports/report_view.js` | 147 | 10/172 |
+| +36/-0 (36) | `frappe/public/scss/common/icons.scss` | 1 | 0/2 |
+| +22/-9 (31) | `frappe/public/js/frappe/data_import/import_preview.js` | 12 | 0/18 |
+| +20/-10 (30) | `frappe/utils/data.py` | 1 | 2/2 |
+| +22/-7 (29) | `frappe/public/js/frappe/views/kanban_v2/kanban_page.js` | 4 | 4/4 |
+| +18/-9 (27) | `frappe/public/js/frappe/form/dashboard.js` | 10 | 13/16 |
+| +17/-7 (24) | `frappe/public/js/frappe/views/workspace/workspace.js` | 4 | 0/3 |
+| +9/-13 (22) | `frappe/public/js/frappe/ui/messages.js` | 22 | 25/33 |
+| +11/-10 (21) | `frappe/auth.py` | 2 | 3/3 |
+| +18/-0 (18) | `frappe/desk/doctype/dock/dock.py` | 10 | 13/15 |
+| +8/-10 (18) | `frappe/desk/form/load.py` | 6 | 7/7 |
+| +10/-6 (16) | `frappe/public/js/frappe/form/controls/table.js` | 14 | 12/19 |
+| +10/-6 (16) | `frappe/public/js/frappe/ui/toolbar/toolbar.js` | 23 | 31/34 |
+
 ## v16.33.1 -> v16.50.0
 
 - Baseline: `v16.33.1` (commit 988e54f3c4, 2026-09-08), read from git.

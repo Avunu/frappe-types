@@ -4,7 +4,7 @@
  * `frappe.ui.tab_buttons` / `frappe.ui.TabButtons`, plus the {@link FrappeTooltipOptions}
  * a button's `tooltip` option accepts.
  *
- * Source of truth: frappe v16.50.0 (`git tag v16.50.0`), every file under
+ * Source of truth: frappe v16.54.0 (`git tag v16.54.0`), every file under
  * `frappe/public/js/frappe/ui/components/`. Citations are full-path
  * (`frappe/public/js/frappe/ui/components/badge.js:87`) so
  * `npm run audit:drift` can check them.

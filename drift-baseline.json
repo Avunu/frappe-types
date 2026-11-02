@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "source": {
-    "ref": "v16.50.0",
-    "commit": "f20f92d29706510551b4438cc196b0323a7f1a92",
-    "date": "2026-10-06"
+    "ref": "v16.54.0",
+    "commit": "2fcb9397a1f1da353b21e53d2f97ec56653acd02",
+    "date": "2026-10-27"
   },
-  "version": "16.50.0",
+  "version": "16.54.0",
   "scss": {
     "bundles": {
       "frappe/public/scss/desk.bundle.scss": [
@@ -135,12 +135,12 @@
         "idsSha256": "cfa4f846a6dbeb24477910a408ea21df3244beb5b1a2c7544b9397a0f2a50561"
       },
       "frappe/public/icons/module-icons.svg": {
-        "symbols": 12,
-        "distinct": 12,
+        "symbols": 24,
+        "distinct": 24,
         "prefixes": {
-          "icon-": 12
+          "icon-": 24
         },
-        "idsSha256": "e22c14e029b3bafc9af87d6085a1f8504a1cce01425f8c6c978ba6ee3dbcc2ad"
+        "idsSha256": "a2905934df18933ef36c32792b4172a7701ce8310ae239a87a36caed8b7cacb8"
       }
     },
     "unresolved": [],
@@ -237,6 +237,7 @@
       "home_shell",
       "ipinfo",
       "is_fc_site",
+      "is_v2_site",
       "lang",
       "lang_dict",
       "letter_heads",
@@ -248,7 +249,6 @@
       "navbar_settings",
       "nested_set_doctypes",
       "notification_settings",
-      "notification_unread_count",
       "onboarding_tours",
       "print_css",
       "sentry_dsn",

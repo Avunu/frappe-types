@@ -45,7 +45,7 @@ Checking an app's own code? There are [`tsconfig` presets](#tsconfig-presets) fo
 So `frappe-types@16.4.2` is a revision of the v16 typeset, not "types for frappe 16.4.2". `latest` therefore does not mean "newest release" — it means "the line for the current frappe major"; a maintenance release on a superseded line is published to `v<major>` and never moves `latest`. `package.json` records the exact tag each release was verified against:
 
 ```jsonc
-"frappe": { "major": "16", "verifiedAgainst": "v16.50.0", "branch": "version-16" }
+"frappe": { "major": "16", "verifiedAgainst": "v16.54.0", "branch": "version-16" }
 ```
 
 Each frappe major lives on its own branch (`version-16`, `version-15`), mirroring how frappe and frappe apps are themselves branched.

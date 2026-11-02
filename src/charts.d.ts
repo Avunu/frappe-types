@@ -1,7 +1,7 @@
 /**
  * `frappe.Chart` — the frappe-charts slice of the frappe desk API.
  *
- * Frappe v16.50.0 re-exports the `frappe-charts` package verbatim:
+ * Frappe v16.54.0 re-exports the `frappe-charts` package verbatim:
  *
  * ```js
  * // frappe/public/js/frappe/ui/chart.js:1-4
@@ -212,7 +212,7 @@ export interface FrappeChartAxisOptions {
 	 * Truthy = when the x labels do not fit, thin them out (keep every n-th, blank the
 	 * rest); falsy = truncate each label with a trailing ellipsis instead
 	 * (AxisChart.js:42, utils/axis-chart-utils.js:100-138). frappe passes the `0 | 1`
-	 * Dashboard Chart `timeseries` field (frappe/public/js/frappe/widgets/chart_widget.js:718)
+	 * Dashboard Chart `timeseries` field (frappe/public/js/frappe/widgets/chart_widget.js:715)
 	 * and defaults `make_chart` to `1` (frappe/public/js/frappe/utils/utils.js:1584).
 	 */
 	xIsSeries?: number | boolean;
@@ -260,7 +260,7 @@ export interface FrappeChartBarOptions {
  * `options.lineOptions` — `AxisChart.js:19, 306-330`.
  *
  * Only these keys are read. frappe's empty-state sample passes `hideDots: 1`
- * (`frappe/public/js/frappe/widgets/chart_widget.js:683`), a key frappe-charts
+ * (`frappe/public/js/frappe/widgets/chart_widget.js:680`), a key frappe-charts
  * never reads — the dot switches are `showDots`, `trailingDot` and
  * `hideDotBorder` (`AxisChart.js:309-311`) — so it is deliberately not declared.
  */
@@ -284,13 +284,13 @@ export interface FrappeChartLineOptions {
  *
  * The index signature is deliberate, not a shrug. Frappe genuinely funnels
  * arbitrary keys through here:
- * - `frappe/public/js/frappe/widgets/chart_widget.js:768-788` merges a Dashboard
+ * - `frappe/public/js/frappe/widgets/chart_widget.js:765-785` merges a Dashboard
  *   Chart's `custom_options` JSON blob straight into the args;
- * - `frappe/public/js/frappe/views/reports/query_report.js:1277-1296` leaves
+ * - `frappe/public/js/frappe/views/reports/query_report.js:1288-1307` leaves
  *   report-only keys (`fieldtype`, `options`) on the same object that
  *   `render_chart` hands to the constructor
- *   (`frappe/public/js/frappe/views/reports/query_report.js:1302`);
- * - `frappe/public/js/frappe/form/dashboard.js:539-546` passes `start` / `count_label` at the TOP level
+ *   (`frappe/public/js/frappe/views/reports/query_report.js:1313`);
+ * - `frappe/public/js/frappe/form/dashboard.js:548-555` passes `start` / `count_label` at the TOP level
  *   even though frappe-charts reads `data.start` and `options.countLabel`
  *   (those two are therefore silently ignored — see the group notes).
  *
@@ -361,9 +361,9 @@ export interface FrappeChartOptions {
 	countLabel?: string;
 	/** Default `'Sunday'`; anything other than `'Sunday'`/`'Monday'` falls back to `'Sunday'` (Heatmap.js:25-28). */
 	startSubDomain?: "Sunday" | "Monday";
-	/** Gap between month blocks. Only an explicit `0` disables it (Heatmap.js:35). frappe passes `1` (frappe/public/js/frappe/form/dashboard.js:543). */
+	/** Gap between month blocks. Only an explicit `0` disables it (Heatmap.js:35). frappe passes `1` (frappe/public/js/frappe/form/dashboard.js:552). */
 	discreteDomains?: number | boolean;
-	/** Corner radius of a heatmap square; default `0` (Heatmap.js:105, 182). frappe passes `3` (frappe/public/js/frappe/form/dashboard.js:544). */
+	/** Corner radius of a heatmap square; default `0` (Heatmap.js:105, 182). frappe passes `3` (frappe/public/js/frappe/form/dashboard.js:553). */
 	radius?: number;
 
 	/**
@@ -974,7 +974,7 @@ export declare class FrappeHeatmap extends FrappeBaseChart {
 	 * Heatmap's own update path — one argument only, and it calls `draw()` and
 	 * `bindTooltip()` itself instead of `calc()` + `render()` (Heatmap.js:141-149).
 	 * This is what `frappe.ui.form.Dashboard.update_heatmap` calls
-	 * (`frappe/public/js/frappe/form/dashboard.js:531-535`).
+	 * (`frappe/public/js/frappe/form/dashboard.js:540-544`).
 	 */
 	update(data: FrappeHeatmapData): void;
 	/** Takes no arguments — reads `state.start` / `state.end` (Heatmap.js:209-232). */
@@ -1028,7 +1028,7 @@ export type FrappeChartInstance =
  *    constructor returning a non-object yields `this` per [[Construct]] — so
  *    `new frappe.Chart(el, { type: "nope" })` produces an EMPTY, truthy `Chart`
  *    instance with no `parent`, `colors` or `draw`. (Frappe's own falsy guard
- *    at `frappe/public/js/frappe/form/dashboard.js:635-637` is therefore dead
+ *    at `frappe/public/js/frappe/form/dashboard.js:644-646` is therefore dead
  *    code.) The construct signature below returns {@link FrappeBaseChart}
  *    because TypeScript cannot express "a class whose constructor returns
  *    something else"; treat that as accurate for every valid `type` and as an

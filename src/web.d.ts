@@ -28,7 +28,7 @@
  * `frappe.ready` in its desk scripts too, where it does not exist. Keep web
  * scripts and desk scripts in separate tsconfig projects if that matters.
  *
- * Verified against **frappe v16.50.0**.
+ * Verified against **frappe v16.54.0**.
  *
  * @packageDocumentation
  */
@@ -137,7 +137,7 @@ export interface WebForm
 	 * (`frappe/public/js/frappe/web_form/web_form.js:17`), but `web_form_doc`
 	 * carries `is_new` only on the `/new` route
 	 * (`frappe/website/doctype/web_form/web_form.py:306` copies the key only when
-	 * present, `frappe/utils/data.py:2643-2649`). Everywhere else nothing shadows
+	 * present, `frappe/utils/data.py:2653-2659`). Everywhere else nothing shadows
 	 * the inherited `FieldGroup#is_new` METHOD
 	 * (`frappe/public/js/frappe/ui/field_group.js:289-291`), so the property is a
 	 * function — truthy. frappe's own `if (this.is_new || …)`

@@ -1,7 +1,7 @@
 /**
  * frappe-types — group `deep-module-imports`, ambient wiring.
  *
- * Frappe v16.50.0. Companion to `deep-modules.d.ts`, which declares everything
+ * Frappe v16.54.0. Companion to `deep-modules.d.ts`, which declares everything
  * the four specifiers below re-export.
  *
  * THIS FILE MUST STAY A SCRIPT. It deliberately has no top-level `import` or

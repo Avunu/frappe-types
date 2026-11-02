@@ -4,7 +4,7 @@
 // The `window`-level desk globals that are NOT hung off `frappe.*`, plus the
 // jQuery surface frappe and Bootstrap extend.
 //
-// Source of truth: apps/frappe @ f20f92d297 (tag v16.50.0, branch version-16).
+// Source of truth: apps/frappe @ 2fcb9397a1 (tag v16.54.0, branch version-16).
 // Citations are `path/relative/to/apps/frappe/file.js:line` (the full form,
 // `frappe/public/js/frappe/…`) or a bare `file.js:line` that means a file under
 // `frappe/public/js/frappe/`; their line numbers are those of the tag named
@@ -136,17 +136,17 @@ export interface TranslateFunction {
  *
  * Read/write shape, verified in frappe/public/js/frappe/model/model.js:
  * - `locals[dt][dn]` is a document —
- *   frappe/public/js/frappe/model/model.js:155,474,544,629.
+ *   frappe/public/js/frappe/model/model.js:153,472,542,627.
  * - `locals[dt][dn][fieldname]` is a field value —
- *   frappe/public/js/frappe/model/model.js:474,519.
+ *   frappe/public/js/frappe/model/model.js:472,517.
  * - `delete locals[doctype][name]` —
- *   frappe/public/js/frappe/model/model.js:678,700.
+ *   frappe/public/js/frappe/model/model.js:676,698.
  * - `locals.DocType[doctype]` is the DocType meta —
- *   frappe/public/js/frappe/model/model.js:218,331 and its flags
- *   `.istable` (model.js:396), `.is_submittable` (model.js:391) and `.is_tree`
- *   (model.js:406); also frappe/public/js/frappe/model/meta.js:14.
+ *   frappe/public/js/frappe/model/model.js:216,329 and its flags
+ *   `.istable` (model.js:394), `.is_submittable` (model.js:389) and `.is_tree`
+ *   (model.js:404); also frappe/public/js/frappe/model/meta.js:14.
  *
- * **`":" + doctype` buckets.** frappe/public/js/frappe/model/model.js:493 reads
+ * **`":" + doctype` buckets.** frappe/public/js/frappe/model/model.js:491 reads
  * `locals[doctype] || locals[":" + doctype]`, and
  * frappe/public/js/frappe/model/sync.js:49-57 writes `locals[":Print Format"]`.
  * What it stores there (frappe/public/js/frappe/model/sync.js:52-55) is a copy
@@ -164,7 +164,7 @@ export interface TranslateFunction {
 export interface LocalsStore {
 	/**
 	 * DocType metadata cache — `locals.DocType[doctype]`.
-	 * provide.js:34, model.js:218, meta.js:14.
+	 * provide.js:34, model.js:216, meta.js:14.
 	 */
 	DocType: Record<string, DocTypeMeta | undefined>;
 	/**
@@ -220,7 +220,7 @@ export type CurrentForm = Form | null;
  * (frappe/public/js/frappe/list/list_factory.js:24-38), and that class does NOT
  * extend `ListView` — it is a plain class with `doctype`, `view_name`,
  * `parent`, `page`, `show()` and `get_search_params()`
- * (frappe/public/js/frappe/views/kanban_v2/kanban_page.js:2196-2223). On such a
+ * (frappe/public/js/frappe/views/kanban_v2/kanban_page.js:2211-2238). On such a
  * board `cur_list` is therefore not a `ListView` at all, whatever `views.d.ts`'s
  * `CurrentListView` says.
  *
@@ -245,7 +245,7 @@ export type { CurrentListView };
  *
  * Because it is a stack top, callers always null-check — e.g.
  * frappe/public/js/frappe/views/container.js:65 and
- * frappe/public/js/frappe/desk.js:468 both read
+ * frappe/public/js/frappe/desk.js:469 both read
  * `window.cur_dialog && cur_dialog.display && …`.
  *
  * Not referenced by carbon_frappe today; declared because it is part of the
@@ -364,7 +364,7 @@ export interface DeskTemplateGlobals {
 // 6. jQuery — baseline
 // =============================================================================
 //
-// frappe ships jQuery **3.7.1** (frappe/package.json:62) and publishes it on
+// frappe ships jQuery **3.7.1** (frappe/package.json:61) and publishes it on
 // the window from frappe/public/js/jquery-bootstrap.js:15-16:
 //
 //     window.jQuery = jQuery;
@@ -607,7 +607,7 @@ export interface JQueryFrappePlugins<TElement = HTMLElement> {
 	/**
 	 * air-datepicker, bound as a jQuery plugin.
 	 *
-	 * frappe depends on `air-datepicker` (frappe/package.json:41, a git fork:
+	 * frappe depends on `air-datepicker` (frappe/package.json:40, a git fork:
 	 * `git+https://github.com/frappe/air-datepicker`) and reaches the plugin's
 	 * i18n table through `$.fn.datepicker.language[...]` —
 	 * frappe/public/js/frappe/form/controls/datepicker_i18n.js:18 onward and
@@ -625,7 +625,7 @@ export interface JQueryFrappePlugins<TElement = HTMLElement> {
 	// ------------------------------------------------------------- bootstrap
 
 	/**
-	 * Bootstrap 4.6.2 tooltip (frappe/package.json:44; registered at
+	 * Bootstrap 4.6.2 tooltip (frappe/package.json:43; registered at
 	 * node_modules/bootstrap/js/dist/tooltip.js:878,
 	 * `$.fn[NAME] = Tooltip._jQueryInterface`, imported by
 	 * frappe/public/js/jquery-bootstrap.js:12).
@@ -705,7 +705,7 @@ export interface JQueryFrappeOverloads {
 	 * frappe/public/js/frappe/form/grid.js:39 and
 	 * frappe/public/js/frappe/form/layout.js:714
 	 * (`$(".grid-row-open").data("grid_row")`),
-	 * frappe/public/js/frappe/form/grid.js:1221,1228
+	 * frappe/public/js/frappe/form/grid.js:1225,1232
 	 * (`.find("[data-idx='" + idx + "']").data("grid_row")`),
 	 * frappe/public/js/frappe/ui/keyboard.js:337. carbon_frappe mirrors the
 	 * idiom at carbon_frappe/scripts/tables/grid.mjs:261.
@@ -896,9 +896,9 @@ export interface BootstrapScrollSpyOptions {
  *   frappe/public/js/frappe/form/controls/multiselect_list.js:123. frappe does
  *   not fire it by hand for the notification bell: the sidebar bell calls
  *   `frappe.ui.sidebar_panels.toggle("notifications")`
- *   (frappe/public/js/frappe/ui/sidebar/sidebar.js:659) and the notifications
+ *   (frappe/public/js/frappe/ui/sidebar/sidebar.js:661) and the notifications
  *   view refreshes in its `on_open()`
- *   (frappe/public/js/frappe/ui/notifications/notifications.js:463) rather
+ *   (frappe/public/js/frappe/ui/notifications/notifications.js:462) rather
  *   than listening for this event. No `.dropdown-notifications` element is left
  *   anywhere in frappe's js, html or scss sources, so carbon_frappe's re-fire
  *   (carbon_frappe/public/js/anatomy/shell/utilities.ts:195) has nothing to
@@ -916,14 +916,14 @@ export interface BootstrapScrollSpyOptions {
  * - `"page-change"` — triggered on `document` at
  *   frappe/public/js/frappe/views/container.js:86 with the page element as its
  *   one extra argument (`$(document).trigger("page-change", this.page)`), which
- *   the listener at frappe/public/js/frappe/ui/toolbar/awesome_bar.js:501
+ *   the listener at frappe/public/js/frappe/ui/toolbar/awesome_bar.js:502
  *   receives as `data`; the Container's own listener is
  *   frappe/public/js/frappe/views/container.js:27.
  * - `"rename"` — triggered on `document` with the extra args
  *   `[doctype, old_name, new_name]` at
  *   frappe/public/js/frappe/model/sync.js:64,
  *   frappe/public/js/frappe/form/toolbar.js:157 and
- *   frappe/public/js/frappe/model/model.js:805, and handled as
+ *   frappe/public/js/frappe/model/model.js:801, and handled as
  *   `(event, dt, old_name, new_name)` at
  *   frappe/public/js/frappe/form/form.js:381. The Container's own handler
  *   (frappe/public/js/frappe/views/container.js:34) takes no arguments and just
