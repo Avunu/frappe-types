@@ -236,12 +236,14 @@ export interface FrappeMapDefaults {
 
 /**
  * The registry of `doc_view`s {@link FrappeGenerateRouteItem} accepts: its keys
- * are {@link FrappeGenerateRouteDocView}. Seeded with the options of the
- * Workspace Shortcut `doc_view` field
- * (`frappe/desk/doctype/workspace_shortcut/workspace_shortcut.json:48`), the
- * views `generate_route`'s switch routes to
- * (`frappe/public/js/frappe/utils/utils.js:1635-1665`); any other value routes
- * to the doctype's default view (`:1666-1667`). The values carry no meaning.
+ * are {@link FrappeGenerateRouteDocView}. Seeded with the views
+ * `generate_route`'s switch routes to
+ * (`frappe/public/js/frappe/utils/utils.js:1635-1665`), which are the non-empty
+ * options of the Workspace Shortcut `doc_view` field
+ * (`frappe/desk/doctype/workspace_shortcut/workspace_shortcut.json:48`); any
+ * other value routes to the doctype's default view (`:1666-1667`). The field's
+ * empty option is not a key: `doc_view` accepts `""` on its own. The values
+ * carry no meaning.
  *
  * An interface so that an app which wraps `frappe.utils.generate_route` to
  * route a view of its own can register it:
@@ -280,8 +282,16 @@ export interface FrappeGenerateRouteItem {
 	/** Short-circuits every branch when present (`frappe/public/js/frappe/utils/utils.js:1626,1695-1697`). */
 	route?: string;
 	link?: string;
-	/** Doctypes only: the view to route to (`frappe/public/js/frappe/utils/utils.js:1635`). See {@link FrappeGenerateRouteDocViews}. */
-	doc_view?: FrappeGenerateRouteDocView;
+	/**
+	 * Doctypes only: the view to route to (`frappe/public/js/frappe/utils/utils.js:1635`).
+	 * See {@link FrappeGenerateRouteDocViews}. `""` is the Workspace Shortcut
+	 * field's empty option
+	 * (`frappe/desk/doctype/workspace_shortcut/workspace_shortcut.json:48`), which
+	 * the shortcut widget forwards as it is
+	 * (`frappe/public/js/frappe/widgets/shortcut_widget.js:41-49`): the doctype's
+	 * default view (`frappe/public/js/frappe/utils/utils.js:1666-1667`).
+	 */
+	doc_view?: FrappeGenerateRouteDocView | "";
 	kanban_board?: string;
 	filters?: Record<string, unknown>;
 	tab?: string;
@@ -3682,10 +3692,11 @@ export interface FrappeUtilsDomRouterGlobals {
 	/**
 	 * `frappe/public/js/frappe/utils/address_and_contact.js:1`, `:286-339` — the
 	 * Address and Contact helpers of a party's form. In `form.bundle.js`
-	 * (`frappe/public/js/form.bundle.js:16`), so optional like the other lazily
-	 * provided namespaces.
+	 * (`frappe/public/js/form.bundle.js:16`), which every desk page loads
+	 * (`frappe/hooks.py:23-32`, `app_include_js`), so it is not optional, like
+	 * `frappe.ui.form`.
 	 */
-	contacts?: FrappeContactsNamespace;
+	contacts: FrappeContactsNamespace;
 }
 
 /**
