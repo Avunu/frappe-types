@@ -94,6 +94,7 @@ export type {
 	FormFieldName,
 	FormSetValueArgs,
 	FormatterOptions,
+	FrappeAllowedDocs,
 	FrappeCheck,
 	FrappeCheckLoose,
 	FrappeDoc,
@@ -103,6 +104,7 @@ export type {
 	FrappeModelMetaGlobals,
 	FrappeModelNamespace,
 	FrappeModelUserSettings,
+	FrappePermMatchRule,
 	FrappePermNamespace,
 	FrappeWorkflowNamespace,
 	GridDataRow,
@@ -124,6 +126,8 @@ export type {
 	RegisteredDoc,
 	SelectOption,
 	TableFieldType,
+	WorkflowDoc,
+	WorkflowDocumentState,
 	WorkflowTransition,
 } from "./model";
 
@@ -398,6 +402,7 @@ export type {
 	DeskThemeMode,
 	FrappeAppLogoSource,
 	FrappeBrowserInfo,
+	FrappeContactsLastDoc,
 	FrappeContactsNamespace,
 	FrappeDebouncedFunction,
 	FrappeDesktopIconRecord,
