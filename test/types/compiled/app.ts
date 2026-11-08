@@ -96,3 +96,10 @@ frappe.ui.form.on("Project", {
 		frappe.contacts.render_address_and_contact(frm);
 	},
 });
+
+// frappe.Application names the desk application's instance type, as frappe.app is.
+export function app_sidebar(app: frappe.Application): unknown {
+	return app.sidebar;
+}
+const started: frappe.Application | undefined = frappe.app;
+void started;

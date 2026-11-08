@@ -354,3 +354,12 @@ const refresh_settings = {
 	},
 };
 void refresh_settings;
+
+// frappe.Application names the instance type of `frappe.app` in JSDoc too.
+/** @param {frappe.Application} app */
+function app_sidebar(app) {
+	return app.sidebar;
+}
+/** @type {frappe.Application | undefined} */
+const started_app = frappe.app;
+void app_sidebar, started_app;
