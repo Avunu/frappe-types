@@ -3,10 +3,10 @@
 
 import type {
 	FrappeAjaxResult,
+	FrappeDoc,
 	FrappeResponse,
 	FrappeServerMessage,
 	FrappeXcallResult,
-	TranslateStringFunction,
 } from "frappe-types";
 
 interface Contact {
@@ -34,6 +34,54 @@ export function typed_then(): void {
 		.call<Contact[]>({ method: "app.api.contacts" })
 		.done((r) => void r.message?.length)
 		.fail(() => undefined);
+	// The response mistaken for its message is rejected, with or without T.
+	// @ts-expect-error a Contact is not a response envelope
+	void frappe.call<Contact>("app.api.contact").then((c: Contact) => c.name);
+	// @ts-expect-error a Contact is not a response envelope
+	void frappe.call("app.api.contact").then((c: Contact) => c.name);
+	// @ts-expect-error nor in .done
+	frappe.call<Contact>("app.api.contact").done((c: Contact) => void c.name);
+}
+
+// A hand-written envelope, as an interface (messaging, espresso_sync,
+// little_cocalico): accepted, and checked against T.
+interface Envelope<T> {
+	message: T;
+}
+export function interface_envelope(): void {
+	void frappe.call({ method: "app.api.secret" }).then((r: Envelope<string>) => r.message.length);
+	frappe.call({ method: "app.api.secret" }).done((r: Envelope<string>) => void r.message.length);
+	void frappe.call<string>({ method: "app.api.secret" }).then((r: Envelope<string>) => r.message.length);
+	// @ts-expect-error the envelope's message contradicts T
+	void frappe.call<string>({ method: "app.api.secret" }).then((r: Envelope<Contact>) => r.message.name);
+}
+
+// API v2: the payload is `data`.
+export async function v2_contacts(): Promise<Contact[]> {
+	const r = await frappe.call<Contact[]>({ method: "app.api.contacts", api_version: "v2" });
+	return r.data ?? [];
+}
+
+// An unregistered doctype: T comes from the explicit argument or the context.
+interface ItemDoc extends FrappeDoc {
+	item_name: string;
+}
+export async function load_item(): Promise<string> {
+	const a: ItemDoc = await frappe.db.get_doc("Item", "ITEM-0001");
+	const b = await frappe.db.get_doc<ItemDoc>("Item", "ITEM-0001");
+	return a.item_name + b.item_name;
+}
+
+// Awaited, the response is FrappeResponseFields: frappe's own keys. A key the
+// method adds (the login response's `home_page`) needs the open FrappeResponse,
+// which the awaited value is assignable to; an unannotated `.then` has it.
+export async function login_response(): Promise<unknown> {
+	const r = await frappe.call({ method: "login", args: { usr: "u", pwd: "p" } });
+	// @ts-expect-error only frappe's own keys are declared on the awaited value
+	void r.full_name;
+	const open: FrappeResponse = r;
+	const full_name = await frappe.call({ method: "login" }).then((res) => res.full_name);
+	return open.home_page ?? full_name;
 }
 
 export async function untyped_is_unknown(): Promise<void> {
@@ -91,11 +139,12 @@ export async function raw_call<T>(method: string): Promise<{ data?: T; messages:
 	return body.message === undefined ? { messages } : { data: body.message, messages };
 }
 
-// One translator type for `__` and `frappe._`, and a string-only stand-in fits
-// TranslateStringFunction.
+// One translator type for `__` and `frappe._`; `__` fits a string-only
+// parameter that a stand-in such as `(txt) => txt` also fits.
 export const tr: typeof __ = frappe._;
-export const fallback: TranslateStringFunction = (txt) => txt;
-export const real: TranslateStringFunction = __;
+type Translate = (source: string, replace?: readonly string[]) => string;
+export const fallback: Translate = (txt) => txt;
+export const real: Translate = __;
 
 // frappe.prompt with a values type.
 frappe.prompt<{ subject: string; due?: string }>(
@@ -110,4 +159,5 @@ frappe.prompt<{ subject: string; due?: string }>(
 // The window helpers are bare globals and Window members.
 export const money: string = format_currency(10, "EUR", 2);
 export const rounded: number = _round(1.005, 2, "Commercial Rounding");
+export const formatted: string = format_currency(10, "EUR", precision("amount"));
 export const helper: typeof format_currency | undefined = window.format_currency;

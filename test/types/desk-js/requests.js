@@ -28,6 +28,24 @@ frappe.ui.form.on("ToDo", {
 			// @ts-expect-error an annotation that is not a response at all is rejected
 			.then((/** @type {string} */ r) => r.length);
 
+		// The message's own shape is not the response: the envelope mistaken for
+		// the payload is caught.
+		frappe
+			.call({ method: "app.api.get_row" })
+			// @ts-expect-error `{ name, qty }` shares no key with the response envelope
+			.then((/** @type {{ name: string; qty: number }} */ row) => row.name.toUpperCase());
+
+		// .done takes the same annotations as .then.
+		frappe
+			.call({ method: "app.api.get_secret" })
+			.done((/** @type {RecipientsResponse} */ r) => void r.message?.[0]?.email)
+			.done(/** @param {{ message: string }} r */ (r) => void r.message.length)
+			.fail(() => undefined);
+		frappe
+			.call({ method: "app.api.get_row" })
+			// @ts-expect-error the message's shape is rejected here too
+			.done((/** @type {{ name: string; qty: number }} */ row) => void row.name);
+
 		// Unannotated, the response is typed; its message is `unknown`, not `any`.
 		frappe.call("app.api.count").then((r) => {
 			/** @type {string | undefined} */
@@ -52,6 +70,8 @@ frappe.ui.form.on("ToDo", {
 			void total;
 		});
 		void frm.call({ method: "app.api.set_status", args: { status: "Closed" }, freeze: true });
+		// @ts-expect-error frm.call reads opts.method unguarded, so the object form needs it
+		void frm.call({ args: { status: "Closed" } });
 
 		// frappe.xcall resolves with the message itself.
 		void frappe.xcall("app.api.count").then((/** @type {number} */ n) => n.toFixed());
@@ -71,17 +91,40 @@ async function load_totals() {
 }
 void load_totals;
 
-// An awaited frm.call in JavaScript: annotate the `.then` and await that.
+// An awaited frm.call in JavaScript: annotate the variable (T is inferred from
+// it), or annotate the `.then` and await that.
 /** @param {frappe.ui.form.Form<"ToDo">} frm */
 async function pending_rows(frm) {
+	/** @type {import("frappe-types").FrappeResponse<{ name: string }[]>} */
+	const r = await frm.call("get_pending");
+	/** @type {import("frappe-types").FrappeResponse<{ name: string }[]>} */
+	const r2 = await frappe.call({ method: "app.api.pending" });
 	const rows = await frm
 		.call("get_pending")
 		.then((/** @type {import("frappe-types").FrappeResponse<{ name: string }[]>} */ r) => r.message ?? []);
 	/** @type {string | undefined} */
-	const first = rows[0]?.name;
+	const first = rows[0]?.name ?? r.message?.[0]?.name ?? r2.message?.[0]?.name;
 	return first;
 }
 void pending_rows;
+
+// API v2 carries the payload in `data`, not `message`.
+async function v2_rows() {
+	/** @type {import("frappe-types").FrappeResponse<{ name: string }[]>} */
+	const r = await frappe.call({ method: "app.api.rows", api_version: "v2" });
+	return r.data ?? [];
+}
+void v2_rows;
+
+/** @typedef {import("frappe-types").FrappeDoc & { item_name: string }} ItemDoc an app's own document type, "Item" not registered */
+
+// An unregistered doctype: the annotation on the result types it.
+async function load_item() {
+	/** @type {ItemDoc} */
+	const item = await frappe.db.get_doc("Item", "ITEM-0001");
+	return item.item_name;
+}
+void load_item;
 
 // frappe.db.get_doc infers the document from a registered doctype.
 void frappe.db.get_doc("ToDo", "TD-0001").then((todo) => {
@@ -97,6 +140,17 @@ function summarise(frm) {
 	const total = format_currency(frm.doc.grand_total, "USD");
 	/** @type {number} */
 	const qty = flt(frm.doc.items[0]?.qty, precision("qty"));
+	// precision() may be the System Settings string; the formatters take it.
+	/** @type {string} */
+	const amount = format_currency(frm.doc.grand_total, "USD", precision("grand_total"));
+	/** @type {string} */
+	const plain = format_number(frm.doc.grand_total, null, precision("grand_total"));
+	/** @type {number} */
+	const whole = cint(frm.doc.customer);
+	/** @type {number | null} */
+	const maybe_int = cint(frm.doc.customer, null);
+	// @ts-expect-error an explicit null default can come back
+	/** @type {number} */ const not_null = cint(frm.doc.customer, null);
 	/** @type {boolean} */
 	const open = in_list(["Draft", "To Deliver"], frm.doc.customer);
 	open_url_post("/api/method/app.export", { name: frm.doc.name }, true);
@@ -112,7 +166,7 @@ function summarise(frm) {
 	const blank = is_null(frm.doc.customer);
 	/** @type {"read"} */
 	const right = READ;
-	void total, qty, open, arg, symbol, places, blank, right;
+	void total, qty, amount, plain, whole, maybe_int, not_null, open, arg, symbol, places, blank, right;
 }
 void summarise;
 
@@ -141,10 +195,12 @@ const no_replacements = frappe._("Edit", "", "Edit grid row");
 const maybe = frappe._(/** @type {string | undefined} */ (undefined));
 void t1, t2, no_replacements, maybe;
 
-// A stand-in that only handles strings still fits the shared translator type.
-/** @type {import("frappe-types").TranslateStringFunction} */
-const translate = typeof window.__ === "function" ? __ : (txt) => txt;
-void translate("Saved");
+// `__` fits a parameter that only needs the string form of the translator.
+/** @param {(txt: string, replace?: string[]) => string} translate */
+function label(translate) {
+	return translate("Saved");
+}
+void label(__), label(frappe._);
 
 // frappe.prompt: say what the values are, in the callback.
 frappe.prompt(
