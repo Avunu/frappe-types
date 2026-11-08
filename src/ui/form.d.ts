@@ -2111,6 +2111,15 @@ export declare class Layout {
 		ignore_errors?: boolean,
 		check_invalid?: boolean
 	) => Record<string, unknown> | null;
+	/**
+	 * Where a Link control without a form writes its `fetch_from` values:
+	 * `ControlLink` reads `this.layout?.set_value` and calls it with each target
+	 * fieldname and value (frappe/public/js/frappe/form/controls/link.js:928-938).
+	 * `FieldGroup` (and so `Dialog`) defines it; a plain `Layout` does not, so an
+	 * app laying out controls itself can assign one. It is called detached, with
+	 * no `this`, so assign an arrow function.
+	 */
+	set_value?(fieldname: string, value: unknown): unknown;
 
 	// ---- built by make() ----
 	/** `.form-layout` — frappe/public/js/frappe/form/layout.js:25. */
@@ -3059,7 +3068,18 @@ export declare class Form<DT extends string = string> {
 	grids: ControlTable[];
 	/** The client-script controller instance — frappe/public/js/frappe/form/form.js:78. */
 	cscript: FormController;
-	events: Record<string, unknown>;
+	/**
+	 * frappe/public/js/frappe/form/form.js:79 — `{}`, then filled by
+	 * `frappe.ui.form.on`: a handler registered while a form of its doctype is
+	 * open is also stored here under its event name, so a script can call
+	 * another handler as `frm.events.my_helper(frm)`
+	 * (frappe/public/js/frappe/form/script_manager.js:39-43). Removed again by
+	 * `frappe.ui.form.off` (:66-68). Only the last handler of each name is kept,
+	 * and a name may be missing, so check before calling. What is stored is a
+	 * wrapper that forwards its arguments (:28-35), and scripts call it with the
+	 * form alone, so `cdt` and `cdn` are optional here.
+	 */
+	events: Record<string, FormEventsEntrySignature<DT>["handler"] | undefined>;
 	fetch_dict: Record<string, unknown>;
 	parent: HTMLElement;
 	doctype_layout?: DocTypeMeta;
@@ -3091,7 +3111,16 @@ export declare class Form<DT extends string = string> {
 	layout: Layout;
 	script_manager: ScriptManager;
 	dashboard: Dashboard;
-	footer?: unknown;
+	/**
+	 * The comments and activity footer — frappe/public/js/frappe/form/form.js:173-176.
+	 * Only built when the doctype shows its toolbar and the user's desk settings
+	 * show the timeline (:167), hence optional.
+	 */
+	footer?: FormFooter;
+	/** The footer's comment box — frappe/public/js/frappe/form/footer/footer.js:46. Set with {@link Form.footer}. */
+	comment_box?: ControlComment;
+	/** The footer's activity timeline — frappe/public/js/frappe/form/footer/footer.js:78. Set with {@link Form.footer}. */
+	timeline?: FormTimeline;
 	tour?: unknown;
 	states?: unknown;
 	form_wrapper?: JQuery<HTMLElement>;
@@ -3159,6 +3188,30 @@ export declare class Form<DT extends string = string> {
 		btn?: HTMLElement | JQuery,
 		on_error?: (...args: unknown[]) => void
 	): Promise<unknown>;
+	/**
+	 * frappe/public/js/frappe/form/form.js:929-972. Confirms "Permanently Submit
+	 * …?", runs `before_submit`, saves with `"Submit"`, then `callback()` and the
+	 * `on_submit` event. The promise resolves with the form only after
+	 * `on_submit` has run (:950-952); it never rejects, and stays pending when
+	 * the user cancels, `before_submit` sets `frappe.validated = false`, or the
+	 * save fails (`on_error` is called instead, :939, :946, :964, :969).
+	 */
+	savesubmit(
+		btn?: HTMLElement | JQuery | null,
+		callback?: () => void,
+		on_error?: () => void
+	): Promise<this>;
+	/**
+	 * frappe/public/js/frappe/form/form.js:974-1000. Cancels the document, after
+	 * offering to cancel its submitted linked documents too. Returns nothing.
+	 */
+	savecancel(btn?: HTMLElement | JQuery | null, callback?: () => void, on_error?: () => void): void;
+	/**
+	 * frappe/public/js/frappe/form/form.js:918-927. Confirms, runs
+	 * `before_discard`, then discards the draft. The promise it returns never
+	 * settles: nothing calls its `resolve` (:920).
+	 */
+	discard(btn?: HTMLElement | JQuery | null, callback?: () => void, on_error?: () => void): Promise<unknown>;
 	/** frappe/public/js/frappe/form/form.js:1166-1171. */
 	savetrash(): void;
 	/** frappe/public/js/frappe/form/form.js:1503-1512. */
@@ -3357,6 +3410,131 @@ export declare class Form<DT extends string = string> {
 }
 
 /**
+ * `frappe.ui.form.Footer` (class `FormFooter`) — frappe/public/js/frappe/form/footer/footer.js:4-97.
+ * The comment box and activity timeline under a form; {@link Form.footer}
+ * holds the form's own. `$.extend(this, opts)` merges the options onto the
+ * instance (:6), then the constructor builds the footer, the comment box and
+ * the timeline (:7-9).
+ */
+export declare class FormFooter {
+	/** frappe/public/js/frappe/form/footer/footer.js:5-14. Form builds it with `{ frm, parent }` (frappe/public/js/frappe/form/form.js:173-176). */
+	constructor(opts: { frm: Form; parent: JQuery<HTMLElement>; [option: string]: unknown });
+	frm: Form;
+	/** Hidden for a new document — frappe/public/js/frappe/form/footer/footer.js:84-87. */
+	parent: JQuery<HTMLElement>;
+	/** The rendered `form_footer` template — frappe/public/js/frappe/form/footer/footer.js:16. */
+	wrapper: JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/footer.js:15-21. */
+	make(): void;
+	/** frappe/public/js/frappe/form/footer/footer.js:22-32. */
+	setup_scroll_to_top(): void;
+	/** frappe/public/js/frappe/form/footer/footer.js:33-44. */
+	toggle_scroll_to_top_button($button: JQuery<HTMLElement>, $container: JQuery<HTMLElement>): void;
+	/** frappe/public/js/frappe/form/footer/footer.js:45-76 — sets `frm.comment_box`. */
+	make_comment_box(): void;
+	/** frappe/public/js/frappe/form/footer/footer.js:77-82 — sets `frm.timeline`. */
+	make_timeline(): void;
+	/** frappe/public/js/frappe/form/footer/footer.js:83-91 — refreshes the timeline, or hides the footer for a new document. */
+	refresh(): void;
+	/** frappe/public/js/frappe/form/footer/footer.js:93-96. */
+	refresh_comments_count(): void;
+}
+
+/**
+ * One timeline entry, as `BaseTimeline#get_timeline_item` renders it
+ * (frappe/public/js/frappe/form/footer/base_timeline.js:96-157). `content` and
+ * `creation` are always read; the rest are optional.
+ */
+export interface FormTimelineItem {
+	/** Appended into `.timeline-content` — frappe/public/js/frappe/form/footer/base_timeline.js:145. */
+	content: string | JQuery;
+	/** Sorts the entries and renders the time — frappe/public/js/frappe/form/footer/base_timeline.js:53-55, :146-153. */
+	creation: string;
+	doctype?: string;
+	name?: string;
+	/** A `frappe.utils.icon` name — frappe/public/js/frappe/form/footer/base_timeline.js:127-133. */
+	icon?: string;
+	icon_size?: string;
+	icon_class?: string;
+	title?: string;
+	/** HTML used when there is no `icon` — frappe/public/js/frappe/form/footer/base_timeline.js:134-136. */
+	timeline_badge?: string | JQuery;
+	hide_timestamp?: boolean;
+	is_card?: boolean;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:154-156. */
+	id?: string;
+}
+
+/**
+ * The form's activity timeline, `FormTimeline`
+ * (frappe/public/js/frappe/form/footer/form_timeline.js:10), extending
+ * `BaseTimeline` (frappe/public/js/frappe/form/footer/base_timeline.js:4, also
+ * `frappe.ui.BaseTimeline`, :158). Neither class is on `frappe.ui.form`; the
+ * instance is {@link Form.timeline}. Only the shared, public members are
+ * declared.
+ */
+export declare class FormTimeline {
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:5-8 — `Object.assign(this, opts)`, then `make()`. */
+	constructor(opts: { parent: JQuery<HTMLElement>; frm: Form; [option: string]: unknown });
+	frm: Form;
+	/** Replaced by the timeline in `make()` — frappe/public/js/frappe/form/footer/base_timeline.js:26. */
+	parent: JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:11-12. */
+	timeline_wrapper: JQuery<HTMLElement>;
+	/** The same element — frappe/public/js/frappe/form/footer/base_timeline.js:12. */
+	wrapper: JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:13. */
+	timeline_items_wrapper: JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:14-20. */
+	timeline_actions_wrapper: JQuery<HTMLElement>;
+	/** The entries `prepare_timeline_contents` collected — frappe/public/js/frappe/form/footer/base_timeline.js:27, :48. */
+	timeline_items: FormTimelineItem[];
+	/** `frm.get_docinfo()` at the last render — frappe/public/js/frappe/form/footer/base_timeline.js:49. */
+	doc_info?: unknown;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:11-16. */
+	make(): void;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:18-23 — re-renders and fires the form's `timeline_refresh` event. */
+	refresh(): void;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:34-44 — a button above the entries; returns it. */
+	add_action_button(
+		label: string,
+		action: (event: JQuery.ClickEvent) => unknown,
+		icon?: string | null,
+		btn_class?: string | null
+	): JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:123-127. */
+	render_timeline_items(): void;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:162-179 — fills `timeline_items`. */
+	prepare_timeline_contents(): unknown;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:70-78 — renders one entry, newest first unless `append_at_the_end`. */
+	add_timeline_item(item: FormTimelineItem, append_at_the_end?: boolean): JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:80-82. */
+	add_timeline_items(items: FormTimelineItem[], append_at_the_end?: boolean): void;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:96-157. */
+	get_timeline_item(item: FormTimelineItem): JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:559 — opens the email composer, as a reply when given a Communication. */
+	compose_mail(communication_doc?: FrappeDoc | null, reply_all?: boolean): void;
+}
+
+/**
+ * The jQuery events a form triggers on `document`, with the arguments
+ * `trigger` passes: `$(document).trigger("form-refresh", [this])`
+ * (frappe/public/js/frappe/form/form.js:670), and the same for `form-load`
+ * (:611), `form-unload` (:613) and `form-rename` (:620). Handlers receive the
+ * jQuery event first, then these:
+ *
+ * ```ts
+ * $(document).on("form-refresh", (_e: JQuery.TriggeredEvent, ...[frm]: FormDocumentEvents["form-refresh"]) => {});
+ * ```
+ */
+export interface FormDocumentEvents {
+	"form-load": [frm: Form];
+	"form-unload": [frm: Form];
+	"form-rename": [frm: Form];
+	"form-refresh": [frm: Form];
+}
+
+/**
  * What {@link Form.set_value} accepts for a field whose document type is `V`:
  * `V` itself, plus — for a Table field — an array of partial rows, because
  * frappe builds the real rows from them (frappe/public/js/frappe/form/form.js:1873-1901).
@@ -3395,6 +3573,15 @@ export type CurFrm = Form | null;
  */
 interface FormEventHandlerSignature<FrmDT extends string> {
 	handler(frm: Form<FrmDT>, cdt: string, cdn: string): unknown;
+}
+
+/**
+ * An entry of {@link Form.events}: the same handler, as scripts call it
+ * (`frm.events.helper(frm)`). A method signature for the same reason as
+ * {@link FormEventHandlerSignature}.
+ */
+interface FormEventsEntrySignature<FrmDT extends string> {
+	handler(frm: Form<FrmDT>, cdt?: string, cdn?: string): unknown;
 }
 
 /**
@@ -3904,8 +4091,8 @@ export interface FrappeUiFormNamespace {
 	Attachments: unknown;
 	/** `form/dashboard.js — instance shape is the exported {@link Dashboard} interface` */
 	Dashboard: unknown;
-	/** `form/footer/footer.js` */
-	Footer: unknown;
+	/** frappe/public/js/frappe/form/footer/footer.js:4. See {@link FormFooter}. */
+	Footer: typeof FormFooter;
 	/** `form/form_tour.js` */
 	FormTour: unknown;
 	/** `form/form_viewers.js` */
