@@ -3729,8 +3729,10 @@ export interface FrappeContactsNamespace {
 	 * the Address and the Contact cards into the form's `address_html` and
 	 * `contact_html` fields, from the `addr_list` / `contact_list` the server
 	 * put in `frm.doc.__onload`. A group is skipped when the form has no such
-	 * field or the onload key is absent (`:95-98`), so it is safe to call on
-	 * any form.
+	 * field or the onload key is absent (the `is_loaded` getter,
+	 * `frappe/public/js/frappe/utils/address_and_contact.js:114-117`, checked
+	 * at `frappe/public/js/frappe/utils/address_and_contact.js:296`), so it is
+	 * safe to call on any form.
 	 */
 	render_address_and_contact(frm: Form): void;
 	/**

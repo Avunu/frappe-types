@@ -98,3 +98,28 @@ void hidden;
 void sf;
 // @ts-expect-error not a frappe.contacts member
 frappe.contacts.render_contacts(cur_frm);
+
+/**
+ * frappe's own grid.js:669-673 call: a grid's perm may be the field's stored
+ * DocPerm rows, which get_field_display_status accepts like a Permission array.
+ * @param {import("frappe-types").Grid} grid
+ */
+function grid_status(grid) {
+	if (!grid.frm) return undefined;
+	return frappe.perm.get_field_display_status(grid.df, grid.frm.doc, grid.perm);
+}
+void grid_status;
+
+// is_visible needs a doc only to look a fieldname up; a DocField goes without.
+/** @type {boolean} */
+const visible = frappe.perm.is_visible({ fieldname: "x", fieldtype: "Data" });
+void visible;
+// @ts-expect-error a fieldname is looked up on doc's doctype, so doc is required
+frappe.perm.is_visible("description");
+/**
+ * Either form, with a doc.
+ * @param {import("frappe-types").DocField | string} df
+ * @param {FrappeDoc} doc
+ */
+const either_visible = (df, doc) => frappe.perm.is_visible(df, doc);
+void either_visible;

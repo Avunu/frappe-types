@@ -2473,8 +2473,11 @@ export interface FrappeModelMetaGlobals {
  * and `frappe/public/js/frappe/model/workflow.js`.
  *
  * The evaluated permission array these functions return is the package's one
- * {@link Permission} type, the same one `Form#perm`, `BaseControl#perm` and
- * `Grid#perm` hold.
+ * {@link Permission} type, the same one `Form#perm` and `BaseControl#perm`
+ * hold. `Grid#perm` may instead be the field's stored {@link DocPerm} rows;
+ * {@link FrappePermNamespace.get_field_display_status} and
+ * {@link FrappePermNamespace.is_visible}, which read only the `read` and
+ * `write` of the entry at `df.permlevel`, accept either.
  *
  * The seven upper-case window constants `perm.js` assigns for backward
  * compatibility (`READ`, `WRITE`, … — `frappe/public/js/frappe/model/perm.js:9-17`)
@@ -2569,10 +2572,11 @@ export interface FrappePermNamespace {
 	 */
 	get_role_permissions(meta: DocTypeMeta): Permission[];
 	/**
-	 * `frappe/public/js/frappe/model/perm.js:198-230` — the restrictions that
-	 * apply to the user's `ptype` (default `"read"`) access to `doctype`: the
-	 * User Permissions on each link field, and `{ Owner: user }` when read is
-	 * granted only through `if_owner`. See {@link FrappePermMatchRule}.
+	 * `frappe/public/js/frappe/model/perm.js:198-230` — the restrictions on the
+	 * user's READ access to `doctype`: the User Permissions on each link field,
+	 * and `{ Owner: user }` when read is granted only through `if_owner`. See
+	 * {@link FrappePermMatchRule}. `ptype` is accepted and defaulted to
+	 * `"read"` (`:201`), then never used: the rules are the same for any value.
 	 */
 	get_match_rules(doctype: string, ptype?: string): FrappePermMatchRule[];
 	/**
@@ -2583,11 +2587,14 @@ export interface FrappePermNamespace {
 	 *   {@link FrappePermNamespace.get_perm}`(doc.doctype, doc)` (`:235-237`).
 	 * - With neither, only `df`'s own `hidden`, `hidden_due_to_dependency`,
 	 *   `read_only` and `is_virtual` decide (`:239-243`).
-	 * - Otherwise the permlevel's rights decide, then `hidden`, and, only with a
-	 *   `doc`, submission (`docstatus > 0` makes it read-only unless
-	 *   `allow_on_submit`), the workflow of `cur_frm`, `read_only` and
-	 *   `set_only_once` (`:245-307`). The workflow step reads the GLOBAL
-	 *   `cur_frm`, whatever `doc` is.
+	 * - Otherwise the permlevel's `write` and `read` decide (`:245-256`), then
+	 *   `hidden` and `hidden_due_to_dependency`, and, only with a `doc`,
+	 *   submission (`docstatus > 0` makes it read-only unless
+	 *   `allow_on_submit`), `read_only` and `set_only_once` (`:258-307`).
+	 *
+	 * A workflow step sits between them (`:284-293`) but changes nothing: it can
+	 * only set `"Read"` when the status is already `"Read"`. It still reads the
+	 * GLOBAL `cur_frm`, whatever `doc` is.
 	 *
 	 * **Mutates `df`**: a falsy `df.permlevel` is set to `0` (`:245`).
 	 * `explain` logs each step to the console.
@@ -2595,15 +2602,19 @@ export interface FrappePermNamespace {
 	get_field_display_status(
 		df: DocField,
 		doc?: FrappeDoc | null,
-		perm?: Permission[] | null,
+		perm?: readonly (Permission | DocPerm)[] | null,
 		explain?: boolean,
 	): DisplayStatus;
 	/**
 	 * `frappe/public/js/frappe/model/perm.js:310-319` —
 	 * {@link FrappePermNamespace.get_field_display_status} is not `"None"`. A fieldname
-	 * is looked up with `frappe.meta.get_docfield` on `doc`'s doctype (`:311-314`).
+	 * is looked up with `frappe.meta.get_docfield` on `doc`'s doctype
+	 * (`:311-314`), so it needs a `doc`; a DocField is passed on with `doc` as
+	 * is, which may then be absent.
 	 */
-	is_visible(df: DocField | string, doc: FrappeDoc, perm?: Permission[] | null): boolean;
+	is_visible(df: string, doc: FrappeDoc, perm?: readonly (Permission | DocPerm)[] | null): boolean;
+	is_visible(df: DocField, doc?: FrappeDoc | null, perm?: readonly (Permission | DocPerm)[] | null): boolean;
+	is_visible(df: DocField | string, doc: FrappeDoc, perm?: readonly (Permission | DocPerm)[] | null): boolean;
 	/**
 	 * `frappe/public/js/frappe/model/perm.js:321-324` — the `doc` of each User
 	 * Permission that applies to `doctype` (its `applicable_for` is `doctype`,
@@ -2799,12 +2810,20 @@ export interface FrappeWorkflowNamespace {
 	 * document `locals[doctype][name]` is saved, has a workflow state, and
 	 * none of the user's roles may edit it in that state. `false` for a
 	 * doctype without a workflow, a document not in `locals`, or an unsaved one.
+	 * **Throws** when the doctype has a workflow but no document of it was ever
+	 * loaded, because `locals[doctype]` is then undefined (:56); only syncing
+	 * or creating a document creates that map
+	 * (`frappe/public/js/frappe/model/sync.js:121`,
+	 * `frappe/public/js/frappe/model/create_new.js:10`), loading the meta does not.
 	 */
 	is_read_only(doctype: string, name: string): boolean;
 	/**
-	 * `frappe/public/js/frappe/model/workflow.js:72-79` — the distinct
-	 * `update_field`s of the workflow's states. **Throws** when the doctype has
-	 * no workflow.
+	 * `frappe/public/js/frappe/model/workflow.js:72-79` — the `update_field`
+	 * of each of the workflow's states, in state order, with `null` and
+	 * `undefined` dropped (`$.map`). Not a distinct set: `$.unique` is jQuery
+	 * 3.7's `uniqueSort`, written for DOM nodes; on strings it keeps the order
+	 * and removes only ADJACENT duplicates, and its pass stops at the first
+	 * empty string. **Throws** when the doctype has no workflow.
 	 */
 	get_update_fields(doctype: string): string[];
 	/**
