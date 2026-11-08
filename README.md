@@ -237,17 +237,24 @@ const rows = await frappe.xcall<Contact[]>("my_app.api.contacts"); // the messag
 const t = await frm.call<{ total: number }>("get_totals");  // frm.call returns frappe.call's jqXHR
 ```
 
-JavaScript cannot pass a type argument, so a desk script annotates the callback instead, and the annotation is checked against the response:
+JavaScript cannot pass a type argument, so a desk script annotates the `.then` or `.done` callback, or the variable it awaits into, instead:
 
 ```js
 frappe
   .call({ method: "my_app.api.contacts" })
   .then((/** @type {import("frappe-types").FrappeResponse<Contact[]>} */ r) => r.message ?? []);
 
+/** @type {import("frappe-types").FrappeResponse<Contact[]>} */
+const r = await frm.call("get_contacts"); // T is inferred from the annotation
+
 frappe.xcall("my_app.api.count").then((/** @type {number} */ n) => n.toFixed());
 ```
 
-Without a type argument or an annotation, `message` is `unknown`, so `r.message.foo` is a compile error rather than an unchecked `any`.
+The annotation is the script's claim about what the method returns, and it is checked against the response envelope: `FrappeResponse<X>`, or an envelope of your own such as `interface Envelope { message: X }`, is accepted when `X` fits `T`. Annotating the callback with the message's shape (`(/** @type {Contact} */ c) => …`, the response mistaken for its payload) is an error, because it shares no key with the envelope. Without a type argument or an annotation, `message` is `unknown`, so `r.message.foo` is a compile error rather than an unchecked `any`.
+
+An awaited jqXHR is a `FrappeResponseFields<T>`: every key frappe sets, assignable to `FrappeResponse<T>`. A top-level key your method adds itself is on `FrappeResponse`'s index signature, so read it from an unannotated `.then((r) => r.my_key)` or annotate the awaited variable as `FrappeResponse`.
+
+`frm.call`'s object form takes the same `FrappeCallOptions` as `frappe.call`, with `method` required. Under API v2 (`api_version: "v2"`) the payload arrives as `data`, not `message`, and `frappe.xcall` resolves `undefined`.
 
 `FrappeResponse` is also the body of `/api/method/<cmd>` for a client that skips `frappe.call` (`fetch`, axios, frappe-react-sdk), so an SPA can import it from the module entry instead of writing its own `{ message: T }`. `exception`, `exc_type` and `_server_messages` are on it, and one decoded `_server_messages` entry is a `FrappeServerMessage`:
 
@@ -260,7 +267,9 @@ const notes = body._server_messages
   : [];
 ```
 
-The helpers frappe puts on `window` are declared as bare globals too: `format_currency`, `format_number`, `flt`, `precision`, `in_list`, `open_url_post`, `get_url_arg`, `refresh_field`, `hide_field` and the rest of `DeskHelperGlobals`. `__` and `frappe._` are one function with one type, and `TranslateStringFunction` is the string-only form of it, for a parameter that takes "the translator" or a stand-in such as `(txt) => txt`.
+The helpers frappe puts on `window` are declared as bare globals too: `format_currency`, `format_number`, `flt`, `precision`, `in_list`, `open_url_post`, `get_url_arg`, `refresh_field`, `hide_field` and the rest of `DeskHelperGlobals`. `__` and `frappe._` are one function with one type, `TranslateFunction`.
+
+These globals are `var`s with short, generic names (`strip`, `nth`, `precision`, `READ`, `DELETE`, …), as frappe made them. The presets set `moduleDetection: "force"`, so every file is a module and its own top-level `precision` or `strip` simply shadows the global. A hand-written tsconfig without it treats a file with no `import`/`export` as a script that shares the global scope, and a top-level declaration of one of these names there is a duplicate-identifier error: set `moduleDetection: "force"`, or rename the local.
 
 ### Typing your doctypes: `FrappeDocTypes`
 
