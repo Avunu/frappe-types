@@ -2612,7 +2612,7 @@ export declare class Toolbar {
  * `$.extend(this, opts)` runs in `Layout`'s constructor (frappe/public/js/frappe/form/layout.js:18), so every
  * key of {@link LayoutOptions} lands on the instance verbatim here too.
  */
-export declare class FieldGroup extends Layout {
+export declare class FieldGroup<TValues extends object = Record<string, unknown>> extends Layout {
 	constructor(opts?: LayoutOptions);
 
 	/** frappe/public/js/frappe/ui/field_group.js:8, flipped by the `change`/`input` handlers at :88-101. */
@@ -2623,7 +2623,7 @@ export declare class FieldGroup extends Layout {
 	 */
 	fetch_dict: Record<string, Record<string, Record<string, string>>>;
 	/** From `opts` — applied by `set_values()` in the constructor (frappe/public/js/frappe/ui/field_group.js:16-18). */
-	values?: Record<string, unknown>;
+	values?: Partial<TValues>;
 	/** From `opts` — frappe/public/js/frappe/ui/field_group.js:84 skips {@link FieldGroup.catch_enter_as_submit}. */
 	no_submit_on_enter?: boolean;
 	/** From `opts` — frappe/public/js/frappe/ui/field_group.js:106 makes {@link FieldGroup.focus_on_first_input} a no-op. */
@@ -2691,22 +2691,29 @@ export declare class FieldGroup extends Layout {
 	 * Returns **`null`** (after `frappe.msgprint`) when a `reqd` field is empty
 	 * and `ignore_errors` is falsy (:169-180), or when a field carries
 	 * `df.invalid` and `check_invalid` is set (:182-193). Keys are omitted
-	 * entirely for null-ish values (:157), so the result is a partial map.
+	 * entirely for null-ish values (:157), so the result is a partial map:
+	 * `Partial<TValues>`, where `TValues` is the class's type parameter, the
+	 * values keyed by fieldname. It defaults to `Record<string, unknown>`;
+	 * name it to type the values: `new frappe.ui.FieldGroup<{ qty: number }>(…)`.
 	 */
 	override get_values: (
 		ignore_errors?: boolean,
 		check_invalid?: boolean
-	) => Record<string, unknown> | null;
-	/** frappe/public/js/frappe/ui/field_group.js:197-200 — `null` when the field exists but has no `get_value`. */
-	get_value(key: string): unknown;
+	) => Partial<TValues> | null;
+	/**
+	 * frappe/public/js/frappe/ui/field_group.js:197-200 — the control's
+	 * `get_value()`; `null` when the field exists but has no `get_value`, and
+	 * `undefined` for an unknown fieldname.
+	 */
+	get_value<K extends keyof TValues & string>(key: K): TValues[K] | null | undefined;
 	/** frappe/public/js/frappe/ui/field_group.js:202-215. Resolves immediately when the fieldname is unknown. */
-	set_value(key: string, val: unknown): Promise<void>;
+	override set_value<K extends keyof TValues & string>(key: K, val: TValues[K] | null | undefined): Promise<void>;
 	/** frappe/public/js/frappe/ui/field_group.js:217-219. */
 	has_field(fieldname: string): boolean;
 	/** frappe/public/js/frappe/ui/field_group.js:221-223 — an alias of {@link FieldGroup.set_value}. */
-	set_input(key: string, val: unknown): Promise<void>;
+	set_input<K extends keyof TValues & string>(key: K, val: TValues[K] | null | undefined): Promise<void>;
 	/** frappe/public/js/frappe/ui/field_group.js:225-234. Silently skips keys with no matching field. */
-	set_values(dict: Record<string, unknown>): Promise<void[]>;
+	set_values(dict: Partial<TValues>): Promise<void[]>;
 	/** frappe/public/js/frappe/ui/field_group.js:236-243. Resets every control to its `df.default` or `""`. */
 	clear(): void;
 	/**
@@ -2732,15 +2739,23 @@ export declare class FieldGroup extends Layout {
 	is_new(): boolean | undefined;
 }
 
-/** The modal width classes `Dialog#set_modal_size` picks from — frappe/public/js/frappe/ui/dialog.js:170-193. */
-export type DialogSize = "small" | "large" | "extra-large" | "";
+/**
+ * The modal width classes `Dialog#set_modal_size` picks from — frappe/public/js/frappe/ui/dialog.js:170-193.
+ *
+ * `"medium"` adds no class, but any truthy size skips the automatic sizing
+ * (frappe/public/js/frappe/ui/dialog.js:44), so it keeps the default width
+ * however many columns the dialog has. frappe passes it itself
+ * (frappe/public/js/frappe/ui/naming_series.js:21,
+ * frappe/public/js/frappe/list/list_filter/manage_layouts_dialog.js:12).
+ */
+export type DialogSize = "small" | "medium" | "large" | "extra-large" | "";
 
 /**
  * The `action` bag an older dialog API passes instead of
  * `primary_action` / `secondary_action` — read at frappe/public/js/frappe/ui/dialog.js:69-90.
  */
 export interface DialogActions {
-	primary: { label?: string; onsubmit?: (values: Record<string, unknown>) => void };
+	primary: { label?: string; onsubmit?(values: Record<string, unknown>): unknown };
 	secondary: { label?: string };
 }
 
@@ -2752,7 +2767,7 @@ export interface DialogActions {
  * (frappe/public/js/frappe/form/layout.js:18), so anything else you pass lands on the instance — hence the
  * open index signature, inherited from {@link LayoutOptions}.
  */
-export interface DialogOptions extends LayoutOptions {
+export interface DialogOptions<TValues extends object = Record<string, unknown>> extends LayoutOptions {
 	/** frappe/public/js/frappe/ui/dialog.js:298 — set as the `.modal-title` HTML, not text. */
 	title?: string;
 	/**
@@ -2781,8 +2796,13 @@ export interface DialogOptions extends LayoutOptions {
 	 * frappe/public/js/frappe/ui/dialog.js:70-76. Called with the result of `get_values()`, `this` bound to the
 	 * dialog. If it returns a thenable the primary button shows its busy state
 	 * until that settles (frappe/public/js/frappe/ui/dialog.js:267-273), hence `unknown` rather than `void`.
+	 *
+	 * `values` is `Partial<TValues>`: `get_values()` leaves out every empty
+	 * field (frappe/public/js/frappe/ui/field_group.js:157), so a key can be
+	 * missing however the dialog was typed. Declared as a method, so a callback
+	 * whose parameter names its own values type is accepted as well.
 	 */
-	primary_action?: (values: Record<string, unknown>) => unknown;
+	primary_action?(this: Dialog<TValues>, values: Partial<TValues>): unknown;
 	/** frappe/public/js/frappe/ui/dialog.js:72-74 — defaults to `__("Submit", null, "Primary action in dialog")`. */
 	primary_action_label?: string;
 	/**
@@ -2846,8 +2866,14 @@ export interface DialogOptions extends LayoutOptions {
  * **Read {@link Dialog.display} instead** — frappe/public/js/frappe/ui/dialog.js:13, :104, :126 keep it in
  * sync with `shown.bs.modal` / `hide.bs.modal` and nothing shadows it.
  */
-export declare class Dialog extends FieldGroup {
-	constructor(opts?: DialogOptions);
+export declare class Dialog<TValues extends object = Record<string, unknown>> extends FieldGroup<TValues> {
+	/**
+	 * frappe/public/js/frappe/ui/dialog.js:11-31. `TValues` types the values
+	 * `primary_action` and `get_values()` receive (see {@link FieldGroup.get_values});
+	 * name it as `new frappe.ui.Dialog<{ qty: number }>({ … })`, or annotate the
+	 * variable the dialog is assigned to.
+	 */
+	constructor(opts?: DialogOptions<TValues>);
 
 	// ---- constructor (frappe/public/js/frappe/ui/dialog.js:13-27) ----
 	/** frappe/public/js/frappe/ui/dialog.js:13, :104, :126 — `true` between `shown.bs.modal` and `hide.bs.modal`. */
@@ -2876,7 +2902,8 @@ export declare class Dialog extends FieldGroup {
 	title?: string;
 	indicator?: string;
 	minimizable?: boolean;
-	primary_action?: (values: Record<string, unknown>) => unknown;
+	/** See {@link DialogOptions.primary_action}. */
+	primary_action?(this: Dialog<TValues>, values: Partial<TValues>): unknown;
 	primary_action_label?: string;
 	primary_action_loading_label?: string;
 	secondary_action?: (event: JQuery.ClickEvent) => void;
@@ -2963,7 +2990,7 @@ export declare class Dialog extends FieldGroup {
 	 */
 	set_primary_action(
 		label: string,
-		click?: (values: Record<string, unknown>) => unknown
+		click?: (this: Dialog<TValues>, values: Partial<TValues>) => unknown
 	): JQuery<HTMLElement>;
 	/** frappe/public/js/frappe/ui/dialog.js:279-282. */
 	set_secondary_action(click: (event: JQuery.ClickEvent) => void): JQuery<HTMLElement>;
