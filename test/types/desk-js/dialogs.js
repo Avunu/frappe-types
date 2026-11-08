@@ -53,6 +53,84 @@ const discount = new frappe.ui.Dialog({
 const same = discount.get_value("percentage");
 void same;
 
+// A dialog whose fields and actions refer to the dialog itself, the usual
+// frappe pattern, needs no annotation (TS7022 when frappe.ui.Dialog was generic).
+// TypeScript 5.x still needs one when a hook that returns a value (get_query,
+// get_data) refers to the dialog; TypeScript 7 does not.
+/** @type {frappe.ui.Dialog} */
+const picker = new frappe.ui.Dialog({
+	fields: [
+		{
+			fieldname: "doctype",
+			fieldtype: "Link",
+			options: "DocType",
+			onchange() {
+				void picker.get_value("doctype");
+			},
+		},
+		{
+			fieldname: "format",
+			fieldtype: "Link",
+			options: "Print Format",
+			get_query() {
+				const filters = { doc_type: picker.get_value("doctype") };
+				return { filters };
+			},
+		},
+	],
+	primary_action() {
+		picker.hide();
+	},
+});
+picker.show();
+/** @type {frappe.ui.FieldGroup} */
+const group = new frappe.ui.FieldGroup({
+	fields: [
+		{
+			fieldname: "package",
+			fieldtype: "Select",
+			get_data() {
+				const kind = group.get_value("package");
+				return kind ? [String(kind)] : [];
+			},
+		},
+	],
+	body: document.body,
+});
+group.make();
+const plain = new frappe.ui.Dialog({
+	fields: [
+		{
+			fieldname: "doctype",
+			fieldtype: "Link",
+			options: "DocType",
+			onchange() {
+				plain.set_value("format", null);
+			},
+		},
+		{ fieldname: "format", fieldtype: "Link", options: "Print Format" },
+	],
+	primary_action() {
+		plain.hide();
+	},
+	secondary_action() {
+		plain.hide();
+	},
+});
+plain.show();
+const asked = frappe.prompt(
+	[
+		{
+			fieldname: "reason",
+			fieldtype: "Data",
+			onchange() {
+				void asked.get_value("reason");
+			},
+		},
+	],
+	(values) => void values["reason"],
+);
+
 // frappe.prompt infers the values type from the callback's parameter.
 frappe.prompt(
 	[{ fieldname: "tasks", fieldtype: "Small Text", label: __("Tasks") }],

@@ -101,6 +101,29 @@ new frappe.ui.Dialog({
 	},
 });
 
+// A dialog that refers to itself without an annotation. (A hook that returns a
+// value and refers to `d`, such as get_query, needs `const d: frappe.ui.Dialog`
+// on TypeScript 5.x; TypeScript 7 takes it as is.)
+export function pick_format(): void {
+	const d = new frappe.ui.Dialog({
+		fields: [
+			{ fieldname: "doctype", fieldtype: "Link", options: "DocType" },
+			{
+				fieldname: "format",
+				fieldtype: "Link",
+				options: "Print Format",
+				onchange() {
+					d.set_df_property("format", "description", "");
+				},
+			},
+		],
+		primary_action() {
+			d.hide();
+		},
+	});
+	d.show();
+}
+
 // frappe.prompt, typed by the callback's parameter.
 frappe.prompt([{ fieldname: "tasks", fieldtype: "Small Text" }], async (values: { tasks?: string }) => {
 	const lines = (values.tasks ?? "").split("\n");
@@ -149,6 +172,41 @@ $(document).on("form-refresh", (_e: JQuery.TriggeredEvent, ...[frm]: FormDocumen
 // ui_text_editor: the upload dialog's file list.
 export function failed(files: FrappeFileUploaderFile[]): string[] {
 	return files.filter((f) => f.failed).map((f) => f.error_message ?? f.name);
+}
+
+// Replacing frappe's uploader with a class of one's own (cloud_storage): frappe
+// only `new`s it, so the static UploadOptions and the instance members are the
+// app's business.
+export function install_uploader(): void {
+	frappe.ui.FileUploader = class CloudUploader {
+		constructor(opts?: { doctype?: string | null }) {
+			void opts?.doctype;
+		}
+	};
+}
+
+// The email composer's typing events.
+$(document).on("form-typing", (_e: JQuery.TriggeredEvent, ...[frm]: FormDocumentEvents["form-typing"]) => {
+	void frm.docname;
+});
+
+// Members the less common controls define, reached through super.
+export class Gallery extends frappe.ui.form.ControlAttachmentGallery {
+	override async get_attachments() {
+		const files = await super.get_attachments();
+		return files.filter((f) => !f.is_image || f.file_url.endsWith(".png"));
+	}
+}
+export class Duration extends frappe.ui.form.ControlDuration {
+	override show_picker(): void {
+		super.show_picker();
+		this.$picker?.addClass("compact");
+	}
+}
+export class Phone extends frappe.ui.form.ControlPhone {
+	override set_flag(country_code: string): void {
+		super.set_flag(country_code.toLowerCase());
+	}
 }
 
 // ---- negative cases -------------------------------------------------------

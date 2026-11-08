@@ -167,6 +167,96 @@ const Read_only = frappe.ui.form.ControlReadOnly;
 const Long_text = frappe.ui.form.ControlLongText;
 void Read_only, Long_text;
 
+// The type names frappe registers twice resolve too.
+/** @type {frappe.ui.form.ControlReadOnly | frappe.ui.form.ControlLongText | frappe.ui.form.ControlLongInt | undefined} */
+const aliased = undefined;
+void aliased;
+
+// Registering a replacement that does not descend from the class it replaces
+// (esign's signature pad): frappe only `new`s whatever the slot holds.
+frappe.ui.form.ControlSmallText = class extends frappe.ui.form.ControlData {};
+frappe.ui.form.ControlSignature = class ControlSignaturePad extends frappe.ui.form.ControlData {
+	/** @override */
+	static horizontal = false;
+};
+
+// Overriding the members each control's own file defines.
+frappe.ui.form.ControlMultiCheck = class extends frappe.ui.form.ControlMultiCheck {
+	/** @override */
+	make_checkboxes() {
+		super.make_checkboxes();
+		this.$select_buttons?.hide();
+	}
+	/**
+	 * @override
+	 * @param {Exclude<import("frappe-types").SelectOption, string>} option
+	 */
+	get_checkbox_element(option) {
+		return super.get_checkbox_element(option).attr("title", option.description ?? "");
+	}
+};
+frappe.ui.form.ControlLink = class extends frappe.ui.form.ControlLink {
+	/**
+	 * @override
+	 * @param {string} doctype
+	 */
+	toggle_href(doctype) {
+		super.toggle_href(doctype);
+		void Object.keys(this.fetch_map);
+	}
+};
+
+// A comment box whose submit hook is cleared again.
+frappe.ui.form.ControlComment = class extends frappe.ui.form.ControlComment {
+	/** @override */
+	make() {
+		super.make();
+		if (!this.frm) this.on_submit = undefined;
+	}
+};
+
+// df hooks given as `undefined` mean "not set", as frappe reads them.
+/** @type {boolean} */
+const after_today = Math.random() > 0.5;
+new frappe.ui.Dialog({
+	fields: [
+		{ fieldname: "since", fieldtype: "Date", min_date: after_today ? new Date() : undefined },
+		{
+			fieldname: "apps",
+			fieldtype: "Autocomplete",
+			get_query: () => ({ query: "frappe.desk.search.search_widget", params: { doctype: "Module Def" } }),
+		},
+		{
+			fieldname: "parts",
+			fieldtype: "MultiCheck",
+			options: [{ value: "a", label: "A" }],
+			on_change() {
+				void 0;
+			},
+		},
+		{
+			fieldname: "status",
+			fieldtype: "Data",
+			/** @param {JQuery.TriggeredEvent | null | undefined} e */
+			change(e) {
+				void e?.type;
+			},
+		},
+	],
+});
+
+// The workflow helpers return the transition rows.
+frappe.ui.form.on("ToDo", {
+	refresh(frm) {
+		void frappe.workflow.get_transitions(frm.doc).then((transitions) => {
+			for (const t of transitions) void frm.add_custom_button(__(t.action), () => void t.next_state);
+		});
+		/** @type {string[]} */
+		const roles = frappe.workflow.get_document_state_roles("ToDo", "Open");
+		void roles;
+	},
+});
+
 // ---- negative cases -------------------------------------------------------
 
 /** @param {frappe.ui.form.ControlData} data */
