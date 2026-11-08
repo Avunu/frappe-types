@@ -34,18 +34,218 @@
 // to know where strings, comments and regular expressions start and end, which
 // is the same in TS and JS. In a `.vue` file the `<script>` blocks are lexed
 // and the rest (the template) is scanned as code, as it always was.
+//
+// BARE GLOBALS. Besides `frappe.*`, frappe puts plain functions and slots on
+// `window` — `format_currency`, `open_url_post`, `in_list`, `cur_frm` — which
+// a desk script calls without a prefix. Which names to look for is not a guess
+// either: `frappeWindowGlobals` reads them off frappe's own `window.x = …` and
+// `Object.assign(window, { … })` sites, and audit-consumer.mjs uses that when
+// it has a frappe checkout. Without one it falls back to WINDOW_GLOBALS, the
+// same list as read from the pinned tree, which test/scan-source.test.mjs
+// re-derives from FRAPPE_PATH so the two cannot drift apart. Libraries frappe
+// vendors onto `window` (moment, Sortable, …) are left out: they are not
+// frappe's API and this package does not type them (NOT_FRAPPE_GLOBALS).
+//
+// A bare name is common enough to collide with an app's own: `precision`,
+// `strip`, `saving`. So a global is not counted in a file that declares a
+// binding of that name itself (`const precision = …`, `function strip(…)`,
+// `import moment from …`), nor where it is an object key (`{ precision: 2 }`)
+// or a member (`frm.precision`).
 
+import { glob, readFile } from "node:fs/promises";
+import path from "node:path";
 import vm from "node:vm";
 
 const IDENT = "[A-Za-z_$][A-Za-z0-9_$]*";
 
-/** Desk globals other than `frappe`, probed as bare identifiers. */
+/**
+ * Desk globals that are not window helpers: the translator, the document cache,
+ * the `cur_*` slots and ERPNext's root. Probed as bare identifiers.
+ */
 export const OTHER_GLOBALS = ["__", "locals", "cur_frm", "cur_list", "cur_dialog", "cur_page", "erpnext"];
 
+/**
+ * The names frappe v16.54.0 assigns to `window` (`window.x = …` and
+ * `Object.assign(window, { … })` under frappe/public/js and frappe/website/js,
+ * FRAPPE_JS_ROOTS), less
+ * NOT_FRAPPE_GLOBALS. The fallback when no frappe checkout is at hand; when
+ * one is, `frappeWindowGlobals` reads the same list off it. Where each is set:
+ *
+ *   frappe/public/js/frappe/utils/datatype.js:4-75     cstr cint toTitle is_null copy_dict validate_email
+ *                                                      validate_phone validate_name validate_url nth has_words has_common
+ *   frappe/public/js/frappe/utils/number_format.js:90  format_number
+ *   frappe/public/js/frappe/utils/number_format.js:324-340
+ *                                                      flt cint strip_number_groups convert_old_to_new_number_format
+ *                                                      format_currency fmt_money get_currency_symbol get_number_format
+ *                                                      get_number_format_info _round roundNumber precision remainder
+ *                                                      round_based_on_smallest_currency_fraction in_list
+ *   frappe/public/js/frappe/utils/common.js:194-229    repl replace_all strip_html strip lstrip rstrip
+ *   frappe/public/js/frappe/utils/pretty_date.js:81    comment_when
+ *   frappe/public/js/frappe/utils/urllib.js:48,76-77   open_url_post get_url_arg get_url_dict
+ *   frappe/public/js/frappe/form/script_helpers.js:4-58
+ *                                                      refresh_many refresh_field set_field_options toggle_field
+ *                                                      hide_field unhide_field
+ *   frappe/public/js/frappe/form/script_manager.js:6   extend_cscript
+ *   frappe/public/js/libs.bundle.js:4                  SetVueGlobals
+ *   frappe/public/js/frappe/model/perm.js:9-17         READ WRITE CREATE DELETE SUBMIT CANCEL AMEND
+ *   frappe/public/js/frappe/translate.js:26            __
+ *   frappe/public/js/frappe/ui/messages.js:329         msgprint
+ *   frappe/public/js/frappe/provide.js:42-50           NEWLINE TAB UP_ARROW DOWN_ARROW cur_frm
+ *   frappe/public/js/frappe/list/list_factory.js:6     cur_list
+ *   frappe/public/js/frappe/ui/dialog.js:6             cur_dialog
+ *   frappe/public/js/frappe/views/container.js:8       cur_page
+ *   frappe/public/js/frappe/views/treeview.js:6        cur_tree
+ *   frappe/public/js/frappe/ui/filters/filter_list.js:5  fltr
+ *   frappe/public/js/frappe/views/reports/report_view.js:6, query_report.js:6  DataTable
+ *   frappe/public/js/frappe/web_form/web_form.js:414   saving
+ *   frappe/public/js/print.bundle.js:17                render_barcode
+ *   frappe/website/js/website.js:581,599,611,625       valid_email is_html ask_to_login full_name
+ *                                                      (web bundle only; :7,589,591,595 re-set cur_frm
+ *                                                      validate_email cstr is_null)
+ */
+export const WINDOW_GLOBALS = [
+	"AMEND",
+	"CANCEL",
+	"CREATE",
+	"DELETE",
+	"DOWN_ARROW",
+	"DataTable",
+	"NEWLINE",
+	"READ",
+	"SUBMIT",
+	"SetVueGlobals",
+	"TAB",
+	"UP_ARROW",
+	"WRITE",
+	"__",
+	"_round",
+	"ask_to_login",
+	"cint",
+	"comment_when",
+	"convert_old_to_new_number_format",
+	"copy_dict",
+	"cstr",
+	"cur_dialog",
+	"cur_frm",
+	"cur_list",
+	"cur_page",
+	"cur_tree",
+	"extend_cscript",
+	"flt",
+	"fltr",
+	"fmt_money",
+	"format_currency",
+	"format_number",
+	"full_name",
+	"get_currency_symbol",
+	"get_number_format",
+	"get_number_format_info",
+	"get_url_arg",
+	"get_url_dict",
+	"has_common",
+	"has_words",
+	"hide_field",
+	"in_list",
+	"is_html",
+	"is_null",
+	"lstrip",
+	"msgprint",
+	"nth",
+	"open_url_post",
+	"precision",
+	"refresh_field",
+	"refresh_many",
+	"remainder",
+	"render_barcode",
+	"repl",
+	"replace_all",
+	"roundNumber",
+	"round_based_on_smallest_currency_fraction",
+	"rstrip",
+	"saving",
+	"set_field_options",
+	"strip",
+	"strip_html",
+	"strip_number_groups",
+	"toTitle",
+	"toggle_field",
+	"unhide_field",
+	"valid_email",
+	"validate_email",
+	"validate_name",
+	"validate_phone",
+	"validate_url",
+];
+
+/**
+ * Names frappe assigns to `window` that are not its API: `frappe` itself (its
+ * paths are scanned as `frappe.*`), jQuery (`@types/jquery` types `$` and
+ * `jQuery`) and the libraries frappe vendors onto the page, whose types are
+ * their own packages'. A use of one of these says nothing about this package.
+ *
+ *   frappe/public/js/jquery-bootstrap.js:15-16              $ jQuery
+ *   frappe/public/js/lib/moment.js:5                        moment
+ *   frappe/public/js/libs.bundle.js:8                       Sortable
+ *   frappe/public/js/lib/leaflet/leaflet.js:5               L
+ *   frappe/public/js/syntax_highlighting.bundle.js:12       hljs
+ *   frappe/public/js/frappe/ui/awesomplete.js:35            Awesomplete
+ *   frappe/public/js/billing.bundle.js:116                  chatwootSDK
+ *   frappe/public/js/frappe/file_uploader/ImageCropper.vue:92  cropper
+ */
+export const NOT_FRAPPE_GLOBALS = new Set([
+	"frappe",
+	"$",
+	"jQuery",
+	"moment",
+	"Sortable",
+	"L",
+	"hljs",
+	"Awesomplete",
+	"chatwootSDK",
+	"cropper",
+]);
+
+/** The default list of bare globals to scan for: OTHER_GLOBALS and WINDOW_GLOBALS. */
+export const DEFAULT_GLOBALS = globalsToProbe(WINDOW_GLOBALS);
+
 const RE_FRAPPE = new RegExp(`(?:^|[^\\w.$])(frappe(?:\\.${IDENT})+)`, "g");
-const RE_OTHER = new RegExp(`(?:^|[^\\w.$])(${OTHER_GLOBALS.join("|")})(?![\\w$])`, "g");
 const RE_DOTTED_ONLY = new RegExp(`^\\s*frappe(?:\\.${IDENT})+\\s*$`);
-const RE_MENTIONS = new RegExp(`(?:^|[^\\w.$])(?:frappe\\.|(?:${OTHER_GLOBALS.join("|")})(?![\\w$]))`);
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * The regular expressions for one list of globals, built once per list.
+ * @type {WeakMap<readonly string[], { other: RegExp, mentions: RegExp }>}
+ */
+const PATTERNS = new WeakMap();
+
+/** @param {readonly string[]} globals */
+function patternsFor(globals) {
+	let p = PATTERNS.get(globals);
+	if (!p) {
+		const alt = globals.map(escapeRe).join("|");
+		p = {
+			// A bare use: not after a `.` (a member) or an identifier character,
+			// and not an object key (`name:`, but `name::` never occurs in JS).
+			other: new RegExp(`(?:^|[^\\w.$])(${alt})(?![\\w$])(?!\\s*:(?!:))`, "g"),
+			mentions: new RegExp(`(?:^|[^\\w.$])(?:frappe\\.|(?:${alt})(?![\\w$]))`),
+		};
+		PATTERNS.set(globals, p);
+	}
+	return p;
+}
+
+/**
+ * The union of OTHER_GLOBALS and `windowGlobals`, without NOT_FRAPPE_GLOBALS,
+ * sorted.
+ * @param {Iterable<string>} windowGlobals names frappe assigns to `window`
+ * @returns {string[]}
+ */
+export function globalsToProbe(windowGlobals) {
+	const out = new Set(OTHER_GLOBALS);
+	for (const g of windowGlobals) if (!NOT_FRAPPE_GLOBALS.has(g)) out.add(g);
+	return [...out].sort();
+}
 
 /** How many string literals deep a scan follows code inside strings. */
 const MAX_DEPTH = 4;
@@ -266,23 +466,61 @@ export function isJavaScript(text) {
 	return false;
 }
 
-function scanCode(code, acc) {
+const RE_BINDINGS = [
+	// const x / let x / var x, and each name of `const a = 1, b = 2` is not
+	// needed: one is enough to show the file has its own.
+	new RegExp(`\\b(?:const|let|var)\\s+(${IDENT})`, "g"),
+	new RegExp(`\\bfunction\\s*\\*?\\s*(${IDENT})`, "g"),
+	new RegExp(`\\bclass\\s+(${IDENT})`, "g"),
+	// import x from, import * as x from, import { a as x }
+	new RegExp(`\\bimport\\s+(${IDENT})\\s*(?:,|\\bfrom\\b)`, "g"),
+	new RegExp(`\\bas\\s+(${IDENT})`, "g"),
+];
+const RE_IMPORT_NAMED = /\bimport\s*(?:[A-Za-z_$][\w$]*\s*,\s*)?\{([^}]*)\}/g;
+// `import … from ""` / `export … from ""` once `lex` has emptied the specifier.
+const RE_IMPORT_CLAUSE = /\b(?:import|export)\b[^;]*?\bfrom\s*""/g;
+
+/**
+ * Names a piece of code binds itself. Deliberately simple: the common ways a
+ * file gets its own `precision` or `moment`, not a scope analysis.
+ * @param {string} code
+ * @returns {Set<string>}
+ */
+export function declaredNames(code) {
+	const out = new Set();
+	for (const re of RE_BINDINGS) for (const m of code.matchAll(re)) out.add(m[1]);
+	for (const m of code.matchAll(RE_IMPORT_NAMED)) {
+		for (const part of m[1].split(",")) {
+			const name = part.trim().split(/\s+as\s+/).pop()?.trim();
+			if (name) out.add(name);
+		}
+	}
+	return out;
+}
+
+function scanCode(code, acc, globals) {
 	for (const m of code.matchAll(RE_FRAPPE)) {
 		if (/\.\d/.test(m[1])) continue;
 		acc.paths.add(m[1]);
 	}
-	for (const m of code.matchAll(RE_OTHER)) acc.globals.add(m[1]);
+	const own = declaredNames(code);
+	// An import clause names a module's exports, not globals: `import { nth } from "./x"`.
+	const body = code.replace(RE_IMPORT_CLAUSE, " ");
+	for (const m of body.matchAll(patternsFor(globals).other)) {
+		if (!own.has(m[1])) acc.globals.add(m[1]);
+	}
 }
 
-function scanScript(src, acc, depth) {
+function scanScript(src, acc, depth, globals) {
 	const { code, strings } = lex(src);
-	scanCode(code, acc);
+	scanCode(code, acc, globals);
 	if (depth >= MAX_DEPTH) return;
+	const { mentions } = patternsFor(globals);
 	for (const s of strings) {
-		if (!RE_MENTIONS.test(s)) continue;
+		if (!mentions.test(s)) continue;
 		if (RE_DOTTED_ONLY.test(s)) continue;
 		if (!isJavaScript(s)) continue;
-		scanScript(s, acc, depth + 1);
+		scanScript(s, acc, depth + 1, globals);
 	}
 }
 
@@ -290,19 +528,117 @@ function scanScript(src, acc, depth) {
  * The `frappe.*` paths and other desk globals a file uses.
  *
  * @param {string} src file contents
- * @param {{ vue?: boolean }} [opts] `vue: true` for a single-file component
+ * @param {{ vue?: boolean, globals?: readonly string[] }} [opts] `vue: true` for
+ *   a single-file component; `globals`, the bare names to look for (default
+ *   DEFAULT_GLOBALS; audit-consumer.mjs passes the list read off a frappe
+ *   checkout when it has one)
  * @returns {{ paths: Set<string>, globals: Set<string> }}
  */
-export function scanSource(src, { vue = false } = {}) {
+export function scanSource(src, { vue = false, globals = DEFAULT_GLOBALS } = {}) {
 	const acc = { paths: new Set(), globals: new Set() };
 	if (!vue) {
-		scanScript(src, acc, 0);
+		scanScript(src, acc, 0, globals);
 		return acc;
 	}
 	const rest = src.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (_, body) => {
-		scanScript(body, acc, 0);
+		scanScript(body, acc, 0, globals);
 		return "";
 	});
-	scanCode(rest.replace(/<!--[\s\S]*?-->/g, ""), acc);
+	scanCode(rest.replace(/<!--[\s\S]*?-->/g, ""), acc, globals);
 	return acc;
+}
+
+// ------------------------------------------------------------ frappe's window
+
+const RE_WINDOW_ASSIGN = new RegExp(`(?:^|[^\\w.$])window\\.(${IDENT})\\s*=(?![=>])`, "g");
+const RE_WINDOW_OBJECT_ASSIGN = /\bObject\.assign\(\s*window\s*,\s*\{/g;
+
+/**
+ * The names a piece of frappe source assigns to `window`: `window.x = …` and
+ * the keys of `Object.assign(window, { … })`. Comments and strings are
+ * ignored (`lex`), so a commented-out assignment does not count.
+ *
+ * @param {string} src
+ * @returns {Set<string>}
+ */
+export function windowGlobalsIn(src) {
+	const { code } = lex(src);
+	const out = new Set();
+	for (const m of code.matchAll(RE_WINDOW_ASSIGN)) out.add(m[1]);
+	for (const m of code.matchAll(RE_WINDOW_OBJECT_ASSIGN)) {
+		// Walk to the matching `}` and read the top-level keys of the literal.
+		let depth = 1;
+		let i = m.index + m[0].length;
+		let key = "";
+		let expectKey = true;
+		for (; i < code.length && depth > 0; i++) {
+			const c = code[i];
+			if (c === "{" || c === "(" || c === "[") {
+				depth++;
+				expectKey = false;
+				continue;
+			}
+			if (c === "}" || c === ")" || c === "]") {
+				depth--;
+				continue;
+			}
+			if (depth !== 1) continue;
+			if (c === ",") {
+				if (key) out.add(key);
+				key = "";
+				expectKey = true;
+				continue;
+			}
+			if (!expectKey) continue;
+			if (/[\w$]/.test(c)) {
+				key += c;
+				continue;
+			}
+			if (/\s/.test(c)) continue;
+			// `:` or `(` ends the key: `a: 1` and `a() {}` still name `a`.
+			if (key) out.add(key);
+			key = "";
+			expectKey = false;
+		}
+		if (key) out.add(key);
+	}
+	return out;
+}
+
+/**
+ * The frappe source trees the bundles are built from. `frappe/public/js` holds
+ * every bundle entry; the web bundle also imports `frappe/website/js/website.js`
+ * (`frappe/public/js/frappe-web.bundle.js:47`), which sets web-only globals.
+ */
+export const FRAPPE_JS_ROOTS = ["frappe/public/js", "frappe/website/js"];
+
+/**
+ * Every name frappe assigns to `window`, read from its source: each
+ * `.js` / `.vue` file under FRAPPE_JS_ROOTS outside `node_modules`.
+ *
+ * @param {string} frappePath a frappe checkout (the repo root, holding frappe/public/js)
+ * @returns {Promise<Map<string, string[]>>} name → the files that assign it, sorted by name
+ */
+export async function frappeWindowGlobals(frappePath) {
+	/** @type {Map<string, string[]>} */
+	const found = new Map();
+	for (const tree of FRAPPE_JS_ROOTS) {
+		const root = path.join(frappePath, ...tree.split("/"));
+		for await (const entry of glob("**/*.{js,vue}", { cwd: root, exclude: (name) => name === "node_modules" })) {
+			let src;
+			try {
+				src = await readFile(path.join(root, entry), "utf8");
+			} catch {
+				continue;
+			}
+			if (!src.includes("window")) continue;
+			const rel = path.posix.join(tree, entry.split(path.sep).join("/"));
+			for (const name of windowGlobalsIn(src)) {
+				const list = found.get(name) ?? [];
+				if (!list.includes(rel)) list.push(rel);
+				found.set(name, list);
+			}
+		}
+	}
+	return new Map([...found.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }

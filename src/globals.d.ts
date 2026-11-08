@@ -20,6 +20,7 @@
 // =============================================================================
 
 import type { DocTypeMeta, FrappeDoc } from "./model";
+import type { FrappeNumberFormatInfo } from "./core";
 // IMPORT-NAME FIXES — `ui/form.d.ts` exports the Form class as `Form`, not
 // `FrappeForm` (that is only its JS class-expression name,
 // frappe/public/js/frappe/form/form.js:64), and `Dialog` is declared in
@@ -1016,6 +1017,308 @@ export interface HarnessProbe {
 }
 
 /**
+ * The helper functions frappe puts on `window`, so a desk script calls them
+ * bare: `format_currency(amount, currency)`, `open_url_post(url, args)`.
+ *
+ * Every one is assigned at bundle load by a file the desk always loads
+ * (`frappe/hooks.py:24-33`, `app_include_js`):
+ *
+ * - `frappe/public/js/frappe/utils/datatype.js:4-81` writes `cstr`, `cint`,
+ *   `toTitle`, `is_null`, `copy_dict`, the `validate_*` four, `nth`,
+ *   `has_words` and `has_common` one by one;
+ * - `frappe/public/js/frappe/utils/number_format.js:90` writes
+ *   `format_number`, and `frappe/public/js/frappe/utils/number_format.js:324-340`
+ *   `Object.assign`s `flt`, `cint` (again), `strip_number_groups`,
+ *   `convert_old_to_new_number_format`, `format_currency`, `fmt_money`,
+ *   `get_currency_symbol`, `get_number_format`, `get_number_format_info`,
+ *   `_round`, `roundNumber`, `precision`, `remainder`,
+ *   `round_based_on_smallest_currency_fraction` and `in_list`;
+ * - `frappe/public/js/frappe/utils/common.js:194-237` writes `repl`,
+ *   `replace_all`, `strip_html`, `strip`, `lstrip` and `rstrip`;
+ * - `frappe/public/js/frappe/utils/pretty_date.js:81` writes `comment_when`;
+ * - `frappe/public/js/frappe/utils/urllib.js:48`, :76 and :77 write
+ *   `open_url_post`, `get_url_arg` and `get_url_dict` (desk bundle only);
+ * - `frappe/public/js/frappe/form/script_helpers.js:4-65` writes the legacy
+ *   form helpers `refresh_many`, `refresh_field`, `set_field_options`,
+ *   `toggle_field`, `hide_field` and `unhide_field`, which act on `cur_frm`,
+ *   and `frappe/public/js/frappe/form/script_manager.js:6` `extend_cscript`
+ *   (form bundle);
+ * - `frappe/public/js/libs.bundle.js:4` writes `SetVueGlobals`;
+ * - `frappe/public/js/frappe/model/perm.js:9-17` `Object.assign`s the
+ *   permission-type constants `READ`, `WRITE`, `CREATE`, `DELETE`, `SUBMIT`,
+ *   `CANCEL` and `AMEND`.
+ *
+ * The website bundle loads `number_format.js` (which imports `datatype.js`,
+ * `frappe/public/js/frappe/utils/number_format.js:4`), `common.js` and
+ * `pretty_date.js` too (`frappe/public/js/frappe-web.bundle.js:9,32,34`), but
+ * not `urllib.js` or the form helpers; like the rest of this package's
+ * globals they are declared for the desk.
+ *
+ * `global.d.ts` declares each as a bare global, typed from here, and
+ * {@link DeskWindow} as an optional `window` member.
+ */
+export interface DeskHelperGlobals {
+	// -- datatype.js ---------------------------------------------------------
+
+	/** `frappe/public/js/frappe/utils/datatype.js:4-7` — `""` for `null`/`undefined`, else `s + ""`. */
+	cstr: (s: unknown) => string;
+	/**
+	 * `frappe/public/js/frappe/utils/datatype.js:9-17` — `true`/`false` → 1/0;
+	 * otherwise strips leading zeros and `parseInt`s the string form. On NaN
+	 * returns `def`, or `0` when `def` is `undefined` (an explicit `null` IS
+	 * returned, hence the second overload).
+	 */
+	cint: {
+		(v: unknown, def?: number): number;
+		(v: unknown, def: number | null | undefined): number | null;
+	};
+	/** `frappe/public/js/frappe/utils/datatype.js:20-29` — upper-cases the first letter of each space-separated word. */
+	toTitle: (str: string) => string;
+	/**
+	 * `frappe/public/js/frappe/utils/datatype.js:31-33` — `true` for `null`,
+	 * `undefined` or a value whose string form is blank; `undefined` (not
+	 * `false`) otherwise.
+	 */
+	is_null: (v: unknown) => true | undefined;
+	/** `frappe/public/js/frappe/utils/datatype.js:35-39` — a shallow copy of every enumerable key (`for … in`, inherited ones included). */
+	copy_dict: (d: object | null | undefined) => Record<string, unknown>;
+	/** `frappe/public/js/frappe/utils/datatype.js:41-43` — `frappe.utils.validate_type(txt, "email")`. */
+	validate_email: (txt: string) => boolean;
+	/** `frappe/public/js/frappe/utils/datatype.js:45-47` — `frappe.utils.validate_type(txt, "phone")`. */
+	validate_phone: (txt: string) => boolean;
+	/** `frappe/public/js/frappe/utils/datatype.js:49-51` — `frappe.utils.validate_type(txt, "name")`. */
+	validate_name: (txt: string) => boolean;
+	/** `frappe/public/js/frappe/utils/datatype.js:53-55` — `frappe.utils.validate_type(txt, "url")`. */
+	validate_url: (txt: string) => boolean;
+	/** `frappe/public/js/frappe/utils/datatype.js:57-64` — `cint(number)` with an English ordinal suffix (`"1st"`, `"12nd"`: by last digit only). */
+	nth: (number: unknown) => string;
+	/**
+	 * `frappe/public/js/frappe/utils/datatype.js:66-73` — whether `item`
+	 * contains any string in `list`. `true` for a falsy `item`, `false` for a
+	 * falsy `list`.
+	 */
+	has_words: (list: ArrayLike<string> | null | undefined, item: string | null | undefined) => boolean;
+	/** `frappe/public/js/frappe/utils/datatype.js:75-81` — whether the two lists share an element; `false` when either is falsy. */
+	has_common: (list1: ArrayLike<unknown> | null | undefined, list2: readonly unknown[] | null | undefined) => boolean;
+
+	// -- number_format.js ----------------------------------------------------
+
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:8-29` — `0` for
+	 * `null`/`""`; a string is first freed of a leading currency symbol
+	 * (`frappe/public/js/frappe/utils/number_format.js:14-19`) and of the group
+	 * separators of `number_format` (default: the system format, via
+	 * `strip_number_groups`), then `parseFloat`ed. **NaN becomes 0**
+	 * (`frappe/public/js/frappe/utils/number_format.js:24`), so the return never
+	 * signals a parse failure. With `decimals`, rounded by
+	 * `_round(v, decimals, rounding_method)`
+	 * (`frappe/public/js/frappe/utils/number_format.js:27`), which reads it
+	 * through `cint`, so the string `precision()` can return is accepted.
+	 */
+	flt: (v: unknown, decimals?: number | string | null, number_format?: string, rounding_method?: string) => number;
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:31-46` — removes the group
+	 * separator of `number_format` (default `get_number_format()`,
+	 * `frappe/public/js/frappe/utils/number_format.js:32`) and rewrites its
+	 * decimal separator to `"."`. Pure string → string; does not parse.
+	 */
+	strip_number_groups: (v: string, number_format?: string) => string;
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:48-75` — re-punctuates a
+	 * formatted number from `old_number_format` (default `"#,###.##"`) to
+	 * `new_number_format` (default the system format).
+	 */
+	convert_old_to_new_number_format: (v: string, old_number_format?: string | null, new_number_format?: string | null) => string;
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:90-143` — `v` (through
+	 * `flt`) as a string in `format`. With no `format` the system format is
+	 * used and `decimals` defaults to the Float precision (else 3,
+	 * `frappe/public/js/frappe/utils/number_format.js:91-94`); otherwise to the format's own decimals.
+	 * A string `decimals` (what `precision()` can return) works: it only meets
+	 * `== null`, `flt` (which `cint`s it) and `toFixed`, which coerces it
+	 * (`frappe/public/js/frappe/utils/number_format.js:98-107`).
+	 */
+	format_number: (v: unknown, format?: string | null, decimals?: number | string | null) => string;
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:145-163` — `v` in the
+	 * currency's number format, with its symbol on the left, or on the right
+	 * when the Currency says so. `currency` defaults to the system currency;
+	 * an `undefined` `decimals` (only `undefined`) becomes the system currency
+	 * precision — itself a System Settings string, passed on to `format_number`
+	 * (`frappe/public/js/frappe/utils/number_format.js:151-157`), so a string
+	 * `decimals` such as `precision("amount")` is accepted. Plain HTML-free text.
+	 */
+	format_currency: (v: unknown, currency?: string | null, decimals?: number | string | null) => string;
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:318-322` —
+	 * `format_currency(v, format)`, the second argument passed as the CURRENCY.
+	 *
+	 * @deprecated "deprecated! for backward compatibility" in frappe's source; use `format_currency`.
+	 */
+	fmt_money: (v: unknown, format?: string | null) => string;
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:165-180` — the
+	 * Currency's symbol, else the currency code; `null` when the system hides
+	 * currency symbols. `currency` defaults to the system currency, and the
+	 * result is `undefined` when neither is set. Without a boot (a website
+	 * page), it reads `frappe.currency_symbols`.
+	 */
+	get_currency_symbol: (currency?: string | null) => string | null | undefined;
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:182-191` — the
+	 * currency's number format when System Settings say to use it, else the
+	 * system number format, else `"#,###.##"`.
+	 */
+	get_number_format: (currency?: string | null) => string;
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:193-206` — the
+	 * separators of `format` (default the system format; an unknown one gets
+	 * `"#,###.##"`'s), with `precision` set.
+	 */
+	get_number_format_info: (format?: string | null) => FrappeNumberFormatInfo & { precision: number };
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:208-265` — rounds to
+	 * `precision` digits (read through `cint`) by `rounding_method`, default
+	 * the system's, else `"Banker's Rounding (legacy)"`. The other two
+	 * methods are `"Banker's Rounding"` and `"Commercial Rounding"`; any other
+	 * string **throws** (`frappe/public/js/frappe/utils/number_format.js:262-264`).
+	 */
+	_round: (num: number, precision?: number | string | null, rounding_method?: string | null) => number;
+	/** `frappe/public/js/frappe/utils/number_format.js:267-270` — `_round(num, precision)`, "backward compatibility". */
+	roundNumber: (num: number, precision?: number | string | null) => number;
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:272-281` — the precision
+	 * of `fieldname` in `doc` (default `cur_frm.doc`), from
+	 * `frappe.meta.get_field_precision`, a number. With no form open
+	 * (`cur_frm` null) it returns `frappe.boot.sysdefaults.float_precision`
+	 * instead, the System Settings STRING (`"3"`) or `undefined`; `flt`,
+	 * `_round` and `remainder` accept that, since they `cint` it.
+	 */
+	precision: (fieldname: string, doc?: FrappeDoc | null) => number | string | undefined;
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:287-298` —
+	 * `numerator % denominator`, computed on values scaled by
+	 * `10 ** precision` and passed through `flt(…, precision)`.
+	 */
+	remainder: (numerator: number, denominator: number, precision?: number | string | null) => number;
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:300-316` — rounds
+	 * `value` to the Currency's smallest fraction (e.g. 0.05), or with `_round`
+	 * to an integer when the Currency has none.
+	 */
+	round_based_on_smallest_currency_fraction: (value: number, currency: string, precision?: number | string | null) => number;
+	/** `frappe/public/js/frappe/utils/number_format.js:283-285` — `list.includes(item)`. */
+	in_list: (list: readonly unknown[], item: unknown) => boolean;
+
+	// -- common.js -----------------------------------------------------------
+
+	/**
+	 * `frappe/public/js/frappe/utils/common.js:194-200` — replaces each
+	 * `%(key)s` in `s` with `dict[key]`; `""` for a `null`/`undefined` `s`.
+	 */
+	repl: (s: string | null | undefined, dict: Readonly<Record<string, unknown>>) => string;
+	/** `frappe/public/js/frappe/utils/common.js:202-204` — `s.split(t1).join(t2)`. */
+	replace_all: (s: string, t1: string, t2: string) => string;
+	/** `frappe/public/js/frappe/utils/common.js:206-208` — `cstr(txt)` with every `<…>` tag removed. */
+	strip_html: (txt: unknown) => string;
+	/**
+	 * `frappe/public/js/frappe/utils/common.js:210-216` — `lstrip` then
+	 * `rstrip`. Returns `undefined` for a falsy `s`, the empty string included.
+	 */
+	strip: (s: string | null | undefined, chars?: readonly string[] | null) => string | undefined;
+	/** `frappe/public/js/frappe/utils/common.js:218-227` — strips leading `chars` (default newline, tab and space). */
+	lstrip: (s: string, chars?: readonly string[] | null) => string;
+	/** `frappe/public/js/frappe/utils/common.js:229-237` — strips trailing `chars` (default newline, tab and space). */
+	rstrip: (s: string, chars?: readonly string[] | null) => string;
+
+	// -- pretty_date.js ------------------------------------------------------
+
+	/**
+	 * `frappe/public/js/frappe/utils/pretty_date.js:81-94` — a
+	 * `<span class="frappe-timestamp">` HTML string with the relative time
+	 * ("3 days ago", "3 d" when `mini`) and the user-format datetime as its
+	 * title. Also `frappe.datetime.comment_when`.
+	 */
+	comment_when: (datetime: string, mini?: boolean) => string;
+
+	// -- urllib.js -----------------------------------------------------------
+
+	/**
+	 * `frappe/public/js/frappe/utils/urllib.js:48-74` — submits `PARAMS` to
+	 * `URL` as a hidden POST form (each non-string value JSON-encoded), in a
+	 * new tab when `new_window`, and returns the form. Adds `csrf_token` to
+	 * `PARAMS` in place. Under Cordova it navigates to a GET URL instead and
+	 * returns `undefined`.
+	 */
+	open_url_post: (URL: string, PARAMS: Record<string, unknown>, new_window?: boolean) => HTMLFormElement | undefined;
+	/**
+	 * `frappe/public/js/frappe/utils/urllib.js:3-10`, aliased at :76 — the
+	 * decoded value of query parameter `name` in the page URL, `""` when absent.
+	 */
+	get_url_arg: (name: string) => string;
+	/**
+	 * `frappe/public/js/frappe/utils/urllib.js:13-27`, aliased at :77 — the
+	 * page URL's query parameters, decoded. A parameter without `=` maps to
+	 * the string `"undefined"`.
+	 */
+	get_url_dict: () => Record<string, string>;
+
+	// -- form/script_helpers.js (act on cur_frm) -------------------------------
+
+	/** `frappe/public/js/frappe/form/script_helpers.js:4-9` — `refresh_field` for each name. */
+	refresh_many: (flist: readonly string[], dn?: string, table_field?: string) => void;
+	/**
+	 * `frappe/public/js/frappe/form/script_helpers.js:11-33` — refreshes a
+	 * field of `cur_frm`, or with `docname` and `table_field` a field of that
+	 * child row. An array of names goes to `refresh_many`.
+	 */
+	refresh_field: (n: string | readonly string[], docname?: string, table_field?: string) => void;
+	/** `frappe/public/js/frappe/form/script_helpers.js:35-37` — `cur_frm.set_df_property(n, "options", txt)`. */
+	set_field_options: (n: string, txt: unknown) => void;
+	/**
+	 * `frappe/public/js/frappe/form/script_helpers.js:39-47` — sets the
+	 * docfield's `hidden` and refreshes it. Throws when no form is open (it
+	 * reads `cur_frm.doctype` unguarded).
+	 */
+	toggle_field: (n: string, hidden: boolean | 0 | 1) => void;
+	/** `frappe/public/js/frappe/form/script_helpers.js:49-56` — hides the field(s) of `cur_frm`; does nothing with no form open. */
+	hide_field: (n: string | readonly string[]) => void;
+	/** `frappe/public/js/frappe/form/script_helpers.js:58-65` — shows the field(s) of `cur_frm`; does nothing with no form open. */
+	unhide_field: (n: string | readonly string[]) => void;
+
+	// -- form/script_manager.js, libs.bundle.js --------------------------------
+
+	/**
+	 * `frappe/public/js/frappe/form/script_manager.js:6-12` — `$.extend`s
+	 * `cscript` with `controller_object`'s own properties, gives it the
+	 * controller's prototype, and returns it: how a legacy `cur_frm.cscript`
+	 * takes on a controller class (ERPNext's `extend_cscript(cur_frm.cscript, new …Controller({ frm }))`).
+	 */
+	extend_cscript: <TScript extends object, TController extends object>(
+		cscript: TScript,
+		controller_object: TController
+	) => TScript & TController;
+	/**
+	 * `frappe/public/js/libs.bundle.js:4-7` — gives a Vue app frappe's `__`
+	 * and `frappe` as global properties, so a component template can call
+	 * `__()` without importing it. Typed structurally; a Vue `App` fits.
+	 */
+	SetVueGlobals: (app: { config: { globalProperties: Record<string, unknown> } }) => void;
+
+	// -- model/perm.js ---------------------------------------------------------
+	// `frappe/public/js/frappe/model/perm.js:8-17` — "backward compatibilty"
+	// constants, the permission type names.
+
+	READ: "read";
+	WRITE: "write";
+	CREATE: "create";
+	DELETE: "delete";
+	SUBMIT: "submit";
+	CANCEL: "cancel";
+	AMEND: "amend";
+}
+
+/**
  * The `window` additions this group is responsible for.
  *
  * Deliberately all-optional: carbon_frappe runs in three environments and only
@@ -1035,7 +1338,7 @@ export interface HarnessProbe {
  * (`if (!panel.classList.contains("hidden") && window.jQuery)`), even though on
  * a real desk page frappe/public/js/jquery-bootstrap.js:15-16 always sets both.
  */
-export interface DeskWindow extends DeskTemplateGlobals, HarnessWindowGlobals {
+export interface DeskWindow extends DeskTemplateGlobals, HarnessWindowGlobals, Partial<DeskHelperGlobals> {
 	/** jquery-bootstrap.js:16 — `window.$ = jQuery;` */
 	$?: JQueryStatic;
 	/** jquery-bootstrap.js:15 — `window.jQuery = jQuery;` */
@@ -1054,14 +1357,12 @@ export interface DeskWindow extends DeskTemplateGlobals, HarnessWindowGlobals {
 	cur_page?: CurrentPageContainer;
 	/** erpnext/public/js/utils.js:3 — only present when the ERPNext bundle loaded. */
 	erpnext?: ErpNextGlobal;
-	/** frappe/public/js/frappe/utils/datatype.js:4 — `window.cstr = …`. */
-	cstr?: (s: unknown) => string;
-	/** frappe/public/js/frappe/utils/datatype.js:9 — `window.cint = …`. */
-	cint?: (v: unknown, def?: number | null) => number;
-	/** frappe/public/js/frappe/utils/number_format.js:324-340 — `Object.assign(window, { flt, … })`. */
-	flt?: (v: unknown, decimals?: number | null, number_format?: string, rounding_method?: string) => number;
-	/** frappe/public/js/frappe/utils/number_format.js:324-340. */
-	strip_number_groups?: (v: string, number_format?: string) => string;
+	/**
+	 * A web form's save guard: `true` while `WebForm#save` waits for the server,
+	 * `false` again when it answers (`frappe/public/js/frappe/web_form/web_form.js:405`,
+	 * `:414`, `:450`). Only on a web form page, and absent until the first save.
+	 */
+	saving?: boolean;
 }
 
 /**
@@ -1083,10 +1384,9 @@ export interface DeskWindow extends DeskTemplateGlobals, HarnessWindowGlobals {
  *   - `cur_list` — list_factory.js:6 (as `null`).
  *   - `cur_dialog` — dialog.js:6 (as `null`).
  *   - `cur_page` — container.js:8 (as `null`).
- *   - `cstr` / `cint` — frappe/public/js/frappe/utils/datatype.js:4-17; `flt` /
- *     `strip_number_groups` —
- *     frappe/public/js/frappe/utils/number_format.js:324-340. All four are
- *     imported unconditionally by the desk bundle.
+ *   - the helpers of {@link DeskHelperGlobals} (`cstr`, `flt`,
+ *     `format_currency`, `open_url_post`, `refresh_field`, …) — see there for
+ *     where each is assigned. All are loaded unconditionally on the desk.
  *
  * `erpnext` and `dev_server` are NOT here: `erpnext` only exists once the
  * ERPNext bundle runs `frappe.provide("erpnext")`
@@ -1094,18 +1394,10 @@ export interface DeskWindow extends DeskTemplateGlobals, HarnessWindowGlobals {
  * template (desk.html:62), not by a bundle — reach both through
  * {@link DeskWindow}.
  */
-export interface DeskGlobals {
+export interface DeskGlobals extends DeskHelperGlobals {
 	$: JQueryStatic;
 	jQuery: JQueryStatic;
 	__: TranslateFunction;
-	/** `frappe/public/js/frappe/utils/datatype.js:4-7`. */
-	cstr: (s: unknown) => string;
-	/** `frappe/public/js/frappe/utils/datatype.js:9-17`. */
-	cint: (v: unknown, def?: number | null) => number;
-	/** `frappe/public/js/frappe/utils/number_format.js:8-29`, on `window` via `frappe/public/js/frappe/utils/number_format.js:324-340`. */
-	flt: (v: unknown, decimals?: number | null, number_format?: string, rounding_method?: string) => number;
-	/** `frappe/public/js/frappe/utils/number_format.js:31-46`, on `window` via `frappe/public/js/frappe/utils/number_format.js:324-340`. */
-	strip_number_groups: (v: string, number_format?: string) => string;
 	locals: LocalsStore;
 	cur_frm: CurrentForm;
 	cur_list: CurrentListView;

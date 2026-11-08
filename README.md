@@ -226,6 +226,51 @@ if (Base) {
 }
 ```
 
+### Server calls: `frappe.call`, `frappe.xcall`, `frm.call`
+
+`frappe.call` returns jQuery's jqXHR, which resolves with the parsed response, a `FrappeResponse<T>` whose `message` is what the whitelisted method returned. `message` is optional because frappe leaves it out when the method returns `None`. In TypeScript, pass the type:
+
+```ts
+const r = await frappe.call<Contact[]>({ method: "my_app.api.contacts" });
+const contacts = r.message ?? [];                            // Contact[]
+const rows = await frappe.xcall<Contact[]>("my_app.api.contacts"); // the message itself
+const t = await frm.call<{ total: number }>("get_totals");  // frm.call returns frappe.call's jqXHR
+```
+
+JavaScript cannot pass a type argument, so a desk script annotates the `.then` or `.done` callback, or the variable it awaits into, instead:
+
+```js
+frappe
+  .call({ method: "my_app.api.contacts" })
+  .then((/** @type {import("frappe-types").FrappeResponse<Contact[]>} */ r) => r.message ?? []);
+
+/** @type {import("frappe-types").FrappeResponse<Contact[]>} */
+const r = await frm.call("get_contacts"); // T is inferred from the annotation
+
+frappe.xcall("my_app.api.count").then((/** @type {number} */ n) => n.toFixed());
+```
+
+The annotation is the script's claim about what the method returns, and it is checked against the response envelope: `FrappeResponse<X>`, or an envelope of your own such as `interface Envelope { message: X }`, is accepted when `X` fits `T`. Annotating the callback with the message's shape (`(/** @type {Contact} */ c) => …`, the response mistaken for its payload) is an error, because it shares no key with the envelope. Without a type argument or an annotation, `message` is `unknown`, so `r.message.foo` is a compile error rather than an unchecked `any`.
+
+An awaited jqXHR is a `FrappeResponseFields<T>`: every key frappe sets, assignable to `FrappeResponse<T>`. A top-level key your method adds itself is on `FrappeResponse`'s index signature, so read it from an unannotated `.then((r) => r.my_key)` or annotate the awaited variable as `FrappeResponse`.
+
+`frm.call`'s object form takes the same `FrappeCallOptions` as `frappe.call`, with `method` required. Under API v2 (`api_version: "v2"`) the payload arrives as `data`, not `message`, and `frappe.xcall` resolves `undefined`.
+
+`FrappeResponse` is also the body of `/api/method/<cmd>` for a client that skips `frappe.call` (`fetch`, axios, frappe-react-sdk), so an SPA can import it from the module entry instead of writing its own `{ message: T }`. `exception`, `exc_type` and `_server_messages` are on it, and one decoded `_server_messages` entry is a `FrappeServerMessage`:
+
+```ts
+import type { FrappeResponse, FrappeServerMessage } from "frappe-types";
+
+const body = (await res.json()) as FrappeResponse<Row[]>;
+const notes = body._server_messages
+  ? (JSON.parse(body._server_messages) as string[]).map((e) => JSON.parse(e) as FrappeServerMessage)
+  : [];
+```
+
+The helpers frappe puts on `window` are declared as bare globals too: `format_currency`, `format_number`, `flt`, `precision`, `in_list`, `open_url_post`, `get_url_arg`, `refresh_field`, `hide_field` and the rest of `DeskHelperGlobals`. `__` and `frappe._` are one function with one type, `TranslateFunction`.
+
+These globals are `var`s with short, generic names (`strip`, `nth`, `precision`, `READ`, `DELETE`, …), as frappe made them. The presets set `moduleDetection: "force"`, so every file is a module and its own top-level `precision` or `strip` simply shadows the global. A hand-written tsconfig without it treats a file with no `import`/`export` as a script that shares the global scope, and a top-level declaration of one of these names there is a duplicate-identifier error: set `moduleDetection: "force"`, or rename the local.
+
 ### Typing your doctypes: `FrappeDocTypes`
 
 `FrappeDocTypes` is a global interface, empty in this package, that you extend with your doctypes. Each property is keyed by the doctype's name exactly as frappe spells it. Its value lists the doctype's data fields: no layout fields, and no standard fields, because `name`, `owner`, `modified`, `docstatus`, `idx` and the `__*` client flags are added for you. Type a Table field as `FrappeChildRow<"Child DocType">[]`, not as the child's bare entry, so its rows get the standard row fields (`name`, `idx`, `doctype`, `parent`, `parentfield`) too.
@@ -510,6 +555,8 @@ Every line it prints is a compile error waiting to happen in an app built under 
 `--types` (repeatable, a file or a glob) adds the app's own declaration files to the check, so names the app declares for itself count once it has declared them; see [Names your app adds](#names-your-app-adds). Inside those files `frappe-types` resolves to this checkout, as an import specifier and in `/// <reference types="frappe-types/…" />` alike, even when the app has its own copy installed.
 
 Which paths a file uses is decided by a small lexer (`scripts/lib/scan-source.mjs`), not a regex over the text: it reads the code, and the content of a string only when that content is itself JavaScript (V8 compiles it without running it), such as browser code a test harness sends with ``page.eval(`…`)``. Prose that mentions a frappe name (`"frappe.exceptions.ValidationError: Boom"`, a URL glob, a test title) and strings that are just a server method path (`"frappe.client.get_list"`) are not uses.
+
+Besides `frappe.*` paths it looks for the bare globals frappe assigns to `window` (`format_currency`, `open_url_post`, `in_list`, `cur_frm`, ...). The list is read off frappe's own `window.x = …` and `Object.assign(window, { … })` sites when a checkout is at hand (`--frappe`, else `FRAPPE_PATH`, else the usual sibling locations), and otherwise taken from `WINDOW_GLOBALS` in the scanner, which the unit tests compare with the pinned tree. Libraries frappe vendors onto `window` (`moment`, `Sortable`, Leaflet's `L`, ...) are not counted, and neither is a name the file binds itself (`const precision = …`), an object key or a member.
 
 ### Upgrading to a new frappe major
 

@@ -235,8 +235,11 @@ void module_icon;
 // paste-into-grid coercion needs (carbon_frappe tables/datatable/paste.ts)
 const grouped: string = strip_number_groups("1,234.5");
 void grouped;
-const asInt: number = cint("007", null);
+const asInt: number = cint("007");
 void asInt;
+// an explicit `null` default is returned for a non-number (datatype.js:15)
+const asIntOrNull: number | null = cint("007", null);
+void asIntOrNull;
 const asFloat: number = flt("1,234.50", 2);
 void asFloat;
 const asStr: string = cstr(null);

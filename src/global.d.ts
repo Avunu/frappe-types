@@ -81,6 +81,7 @@ import type {
 	CurrentDialog,
 	CurrentForm,
 	CurrentPageContainer,
+	DeskHelperGlobals,
 	DeskWindow,
 	ErpNextGlobal,
 	JQueryFrappePlugins,
@@ -177,42 +178,133 @@ declare global {
 	 */
 	var DataTable: DataTableConstructor;
 
-	// -- datatype.js / number_format.js casts ---------------------------------
-	// Assigned to `window` at bundle load:
-	// `frappe/public/js/frappe/utils/datatype.js:4-17` writes `cstr` and `cint`
-	// directly; `frappe/public/js/frappe/utils/number_format.js:324-340`
-	// `Object.assign(window, {...})`s the rest (and `cint` again, unchanged). Both
-	// files are imported unconditionally by the desk bundle, so none of these is
-	// optional.
+	// -- window helpers ---------------------------------------------------------
+	// The helper functions frappe assigns to `window` at bundle load
+	// (`frappe/public/js/frappe/utils/datatype.js:4-81`,
+	// `frappe/public/js/frappe/utils/number_format.js:90,324-340`,
+	// `frappe/public/js/frappe/utils/common.js:194-237`,
+	// `frappe/public/js/frappe/utils/pretty_date.js:81`,
+	// `frappe/public/js/frappe/utils/urllib.js:48,76-77`,
+	// `frappe/public/js/frappe/form/script_helpers.js:4-65`,
+	// `frappe/public/js/frappe/form/script_manager.js:6`,
+	// `frappe/public/js/libs.bundle.js:4`,
+	// `frappe/public/js/frappe/model/perm.js:9-17`). Every file is
+	// loaded unconditionally on the desk, so none of these is optional. The
+	// signatures and their per-function citations are `DeskHelperGlobals`'
+	// (globals.d.ts); each line below only makes one of them a bare global.
 
 	/** `frappe/public/js/frappe/utils/datatype.js:4-7` — `""` for `null`/`undefined`, else `s + ""`. */
-	var cstr: (s: unknown) => string;
+	var cstr: DeskHelperGlobals["cstr"];
+	/** `frappe/public/js/frappe/utils/datatype.js:9-17` — `parseInt` with booleans as 1/0; NaN gives `def` (default 0). */
+	var cint: DeskHelperGlobals["cint"];
+	/** `frappe/public/js/frappe/utils/datatype.js:20-29`. */
+	var toTitle: DeskHelperGlobals["toTitle"];
+	/** `frappe/public/js/frappe/utils/datatype.js:31-33` — `true` or `undefined`, never `false`. */
+	var is_null: DeskHelperGlobals["is_null"];
+	/** `frappe/public/js/frappe/utils/datatype.js:35-39`. */
+	var copy_dict: DeskHelperGlobals["copy_dict"];
+	/** `frappe/public/js/frappe/utils/datatype.js:41-43`. */
+	var validate_email: DeskHelperGlobals["validate_email"];
+	/** `frappe/public/js/frappe/utils/datatype.js:45-47`. */
+	var validate_phone: DeskHelperGlobals["validate_phone"];
+	/** `frappe/public/js/frappe/utils/datatype.js:49-51`. */
+	var validate_name: DeskHelperGlobals["validate_name"];
+	/** `frappe/public/js/frappe/utils/datatype.js:53-55`. */
+	var validate_url: DeskHelperGlobals["validate_url"];
+	/** `frappe/public/js/frappe/utils/datatype.js:57-64`. */
+	var nth: DeskHelperGlobals["nth"];
+	/** `frappe/public/js/frappe/utils/datatype.js:66-73`. */
+	var has_words: DeskHelperGlobals["has_words"];
+	/** `frappe/public/js/frappe/utils/datatype.js:75-81`. */
+	var has_common: DeskHelperGlobals["has_common"];
 	/**
-	 * `frappe/public/js/frappe/utils/datatype.js:9-17` — `true`/`false` → 1/0;
-	 * otherwise strips leading zeros and `parseInt`s the string form. On NaN
-	 * returns `def`, or `0` when `def` is `undefined` (an explicit `null` IS
-	 * returned).
+	 * `frappe/public/js/frappe/utils/number_format.js:8-29` — parses with the
+	 * number format's separators; **NaN becomes 0**
+	 * (`frappe/public/js/frappe/utils/number_format.js:24`). With `decimals`,
+	 * rounded by `_round`.
 	 */
-	var cint: (v: unknown, def?: number | null) => number;
+	var flt: DeskHelperGlobals["flt"];
+	/** `frappe/public/js/frappe/utils/number_format.js:31-46` — string → string; does not parse. */
+	var strip_number_groups: DeskHelperGlobals["strip_number_groups"];
+	/** `frappe/public/js/frappe/utils/number_format.js:48-75`. */
+	var convert_old_to_new_number_format: DeskHelperGlobals["convert_old_to_new_number_format"];
+	/** `frappe/public/js/frappe/utils/number_format.js:90-143`. */
+	var format_number: DeskHelperGlobals["format_number"];
+	/** `frappe/public/js/frappe/utils/number_format.js:145-163` — `v` with the currency's symbol and number format. */
+	var format_currency: DeskHelperGlobals["format_currency"];
 	/**
-	 * `frappe/public/js/frappe/utils/number_format.js:8-29` — `0` for
-	 * `null`/`""`; a string is first freed of a leading currency symbol
-	 * (`frappe/public/js/frappe/utils/number_format.js:14-19`) and of the group
-	 * separators of `number_format` (default: the system format, via
-	 * {@link strip_number_groups}), then `parseFloat`ed — **NaN becomes 0**
-	 * (`frappe/public/js/frappe/utils/number_format.js:24`), so the return never
-	 * signals a parse failure. With `decimals`, rounded by
-	 * `_round(v, decimals, rounding_method)`
-	 * (`frappe/public/js/frappe/utils/number_format.js:27`).
+	 * `frappe/public/js/frappe/utils/number_format.js:318-322`.
+	 * @deprecated frappe's own comment says so; use `format_currency`.
 	 */
-	var flt: (v: unknown, decimals?: number | null, number_format?: string, rounding_method?: string) => number;
-	/**
-	 * `frappe/public/js/frappe/utils/number_format.js:31-46` — removes the group
-	 * separator of `number_format` (default `get_number_format()`,
-	 * `frappe/public/js/frappe/utils/number_format.js:32`) and rewrites its
-	 * decimal separator to `"."`. Pure string → string; does not parse.
-	 */
-	var strip_number_groups: (v: string, number_format?: string) => string;
+	var fmt_money: DeskHelperGlobals["fmt_money"];
+	/** `frappe/public/js/frappe/utils/number_format.js:165-180` — `null` when currency symbols are hidden. */
+	var get_currency_symbol: DeskHelperGlobals["get_currency_symbol"];
+	/** `frappe/public/js/frappe/utils/number_format.js:182-191`. */
+	var get_number_format: DeskHelperGlobals["get_number_format"];
+	/** `frappe/public/js/frappe/utils/number_format.js:193-206`. */
+	var get_number_format_info: DeskHelperGlobals["get_number_format_info"];
+	/** `frappe/public/js/frappe/utils/number_format.js:208-265` — throws on an unknown rounding method. */
+	var _round: DeskHelperGlobals["_round"];
+	/** `frappe/public/js/frappe/utils/number_format.js:267-270`. */
+	var roundNumber: DeskHelperGlobals["roundNumber"];
+	/** `frappe/public/js/frappe/utils/number_format.js:272-281` — a number on a form; the system Float precision STRING otherwise. */
+	var precision: DeskHelperGlobals["precision"];
+	/** `frappe/public/js/frappe/utils/number_format.js:287-298`. */
+	var remainder: DeskHelperGlobals["remainder"];
+	/** `frappe/public/js/frappe/utils/number_format.js:300-316`. */
+	var round_based_on_smallest_currency_fraction: DeskHelperGlobals["round_based_on_smallest_currency_fraction"];
+	/** `frappe/public/js/frappe/utils/number_format.js:283-285` — `list.includes(item)`. */
+	var in_list: DeskHelperGlobals["in_list"];
+	/** `frappe/public/js/frappe/utils/common.js:194-200` — `%(key)s` substitution. */
+	var repl: DeskHelperGlobals["repl"];
+	/** `frappe/public/js/frappe/utils/common.js:202-204`. */
+	var replace_all: DeskHelperGlobals["replace_all"];
+	/** `frappe/public/js/frappe/utils/common.js:206-208`. */
+	var strip_html: DeskHelperGlobals["strip_html"];
+	/** `frappe/public/js/frappe/utils/common.js:210-216` — `undefined` for a falsy string. */
+	var strip: DeskHelperGlobals["strip"];
+	/** `frappe/public/js/frappe/utils/common.js:218-227`. */
+	var lstrip: DeskHelperGlobals["lstrip"];
+	/** `frappe/public/js/frappe/utils/common.js:229-237`. */
+	var rstrip: DeskHelperGlobals["rstrip"];
+	/** `frappe/public/js/frappe/utils/pretty_date.js:81-94` — an HTML `<span>`. */
+	var comment_when: DeskHelperGlobals["comment_when"];
+	/** `frappe/public/js/frappe/utils/urllib.js:48-74` — POSTs `PARAMS` to `URL` through a hidden form. */
+	var open_url_post: DeskHelperGlobals["open_url_post"];
+	/** `frappe/public/js/frappe/utils/urllib.js:76`. */
+	var get_url_arg: DeskHelperGlobals["get_url_arg"];
+	/** `frappe/public/js/frappe/utils/urllib.js:77`. */
+	var get_url_dict: DeskHelperGlobals["get_url_dict"];
+	/** `frappe/public/js/frappe/form/script_helpers.js:4-9`. */
+	var refresh_many: DeskHelperGlobals["refresh_many"];
+	/** `frappe/public/js/frappe/form/script_helpers.js:11-33`. */
+	var refresh_field: DeskHelperGlobals["refresh_field"];
+	/** `frappe/public/js/frappe/form/script_helpers.js:35-37`. */
+	var set_field_options: DeskHelperGlobals["set_field_options"];
+	/** `frappe/public/js/frappe/form/script_helpers.js:39-47`. */
+	var toggle_field: DeskHelperGlobals["toggle_field"];
+	/** `frappe/public/js/frappe/form/script_helpers.js:49-56`. */
+	var hide_field: DeskHelperGlobals["hide_field"];
+	/** `frappe/public/js/frappe/form/script_helpers.js:58-65`. */
+	var unhide_field: DeskHelperGlobals["unhide_field"];
+	/** `frappe/public/js/frappe/form/script_manager.js:6-12`. */
+	var extend_cscript: DeskHelperGlobals["extend_cscript"];
+	/** `frappe/public/js/libs.bundle.js:4-7` — `__` and `frappe` as a Vue app's global properties. */
+	var SetVueGlobals: DeskHelperGlobals["SetVueGlobals"];
+	/** `frappe/public/js/frappe/model/perm.js:10` — `"read"`. */
+	var READ: DeskHelperGlobals["READ"];
+	/** `frappe/public/js/frappe/model/perm.js:11` — `"write"`. */
+	var WRITE: DeskHelperGlobals["WRITE"];
+	/** `frappe/public/js/frappe/model/perm.js:12` — `"create"`. */
+	var CREATE: DeskHelperGlobals["CREATE"];
+	/** `frappe/public/js/frappe/model/perm.js:13` — `"delete"`. */
+	var DELETE: DeskHelperGlobals["DELETE"];
+	/** `frappe/public/js/frappe/model/perm.js:14` — `"submit"`. */
+	var SUBMIT: DeskHelperGlobals["SUBMIT"];
+	/** `frappe/public/js/frappe/model/perm.js:15` — `"cancel"`. */
+	var CANCEL: DeskHelperGlobals["CANCEL"];
+	/** `frappe/public/js/frappe/model/perm.js:16` — `"amend"`. */
+	var AMEND: DeskHelperGlobals["AMEND"];
 
 	// -- provide.js:42-45 constants -----------------------------------------
 	/** `frappe/public/js/frappe/provide.js:42` — `"\n"`. */

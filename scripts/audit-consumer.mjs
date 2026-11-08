@@ -2,7 +2,7 @@
 // What would block a consumer app from compiling under `strict` with no escape hatches?
 //
 //   node scripts/audit-consumer.mjs <app-path> [<app-path>...] [--strict] [--fail-on-untyped]
-//                                   [--types <file-or-glob>]... [--json]
+//                                   [--types <file-or-glob>]... [--frappe <path>] [--json]
 //
 // Coverage against frappe's whole surface (audit-coverage.mjs) measures ambition.
 // This measures the thing that actually matters day to day: does the typeset cover
@@ -28,7 +28,12 @@
 //
 // Which paths a file uses is decided by scripts/lib/scan-source.mjs: code, plus
 // the content of any string that is itself JavaScript, never prose that merely
-// mentions a frappe name.
+// mentions a frappe name. Besides `frappe.*` it looks for the bare globals
+// frappe puts on `window` (`format_currency`, `open_url_post`, `cur_frm`, …).
+// Which names those are is read off a frappe checkout (`--frappe`, else
+// FRAPPE_PATH, else the usual sibling locations; see lib/resolve-frappe.mjs)
+// when there is one, and otherwise taken from scan-source's WINDOW_GLOBALS,
+// the same list as read from the pinned tree.
 //
 // It is not part of the published package (package.json `files` ships the
 // declarations and presets only), so run it from a clone of this repository:
@@ -41,7 +46,8 @@ import { glob } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { withAncestors } from "./lib/extract-frappe.mjs";
 import { probePaths } from "./lib/probe.mjs";
-import { scanSource } from "./lib/scan-source.mjs";
+import { resolveFrappe } from "./lib/resolve-frappe.mjs";
+import { DEFAULT_GLOBALS, frappeWindowGlobals, globalsToProbe, scanSource } from "./lib/scan-source.mjs";
 
 const { values, positionals } = parseArgs({
 	allowPositionals: true,
@@ -49,13 +55,14 @@ const { values, positionals } = parseArgs({
 		strict: { type: "boolean", default: false },
 		"fail-on-untyped": { type: "boolean", default: false },
 		types: { type: "string", multiple: true, default: [] },
+		frappe: { type: "string" },
 		json: { type: "boolean", default: false },
 	},
 });
 
 if (!positionals.length) {
 	console.error(
-		"usage: node scripts/audit-consumer.mjs <app-path> [<app-path>...] [--strict] [--fail-on-untyped] [--types <file-or-glob>]... [--json]",
+		"usage: node scripts/audit-consumer.mjs <app-path> [<app-path>...] [--strict] [--fail-on-untyped] [--types <file-or-glob>]... [--frappe <path>] [--json]",
 	);
 	process.exit(2);
 }
@@ -75,6 +82,16 @@ for (const pattern of values.types) {
 		process.exit(2);
 	}
 }
+
+// The bare globals to look for: frappe's own `window` assignments when a
+// checkout is at hand, else the list recorded from the pinned tree.
+const frappePath = resolveFrappe(values.frappe);
+if (values.frappe && (!frappePath || frappePath !== path.resolve(values.frappe))) {
+	console.error(`--frappe ${values.frappe}: not a frappe checkout (no frappe/public/js)`);
+	process.exit(2);
+}
+const globals = frappePath ? globalsToProbe((await frappeWindowGlobals(frappePath)).keys()) : DEFAULT_GLOBALS;
+const globalsFrom = frappePath ? `read from ${frappePath}` : "the recorded list (no frappe checkout found)";
 
 const usage = new Map();
 const globalsSeen = new Set();
@@ -98,7 +115,7 @@ for (const app of positionals) {
 			continue;
 		}
 		scanned++;
-		const found = scanSource(src, { vue: entry.endsWith(".vue") });
+		const found = scanSource(src, { vue: entry.endsWith(".vue"), globals });
 		const rel = path.relative(process.cwd(), abs);
 		for (const p of found.paths) {
 			const list = usage.get(p) ?? [];
@@ -111,7 +128,7 @@ for (const app of positionals) {
 
 const target = [...withAncestors(usage.keys()), ...globalsSeen];
 console.log(
-	`scanned ${scanned} files across ${positionals.length} app(s) — ${usage.size} distinct frappe paths, ${globalsSeen.size} other globals${extraTypes.length ? `, with ${extraTypes.length} app type file(s)` : ""}\n`,
+	`scanned ${scanned} files across ${positionals.length} app(s) — ${usage.size} distinct frappe paths, ${globalsSeen.size} other globals (of ${globals.length}, ${globalsFrom})${extraTypes.length ? `, with ${extraTypes.length} app type file(s)` : ""}\n`,
 );
 
 const { covered, guarded, missing, untyped } = await probePaths(target, { untyped: true, extraTypes });
