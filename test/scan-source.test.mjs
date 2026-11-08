@@ -10,7 +10,8 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { resolveFrappe } from "../scripts/lib/resolve-frappe.mjs";
 import {
@@ -205,6 +206,26 @@ function frappeTree() {
 	const found = resolveFrappe(undefined);
 	return found ? { path: found } : { skip: "no frappe checkout (set FRAPPE_PATH; nix flake check does)" };
 }
+
+test("frappeWindowGlobals: reads frappe/public/js and frappe/website/js", async () => {
+	const root = mkdtempSync(path.join(os.tmpdir(), "scan-window-"));
+	try {
+		const write = (rel, src) => {
+			const file = path.join(root, ...rel.split("/"));
+			mkdirSync(path.dirname(file), { recursive: true });
+			writeFileSync(file, src);
+		};
+		write("frappe/public/js/frappe/utils/urllib.js", "window.open_url_post = function () {};\n");
+		write("frappe/website/js/website.js", "window.valid_email = function (id) {};\nwindow.cstr = (s) => s;\n");
+		write("frappe/public/js/node_modules/lib/index.js", "window.vendored = 1;\n");
+		const found = await frappeWindowGlobals(root);
+		assert.deepEqual([...found.keys()], ["cstr", "open_url_post", "valid_email"]);
+		assert.deepEqual(found.get("valid_email"), ["frappe/website/js/website.js"]);
+		assert.deepEqual(found.get("open_url_post"), ["frappe/public/js/frappe/utils/urllib.js"]);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
 
 test("WINDOW_GLOBALS is what frappe's own window assignments say", async (t) => {
 	const tree = frappeTree();

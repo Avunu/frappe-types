@@ -66,7 +66,8 @@ export const OTHER_GLOBALS = ["__", "locals", "cur_frm", "cur_list", "cur_dialog
 
 /**
  * The names frappe v16.54.0 assigns to `window` (`window.x = …` and
- * `Object.assign(window, { … })` under frappe/public/js), less
+ * `Object.assign(window, { … })` under frappe/public/js and frappe/website/js,
+ * FRAPPE_JS_ROOTS), less
  * NOT_FRAPPE_GLOBALS. The fallback when no frappe checkout is at hand; when
  * one is, `frappeWindowGlobals` reads the same list off it. Where each is set:
  *
@@ -98,6 +99,9 @@ export const OTHER_GLOBALS = ["__", "locals", "cur_frm", "cur_list", "cur_dialog
  *   frappe/public/js/frappe/views/reports/report_view.js:6, query_report.js:6  DataTable
  *   frappe/public/js/frappe/web_form/web_form.js:414   saving
  *   frappe/public/js/print.bundle.js:17                render_barcode
+ *   frappe/website/js/website.js:581,599,611,625       valid_email is_html ask_to_login full_name
+ *                                                      (web bundle only; :7,589,591,595 re-set cur_frm
+ *                                                      validate_email cstr is_null)
  */
 export const WINDOW_GLOBALS = [
 	"AMEND",
@@ -115,6 +119,7 @@ export const WINDOW_GLOBALS = [
 	"WRITE",
 	"__",
 	"_round",
+	"ask_to_login",
 	"cint",
 	"comment_when",
 	"convert_old_to_new_number_format",
@@ -131,6 +136,7 @@ export const WINDOW_GLOBALS = [
 	"fmt_money",
 	"format_currency",
 	"format_number",
+	"full_name",
 	"get_currency_symbol",
 	"get_number_format",
 	"get_number_format_info",
@@ -140,6 +146,7 @@ export const WINDOW_GLOBALS = [
 	"has_words",
 	"hide_field",
 	"in_list",
+	"is_html",
 	"is_null",
 	"lstrip",
 	"msgprint",
@@ -163,6 +170,7 @@ export const WINDOW_GLOBALS = [
 	"toTitle",
 	"toggle_field",
 	"unhide_field",
+	"valid_email",
 	"validate_email",
 	"validate_name",
 	"validate_phone",
@@ -598,29 +606,38 @@ export function windowGlobalsIn(src) {
 }
 
 /**
+ * The frappe source trees the bundles are built from. `frappe/public/js` holds
+ * every bundle entry; the web bundle also imports `frappe/website/js/website.js`
+ * (`frappe/public/js/frappe-web.bundle.js:47`), which sets web-only globals.
+ */
+export const FRAPPE_JS_ROOTS = ["frappe/public/js", "frappe/website/js"];
+
+/**
  * Every name frappe assigns to `window`, read from its source: each
- * `.js` / `.vue` file under `frappe/public/js` outside `node_modules`.
+ * `.js` / `.vue` file under FRAPPE_JS_ROOTS outside `node_modules`.
  *
  * @param {string} frappePath a frappe checkout (the repo root, holding frappe/public/js)
  * @returns {Promise<Map<string, string[]>>} name → the files that assign it, sorted by name
  */
 export async function frappeWindowGlobals(frappePath) {
-	const root = path.join(frappePath, "frappe", "public", "js");
 	/** @type {Map<string, string[]>} */
 	const found = new Map();
-	for await (const entry of glob("**/*.{js,vue}", { cwd: root, exclude: (name) => name === "node_modules" })) {
-		let src;
-		try {
-			src = await readFile(path.join(root, entry), "utf8");
-		} catch {
-			continue;
-		}
-		if (!src.includes("window")) continue;
-		const rel = path.posix.join("frappe/public/js", entry.split(path.sep).join("/"));
-		for (const name of windowGlobalsIn(src)) {
-			const list = found.get(name) ?? [];
-			if (!list.includes(rel)) list.push(rel);
-			found.set(name, list);
+	for (const tree of FRAPPE_JS_ROOTS) {
+		const root = path.join(frappePath, ...tree.split("/"));
+		for await (const entry of glob("**/*.{js,vue}", { cwd: root, exclude: (name) => name === "node_modules" })) {
+			let src;
+			try {
+				src = await readFile(path.join(root, entry), "utf8");
+			} catch {
+				continue;
+			}
+			if (!src.includes("window")) continue;
+			const rel = path.posix.join(tree, entry.split(path.sep).join("/"));
+			for (const name of windowGlobalsIn(src)) {
+				const list = found.get(name) ?? [];
+				if (!list.includes(rel)) list.push(rel);
+				found.set(name, list);
+			}
 		}
 	}
 	return new Map([...found.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
