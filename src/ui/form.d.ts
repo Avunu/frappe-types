@@ -2042,9 +2042,11 @@ export declare class Form<DT extends string = string> {
 	 * - `frm.call("method", args, callback)` runs a method of the document's
 	 *   controller (`doc: this.doc`, :1935-1942), and refreshes the fields when
 	 *   it succeeds (:1973-1978).
-	 * - The object form takes {@link FrappeCallOptions}. Without `doc`, a
-	 *   `method` with no dot is prefixed with the doctype's server module
-	 *   (:1944-1946), and a plain-object `message` is written back: into
+	 * - The object form takes {@link FrappeCallOptions}, with `method`
+	 *   required: without `doc` frappe reads `opts.method.indexOf(".")`
+	 *   unguarded (:1944-1945), and with `doc` it is the controller method
+	 *   `run_doc_method` runs. Without `doc`, a `method` with no dot is
+	 *   prefixed with the doctype's server module (:1944-1946), and a plain-object `message` is written back: into
 	 *   `child` (a row of this form) when given, else into the document with
 	 *   `set_value` (:1947-1970). `debounce` can make `frappe.call` return a
 	 *   bare `Promise<void>` (`frappe/public/js/frappe/request.js:105-107`).
@@ -2058,9 +2060,9 @@ export declare class Form<DT extends string = string> {
 		callback?: (r: FrappeResponse<T>) => void
 	): FrappeAjaxResult<T>;
 	call<T = unknown>(
-		opts: FrappeCallOptions<T> & { child?: FrappeDoc; debounce: number }
+		opts: FrappeCallOptions<T> & { method: string; child?: FrappeDoc; debounce: number }
 	): FrappeAjaxResult<T> | Promise<void>;
-	call<T = unknown>(opts: FrappeCallOptions<T> & { child?: FrappeDoc }): FrappeAjaxResult<T>;
+	call<T = unknown>(opts: FrappeCallOptions<T> & { method: string; child?: FrappeDoc }): FrappeAjaxResult<T>;
 	/** frappe/public/js/frappe/form/form.js:1984-1986. A raw `fields_dict` lookup, so a miss is `undefined`. */
 	get_field(field: string): LayoutFieldObject | undefined;
 	/** frappe/public/js/frappe/form/form.js:2003-2005. Delegates to `script_manager.trigger`. */

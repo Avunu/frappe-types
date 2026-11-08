@@ -77,8 +77,10 @@ export type FrappeDialog = Dialog;
  * resolved type is wider (`FrappeResponse<unknown>`), which is exactly the
  * case in JavaScript. Checked bivariantly it is accepted when either type is
  * assignable to the other, so it narrows `unknown` to what the script says and
- * still rejects an unrelated annotation (`@type {string}`), and an
- * unannotated callback is typed from the resolution. The same trade-off as the
+ * still rejects an unrelated annotation (`@type {string}`). Compare it with a
+ * type that has no index signature ({@link FrappeResponseFields}, not
+ * `FrappeResponse`): against an index signature every object type is
+ * "related". The same trade-off as the
  * annotation-driven `T` of {@link FrappeRealtime.on} and of
  * {@link FrappeCallOptions.callback}: the server's payload is whatever the
  * method returned, so the annotation is the caller's claim about it.
@@ -100,11 +102,15 @@ export type FrappeBivariantCallback<TArgs extends unknown[], TReturn> = {
  * `message`.
  *
  * It is `@types/jquery`'s `JQuery.jqXHR` (a real dependency of this package,
- * referenced unqualified) with one change: `then` takes its callbacks as
- * {@link FrappeBivariantCallback}s, so a JSDoc script can annotate the response
- * it expects. `await frappe.call<X>(…)` is a `FrappeResponse<X>`, and so is an
- * unannotated `.then((r) => …)` argument. `done` / `fail` / `always` are
- * jQuery's, with `FrappeResponse<T>` as the resolved value.
+ * referenced unqualified) with `then` and `done` re-declared so that a JSDoc
+ * script can annotate the response it expects (see `then`). An unannotated
+ * `.then((r) => …)` / `.done((r) => …)` argument is a `FrappeResponse<X>`.
+ * `await frappe.call<X>(…)` (and `Promise.resolve` of it) is a
+ * {@link FrappeResponseFields}`<X>`: TypeScript's `await` merges both `then`
+ * overloads into the narrower one. It has every key frappe sets and is
+ * assignable to `FrappeResponse<X>`; only a key frappe does not declare needs
+ * that annotation. `fail` / `always` are jQuery's, with `FrappeResponse<T>` as
+ * the resolved value.
  *
  * Through 16.5.0 this was `JQueryXHR`, `jqXHR<any>`: the resolved value was
  * `any` and the `T` of `call<T>` was discarded.
@@ -114,10 +120,36 @@ export interface FrappeAjaxResult<T = unknown> extends JQuery.jqXHR<FrappeRespon
 	 * jQuery 3's Promises/A+ `then` (`node_modules/@types/jquery/misc.d.ts:2617`).
 	 * `onfulfilled` receives the parsed response, the text status and the jqXHR;
 	 * `onrejected` the jqXHR, the text status and the error text.
+	 *
+	 * Two overloads. The first types an unannotated callback with
+	 * {@link FrappeResponse}`<T>`, checked as usual. The second takes an
+	 * annotated callback whose parameter is not exactly that, checked
+	 * bivariantly against {@link FrappeResponseFields}`<T>`: a JSDoc
+	 * `FrappeResponse<X>` or a hand-written `{ message: X }` envelope (an
+	 * `interface` too) is accepted when `X` and `T` are related, while the
+	 * message's own shape (`.then((/** @type {Row} *\/ row) => …)`, the
+	 * envelope mistaken for the payload) shares no key with the envelope and is
+	 * rejected.
 	 */
 	then<TResult1 = FrappeResponse<T>, TResult2 = never>(
+		onfulfilled?:
+			| ((
+					response: FrappeResponse<T>,
+					textStatus: JQuery.Ajax.SuccessTextStatus,
+					jqXHR: FrappeAjaxResult<T>
+			  ) => TResult1 | PromiseLike<TResult1>)
+			| null,
+		onrejected?:
+			| ((
+					jqXHR: FrappeAjaxResult<T>,
+					textStatus: JQuery.Ajax.ErrorTextStatus,
+					errorThrown: string
+			  ) => TResult2 | PromiseLike<TResult2>)
+			| null
+	): JQuery.Promise<TResult1 | TResult2>;
+	then<TResult1 = FrappeResponse<T>, TResult2 = never>(
 		onfulfilled?: FrappeBivariantCallback<
-			[response: FrappeResponse<T>, textStatus: JQuery.Ajax.SuccessTextStatus, jqXHR: FrappeAjaxResult<T>],
+			[response: FrappeResponseFields<T>, textStatus: JQuery.Ajax.SuccessTextStatus, jqXHR: FrappeAjaxResult<T>],
 			TResult1 | PromiseLike<TResult1>
 		> | null,
 		onrejected?: FrappeBivariantCallback<
@@ -125,6 +157,37 @@ export interface FrappeAjaxResult<T = unknown> extends JQuery.jqXHR<FrappeRespon
 			TResult2 | PromiseLike<TResult2>
 		> | null
 	): JQuery.Promise<TResult1 | TResult2>;
+	/**
+	 * jQuery's `done` (`node_modules/@types/jquery/misc.d.ts:1303-1306`), with the
+	 * same two overloads as `then`, so a callback annotated with the response it
+	 * expects is accepted from JavaScript as well. Returns the jqXHR.
+	 */
+	done(
+		doneCallback: JQuery.TypeOrArray<
+			(response: FrappeResponse<T>, textStatus: JQuery.Ajax.SuccessTextStatus, jqXHR: FrappeAjaxResult<T>) => void
+		>,
+		...doneCallbacks: Array<
+			JQuery.TypeOrArray<
+				(response: FrappeResponse<T>, textStatus: JQuery.Ajax.SuccessTextStatus, jqXHR: FrappeAjaxResult<T>) => void
+			>
+		>
+	): this;
+	done(
+		doneCallback: JQuery.TypeOrArray<
+			FrappeBivariantCallback<
+				[response: FrappeResponseFields<T>, textStatus: JQuery.Ajax.SuccessTextStatus, jqXHR: FrappeAjaxResult<T>],
+				void
+			>
+		>,
+		...doneCallbacks: Array<
+			JQuery.TypeOrArray<
+				FrappeBivariantCallback<
+					[response: FrappeResponseFields<T>, textStatus: JQuery.Ajax.SuccessTextStatus, jqXHR: FrappeAjaxResult<T>],
+					void
+				>
+			>
+		>
+	): this;
 }
 
 /**
@@ -379,16 +442,21 @@ export type FrappeShowAlertActions = Record<string, (event: unknown) => void>;
  * - `FrappeResponse._server_messages` (API v1, what `frappe.call` and a plain
  *   `fetch` of `/api/method/<cmd>` get): a JSON array of JSON strings, each one
  *   of these (`frappe/utils/response.py:200-203`). Decode with
- *   `JSON.parse(r._server_messages)` and then `JSON.parse` each entry, as
- *   `frappe/public/js/frappe/request.js:473-478` does.
+ *   `JSON.parse(r._server_messages)` and then `JSON.parse` each entry. The
+ *   desk parses only the outer array (`frappe/public/js/frappe/request.js:473`;
+ *   the entries just for its alert check, request.js:478-481) and hands that
+ *   array of strings to `frappe.msgprint` (request.js:485), which decodes each
+ *   entry (`frappe/public/js/frappe/ui/messages.js:162-182`, and the `"{"`
+ *   check at `frappe/public/js/frappe/ui/messages.js:135-137`).
  * - `FrappeResponse.messages` (API v2): the same dicts, not encoded
  *   (`frappe/utils/response.py:215-216`).
  * - the `"msgprint"` realtime event, for `msgprint(…, realtime=True)`
  *   (`frappe/utils/messages.py:114-115`, received and shown at
  *   `frappe/public/js/frappe/socketio_client.js:76`).
  *
- * The keys mirror {@link FrappeMsgprintOptions} because the desk hands each
- * decoded entry to `frappe.msgprint` (request.js:485).
+ * The keys mirror {@link FrappeMsgprintOptions} because each entry ends up as
+ * the options of one `frappe.msgprint` call
+ * (`frappe/public/js/frappe/ui/messages.js:179-181`).
  */
 export interface FrappeServerMessage {
 	/**
@@ -454,16 +522,47 @@ export interface FrappeResponseError extends Partial<Omit<FrappeServerMessage, "
  * `exc_type`, `exception` and `_server_messages`.
  *
  * The index signature is not a shrug: a whitelisted method may return any
- * top-level keys it likes, and hooks add more. `message` is the payload.
+ * top-level keys it likes, and hooks add more. `message` is the payload under
+ * API v1 (what `frappe.call` uses unless `api_version` says otherwise), `data`
+ * under API v2; `T` types both, and only one of them is ever present.
+ *
+ * The named keys are {@link FrappeResponseFields}; this interface adds the
+ * index signature.
  */
-export interface FrappeResponse<T = unknown> {
+export interface FrappeResponse<T = unknown> extends FrappeResponseFields<T> {
+	[key: string]: unknown;
+}
+
+/**
+ * The keys of {@link FrappeResponse} that frappe itself sets, without its index
+ * signature. Prefer `FrappeResponse`; this one exists for the `.then` / `.done`
+ * annotation check of {@link FrappeAjaxResult}, where an index signature would
+ * make every object type acceptable. Without one, an annotation must share a
+ * key with the envelope (`{ message: X }`, an `interface` envelope included),
+ * so annotating the callback with the message's own shape is an error.
+ *
+ * A type alias rather than an interface, so that it is still assignable to
+ * `FrappeResponse` (an object type alias gets an implicit index signature).
+ * Source: see {@link FrappeResponse}.
+ */
+export type FrappeResponseFields<T = unknown> = {
 	/**
-	 * Return value of the whitelisted method. What `frappe.xcall` resolves with.
-	 * **Absent**, not `null`, when the method returned `None`
+	 * API v1: the return value of the whitelisted method. What `frappe.xcall`
+	 * resolves with. **Absent**, not `null`, when the method returned `None`
 	 * (`frappe/handler.py:56-62` sets it only for a non-`None` value), which is
-	 * why it is optional.
+	 * why it is optional. Never set under API v2; see `data`.
 	 */
 	message?: T;
+	/**
+	 * API v2 (`api_version: "v2"`, `/api/v2/method/…`): the return value of
+	 * the method, absent for `None` (`frappe/api/__init__.py:67-68`). The same
+	 * key carries the document or list of a REST resource call
+	 * (`/api/resource/…`, `/api/v2/document/…`), whose handlers return it
+	 * (`frappe/api/v1.py:75-89`). Under API v2 there is no
+	 * `message`, so `frappe.xcall` resolves `undefined`
+	 * (`frappe/public/js/frappe/request.js:19-20` reads `r.message`).
+	 */
+	data?: T;
 	/**
 	 * API v1, on an error: the last line of the traceback
 	 * (`"frappe.exceptions.ValidationError: …"`), sent only when tracebacks are
@@ -518,8 +617,7 @@ export interface FrappeResponse<T = unknown> {
 	_error_message?: string;
 	/** Rendered into the server-error dialog at request.js:649-652. */
 	_exc_source?: string;
-	[key: string]: unknown;
-}
+};
 
 /**
  * Options object accepted by `frappe.call`.
@@ -547,7 +645,11 @@ export interface FrappeCallOptions<TMessage = unknown> {
 	type?: "GET" | "POST" | "PUT" | "DELETE";
 	/** Bypasses the `/api/method/` URL builder entirely (request.js:89-90). */
 	url?: string;
-	/** `"v2"` switches the URL prefix and the message-extraction path (request.js:92-94, 470-471). */
+	/**
+	 * `"v2"` switches the URL prefix and the message-extraction path
+	 * (request.js:92-94, 470-471). The payload is then {@link FrappeResponse.data},
+	 * not `message`.
+	 */
 	api_version?: string;
 	/** request.js:62-63 — build `cmd` as `<module>.page.<page>.<page>.<method>`. */
 	module?: string;
@@ -751,12 +853,15 @@ export interface FrappeDb {
 	 *
 	 * The doctype names the document type, as in `frappe.ui.form.on`: a doctype
 	 * registered in `FrappeDocTypes` resolves with its document
-	 * ({@link DocOf}), any other with the open `FrappeDoc`. That is what lets a
-	 * desk script, which cannot pass a type argument, write
-	 * `frappe.db.get_doc("Item", name).then((item) => item.item_name)`. The
-	 * second overload keeps the explicit `get_doc<MyDoc>(…)` form.
+	 * ({@link DocOf}). That is what lets a desk script, which cannot pass a type
+	 * argument, write
+	 * `frappe.db.get_doc("Item", name).then((item) => item.item_name)`. Only a
+	 * registered name takes the first overload; any other doctype reaches the
+	 * second, whose `T` is the explicit `get_doc<MyDoc>(…)` or is inferred from
+	 * the context, so `/** @type {ItemDoc} *\/ const item = await frappe.db.get_doc("Item", n)`
+	 * still types the result in JavaScript.
 	 */
-	get_doc<DT extends string>(doctype: DT, name?: string | null, filters?: FrappeFilters): Promise<DocOf<DT>>;
+	get_doc<DT extends DocTypeName>(doctype: DT, name?: string | null, filters?: FrappeFilters): Promise<DocOf<DT>>;
 	get_doc<T extends FrappeDoc = FrappeDoc>(
 		doctype: string,
 		name?: string | null,
@@ -2072,7 +2177,10 @@ export type FrappePaletteColor = readonly [background: string, color: string];
  */
 export interface FrappeUserInfo extends Partial<Omit<FrappeBootUserInfo, "fullname" | "abbr" | "color">> {
 	fullname: string;
-	/** `frappe.get_abbr(fullname)` (`frappe/public/js/frappe/utils/common.js:175-190`), `"?"` for an empty name. */
+	/**
+	 * `frappe.get_abbr(fullname)` (`frappe/public/js/frappe/utils/common.js:175-190`):
+	 * `""` for an empty name, `"?"` for one with no non-space character.
+	 */
 	abbr: string;
 	/** `frappe.get_palette(fullname)` (`frappe/public/js/frappe/utils/common.js:169-173`). */
 	color: FrappePaletteColor;
@@ -2383,7 +2491,9 @@ export interface FrappeCore {
 	 * `T` is what the method returns. A method that returns `None` resolves
 	 * with `undefined` (`message` is absent, `frappe/handler.py:56-62`). From
 	 * JavaScript, annotate the fulfilment callback instead of passing `T`; see
-	 * {@link FrappeXcallResult}.
+	 * {@link FrappeXcallResult}. With `opts.api_version: "v2"` it always
+	 * resolves `undefined`: the payload is then `data`, and xcall reads only
+	 * `r.message` (request.js:19-20); use `frappe.call` and read `r.data`.
 	 */
 	xcall<T = unknown>(
 		method: string,

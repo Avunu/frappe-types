@@ -188,6 +188,7 @@ export type {
 	FrappeRequestCallOptions,
 	FrappeResponse,
 	FrappeResponseError,
+	FrappeResponseFields,
 	FrappeServerMessage,
 	FrappeSession,
 	FrappeShowAlertActions,
@@ -628,7 +629,6 @@ export type {
 	MaybeJQuery,
 	SelectOptionInput,
 	TranslateFunction,
-	TranslateStringFunction,
 	TranslationArgs,
 } from "./globals";
 
