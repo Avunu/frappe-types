@@ -12,6 +12,8 @@ import type {
 	FrappeServerMessage,
 	FrappeWorkflowNamespace,
 	Permission,
+	WebForm,
+	WebFormDoc,
 } from "frappe-types";
 
 declare global {
@@ -32,7 +34,7 @@ export const events: FormEvents<"Task"> = {
 	},
 };
 
-// frappe.perm, frappe.workflow and frappe.contacts, by name.
+// frappe.perm, frappe.workflow, frappe.contacts and the web form types, by name.
 export function readable(perm: FrappePermNamespace, doctype: string): Permission[] {
 	return perm.get_perm(doctype);
 }
@@ -41,6 +43,10 @@ export function state_field(workflow: FrappeWorkflowNamespace, doctype: string):
 }
 export function render(contacts: FrappeContactsNamespace, frm: Form): void {
 	contacts.render_address_and_contact(frm);
+}
+export function success_url(form: WebForm, doc: WebFormDoc): string | undefined {
+	form.prepare(doc, {});
+	return form.success_url;
 }
 
 // @ts-expect-error the module entry installs no `frappe` global

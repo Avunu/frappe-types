@@ -774,6 +774,27 @@ export type {
 	FrappeTooltipOptions,
 } from "./ui/components";
 
+// ---------------------------------------------------------------------------
+// ./web_form — the web form controller and list (deep-imported classes) and the
+// web form page data. Types only here: the globals a web form page adds are in
+// `frappe-types/web`.
+// ---------------------------------------------------------------------------
+export type {
+	WebForm,
+	WebFormConstructor,
+	WebFormDoc,
+	WebFormDocFields,
+	WebFormEvents,
+	WebFormList,
+	WebFormListColumn,
+	WebFormListOptions,
+	WebFormListRow,
+	WebFormListRowEvents,
+	WebFormListViewColumn,
+	WebFormOptions,
+	WebFormSaveResult,
+} from "./web_form";
+
 // ===========================================================================
 // The composites the per-namespace fragments could not declare on their own
 //

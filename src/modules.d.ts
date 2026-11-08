@@ -1,8 +1,10 @@
 /**
  * frappe-types — group `deep-module-imports`, ambient wiring.
  *
- * Frappe v16.54.0. Companion to `deep-modules.d.ts`, which declares everything
- * the four specifiers below re-export.
+ * Frappe v16.54.0. Companion to `deep-modules.d.ts`, which declares (or, for
+ * the web form pair, re-exports from `web_form.d.ts`) everything the class
+ * specifiers below re-export. Further down are the side-effect-only bundles
+ * an app imports for what they install, and frappe's `.html` microtemplates.
  *
  * THIS FILE MUST STAY A SCRIPT. It deliberately has no top-level `import` or
  * `export`. Add one and every `declare module` below silently degrades from an
@@ -30,12 +32,15 @@
  * map), because nothing imports it.
  *
  * ONLY DEFAULT EXPORTS, except one: each specifier below is declared with
- * exactly the exports the real module has. `grid_row`, `grid_row_form` and
- * `grid_pagination` have a default export and nothing else. `grid` has the
- * default `Grid` PLUS, since v16.50, four named const exports
- * (frappe/public/js/frappe/form/grid.js:10-36). No module has a named export
- * for its own class, so none is declared: an `import { Grid } from ...` would
- * type-check against a phantom export and then fail in esbuild.
+ * exactly the exports the real module has. `grid_row`, `grid_row_form`,
+ * `grid_pagination`, `web_form` and `web_form_list` have a default export and
+ * nothing else. `grid` has the default `Grid` PLUS, since v16.50, four named
+ * const exports (frappe/public/js/frappe/form/grid.js:10-36). No module has a
+ * named export for its own class, so none is declared: an
+ * `import { Grid } from ...` would type-check against a phantom export and
+ * then fail in esbuild. The side-effect bundles have no exports at all, so
+ * their declarations have empty bodies: `import "…"` checks, and any named or
+ * default import from them is an error, as it is in esbuild.
  */
 
 declare module "frappe/public/js/frappe/form/grid" {
@@ -77,3 +82,77 @@ declare module "frappe/public/js/frappe/form/grid_pagination" {
 	import { GridPagination } from "frappe-types/deep-modules";
 	export default GridPagination;
 }
+
+declare module "frappe/public/js/frappe/web_form/web_form" {
+	// frappe/public/js/frappe/web_form/web_form.js:5 —
+	// `export default class WebForm extends frappe.ui.FieldGroup {`. No named
+	// exports. Declared as a constructor value merged with the instance
+	// interface; see the note on `WebForm` in web_form.d.ts for why it is not a
+	// `class`. `class MyForm extends WebForm {}` works either way.
+	import { WebForm } from "frappe-types/deep-modules";
+	export default WebForm;
+}
+
+declare module "frappe/public/js/frappe/web_form/web_form_list" {
+	// frappe/public/js/frappe/web_form/web_form_list.js:5 —
+	// `export default class WebFormList {`. No named exports; the module also
+	// defines `frappe.ui.WebFormListRow` (:391) as a side effect.
+	import { WebFormList } from "frappe-types/deep-modules";
+	export default WebFormList;
+}
+
+// ---------------------------------------------------------------------------
+// Side-effect-only modules
+//
+// The files frappe's own `web_form.bundle.js` imports for what they install
+// (frappe/public/js/web_form.bundle.js:1-7), plus that bundle itself. An app
+// that builds its own website bundle imports the same ones, and none of them
+// exports anything, so each is declared with an empty body. Written with the
+// `.js` extension, the way web_form.bundle.js writes them; esbuild resolves the
+// specifier through `nodePaths` (frappe/esbuild/esbuild.js:92-97), as for the
+// class modules above.
+//
+// They are declared one by one, never as a `frappe/public/js/*.js` wildcard: a
+// bodyless wildcard would type every named import from any frappe file as
+// `any`, and one with a body would accept a typo'd path.
+// ---------------------------------------------------------------------------
+
+/** frappe/public/js/web_form.bundle.js:1-7 — the web form page's bundle: controls, dialog, moment, keyboard, datetime, the web form script and Bootstrap. */
+declare module "frappe/public/js/web_form.bundle.js" {}
+/** frappe/public/js/controls.bundle.js:1-4 — the date picker and the form controls (`frappe.ui.form.Control*`). */
+declare module "frappe/public/js/controls.bundle.js" {}
+/** frappe/public/js/dialog.bundle.js:1-7 — the layout, `frappe.ui.FieldGroup`, the link and multi-select dialogs and `frappe.ui.Dialog`. */
+declare module "frappe/public/js/dialog.bundle.js" {}
+/** frappe/public/js/lib/moment.js:4-5 — binds moment-timezone (ten years of zone data) to `window.moment`. */
+declare module "frappe/public/js/lib/moment.js" {}
+/** frappe/public/js/frappe/ui/keyboard.js:4 — `frappe.ui.keys`. */
+declare module "frappe/public/js/frappe/ui/keyboard.js" {}
+/** frappe/public/js/frappe/utils/datetime.js:4 — `frappe.datetime`. */
+declare module "frappe/public/js/frappe/utils/datetime.js" {}
+/** frappe/public/js/frappe/web_form/webform_script.js:4-102 — renders the page's web form or list on `frappe.ready`. */
+declare module "frappe/public/js/frappe/web_form/webform_script.js" {}
+/**
+ * frappe/public/js/bootstrap-4-web.bundle.js:1-68 — the website's Bootstrap 4
+ * glue: nested dropdown menus, `frappe.get_modal` (:20) and a
+ * `frappe.ui.Dialog` subclass that swaps in Bootstrap's modal footer (:44).
+ */
+declare module "frappe/public/js/bootstrap-4-web.bundle.js" {}
+
+// ---------------------------------------------------------------------------
+// frappe microtemplates
+//
+// frappe's esbuild plugin claims every `.html` import (frappe/esbuild/frappe-html.js:7-12)
+// and compiles the file into a single statement,
+// `frappe.templates['<name>'] = \`…\`;`, where `<name>` is the file name up to
+// its first dot (frappe/esbuild/frappe-html.js:14-24). The module exports
+// nothing: import it for that side effect, then render it with
+// `frappe.render_template("<name>", context)`.
+//
+//   import "./templates/order_card.html";
+//
+// The pattern is global, as `.html` imports are in a frappe build. A project
+// whose other tooling gives `.html` imports exports declares its own
+// `declare module "*.html" { … }`; the two merge.
+// ---------------------------------------------------------------------------
+
+declare module "*.html" {}
