@@ -1066,12 +1066,15 @@ export interface DeskHelperGlobals {
 	 * `frappe/public/js/frappe/utils/datatype.js:9-17` — `true`/`false` → 1/0;
 	 * otherwise strips leading zeros and `parseInt`s the string form. On NaN
 	 * returns `def`, or `0` when `def` is `undefined` (an explicit `null` IS
-	 * returned, hence the second overload).
+	 * returned, so `null` is in the result only when `def` may be `null`).
+	 *
+	 * One generic signature rather than two overloads: a callback position
+	 * (`values.map(cint)`, where `map` passes the index as `def`) sees only an
+	 * overloaded function's LAST signature, so with a `number | null` overload
+	 * last `values.map(cint)` came out `(number | null)[]`. Here `def` is
+	 * inferred as `number` there, and the result is `number`.
 	 */
-	cint: {
-		(v: unknown, def?: number): number;
-		(v: unknown, def: number | null | undefined): number | null;
-	};
+	cint: <Def extends number | null | undefined = undefined>(v: unknown, def?: Def) => number | (null extends Def ? null : never);
 	/** `frappe/public/js/frappe/utils/datatype.js:20-29` — upper-cases the first letter of each space-separated word. */
 	toTitle: (str: string) => string;
 	/**
