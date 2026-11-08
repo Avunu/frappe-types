@@ -12,7 +12,12 @@ import type {
 	Form,
 	FormDocumentEvents,
 	FormTimeline,
+	FrappeDoc,
+	FrappeFileUploaderDataUrlFile,
 	FrappeFileUploaderFile,
+	FrappeFileUploaderOptions,
+	FrappeFileUploaderResponse,
+	FrappeFileUploaderSuccessArgs,
 	LinkQuery,
 } from "frappe-types";
 
@@ -176,6 +181,37 @@ $(document).on("form-refresh", (_e: JQuery.TriggeredEvent, ...[frm]: FormDocumen
 // ui_text_editor: the upload dialog's file list.
 export function failed(files: FrappeFileUploaderFile[]): string[] {
 	return files.filter((f) => f.failed).map((f) => f.error_message ?? f.name);
+}
+
+// ui_text_editor: on_success follows as_dataurl, and the dialog's tabs are read
+// through Vue's $refs as frappe reads them.
+export function open_uploader(): void {
+	const Uploader = frappe.ui.FileUploader;
+	if (!Uploader) return;
+	const dialog = new Uploader({
+		on_success(file_doc: FrappeDoc | null, response: FrappeFileUploaderResponse) {
+			if (typeof response !== "string") void response.message;
+			void file_doc?.name;
+		},
+	});
+	new Uploader({
+		as_dataurl: true,
+		on_success: (file: FrappeFileUploaderDataUrlFile) => void file.dataurl.length,
+	});
+	// An options object built elsewhere, as_dataurl unknown: either argument list.
+	const options: FrappeFileUploaderOptions = {
+		on_success(...args: FrappeFileUploaderSuccessArgs) {
+			const [first] = args;
+			if (first && "dataurl" in first) void first.dataurl;
+		},
+	};
+	new Uploader(options);
+	// @ts-expect-error with as_dataurl: true there is no response argument
+	new Uploader({ as_dataurl: true, on_success: (_file: FrappeFileUploaderDataUrlFile, _r: string) => undefined });
+	const { file_browser, web_link } = dialog.uploader.$refs;
+	const node = file_browser?.selected_node;
+	const url = (node && "file_url" in node ? node.file_url : null) ?? web_link?.url;
+	if (!url) web_link?.invalid_input(__("Please enter a valid URL"));
 }
 
 // Replacing frappe's uploader with a class of one's own (cloud_storage): frappe

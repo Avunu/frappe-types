@@ -165,6 +165,35 @@ if (Uploader) {
 	if (uploader.dialog) uploader.dialog.keep_grid_form_open = true;
 	void uploader.uploader.files.map((f) => f.doc?.name);
 	void uploader.upload_files();
+
+	// Uploading, on_success gets the File document and the parsed response.
+	new Uploader({
+		on_success(file_doc, response) {
+			/** @type {import("frappe-types").FrappeDoc | null} */
+			const doc = file_doc;
+			/** @type {import("frappe-types").FrappeResponse | string} */
+			const body = response;
+			// @ts-expect-error without as_dataurl nothing has a dataurl
+			void file_doc?.dataurl.length;
+			void doc, body;
+		},
+	});
+	// With as_dataurl: true it gets the file entry, its dataurl set.
+	new Uploader({
+		as_dataurl: true,
+		on_success(file) {
+			/** @type {string} */
+			const url = file.dataurl;
+			void url, file.file_obj.name;
+		},
+	});
+
+	// The Library and Link tabs, through Vue's $refs, as frappe reads them.
+	const { file_browser, web_link } = uploader.uploader.$refs;
+	const selected = file_browser?.selected_node;
+	/** @type {string | null | undefined} */
+	const picked = selected && "file_url" in selected ? selected.file_url : web_link?.url;
+	if (web_link && !picked) web_link.invalid_input(__("Please enter a valid URL"));
 }
 
 // The form footer, its comment box and timeline, and frm.events.
