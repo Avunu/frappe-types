@@ -62,12 +62,15 @@ frappe.listview_settings["ToDo"] = todo_settings;
 
 // A function assigned to a property is typed through the hook's own type, not a
 // cast: TypeScript 5.x does not contextually type it in JavaScript (7 does).
+// `refresh` runs in BaseList#refresh, so an app's own BaseList view reaches it
+// too: narrow to a list view before using one of its members.
 const file_settings = frappe.listview_settings["File"] || (frappe.listview_settings["File"] = {});
 const frappe_refresh = file_settings.refresh;
 /** @type {frappe.views.ListViewSettings["refresh"]} */
 const file_refresh = function (view) {
 	if (frappe_refresh) frappe_refresh.call(file_settings, view);
-	add_merge_action(view);
+	const ListViewClass = frappe.views.ListView;
+	if (ListViewClass && view instanceof ListViewClass) add_merge_action(view);
 };
 file_settings.refresh = file_refresh;
 
@@ -75,6 +78,21 @@ file_settings.refresh = file_refresh;
 
 if (!frappe.views.view_modes?.includes("Board")) frappe.views.view_modes?.push("Board");
 if (frappe.views.view_icon_map) frappe.views.view_icon_map["Board"] = "layout";
+
+// The view's class: in JavaScript a getter's literal return widens to `string`,
+// so `@returns` names the registered view mode.
+const BoardBase = frappe.views.ListView;
+if (BoardBase) {
+	frappe.views.BoardView = class BoardView extends BoardBase {
+		/**
+		 * @override
+		 * @returns {import("frappe-types").FrappeViewName}
+		 */
+		get view_name() {
+			return "Board";
+		}
+	};
+}
 
 const BaseViewSelect = frappe.views.ListViewSelect;
 if (BaseViewSelect) {
@@ -99,6 +117,9 @@ const generate_board_route = function (item) {
 	return original_generate_route.call(frappe.utils, item);
 };
 frappe.utils.generate_route = generate_board_route;
+
+// The shortcut widget forwards a Workspace Shortcut's empty doc_view as it is.
+void frappe.utils.generate_route({ type: "DocType", name: "ToDo", doc_view: "" });
 
 // ---- patching the side panel (data_steward, erpnext_cis_plus) --------------
 
@@ -178,7 +199,35 @@ if (BaseGanttView) {
 			void this.calendar_settings.field_map.start;
 			return args;
 		}
+
+		/**
+		 * @override
+		 * @param {unknown} gantt
+		 */
+		scroll_to_today(gantt) {
+			this.scroll_to_today_on_view_change = false;
+			return super.scroll_to_today(gantt);
+		}
+
+		/**
+		 * @override
+		 * @param {unknown} gantt
+		 */
+		fill_width(gantt) {
+			return super.fill_width(gantt);
+		}
 	};
+}
+
+const FileViewClass = frappe.views.FileView;
+if (FileViewClass) {
+	/** @param {InstanceType<typeof FileViewClass>} view */
+	const file_view_name = (view) => {
+		/** @type {"File"} the File doctype's own list view */
+		const name = view.view_name;
+		return name;
+	};
+	void file_view_name;
 }
 
 // ---- the email composer (messaging) ----------------------------------------
@@ -188,7 +237,54 @@ if (Composer) {
 	const composer = new Composer({ subject: __("Hello"), recipients: "someone@example.com", attach_document_print: true });
 	composer.dialog.show();
 	void new Composer();
+	/** @type {string | null | undefined} a reply-all copies the last email's, which may be null */
+	const cc = composer.cc;
+	void cc;
 }
+
+/**
+ * The timeline's `compose_mail`, as frappe writes it
+ * (frappe/public/js/frappe/form/footer/form_timeline.js:559-612): with no
+ * communication, the title, last email and subject are `null` and the sender
+ * `undefined`.
+ * @param {frappe.ui.form.Form} frm
+ * @param {(frappe.Doc<"ToDo"> & { sender: string; recipients: string; subject?: string; cc?: string | null; bcc?: string | null }) | null} communication_doc
+ * @param {boolean} reply_all
+ */
+function compose_mail(frm, communication_doc = null, reply_all = false) {
+	const args = {
+		doc: frm.doc,
+		frm: frm,
+		recipients:
+			communication_doc && communication_doc.sender != frappe.session.user_email
+				? communication_doc.sender
+				: "",
+		is_a_reply: Boolean(communication_doc),
+		title: communication_doc ? __("Reply") : null,
+		last_email: communication_doc,
+		subject: communication_doc && communication_doc.subject,
+		reply_all: reply_all,
+		sender: communication_doc?.sender,
+	};
+	const ComposerClass = frappe.views.CommunicationComposer;
+	if (ComposerClass) new ComposerClass(args);
+}
+void compose_mail;
+
+/**
+ * `frm.email_doc` (frappe/public/js/frappe/form/form.js:1480-1488): the doc's
+ * email may be absent, and so may the message.
+ * @param {frappe.ui.form.Form} frm
+ * @param {string | undefined} message
+ */
+function email_doc(frm, message) {
+	const ComposerClass = frappe.views.CommunicationComposer;
+	if (!ComposerClass) return;
+	/** @type {string | undefined} */
+	const email = frm.doc.email === undefined ? undefined : String(frm.doc.email);
+	return new ComposerClass({ doc: frm.doc, frm, subject: frm.docname, recipients: email, attach_document_print: true, message });
+}
+void email_doc;
 
 // ---- frappe.DataTable as a JSDoc type (pequea, gcl) -------------------------
 
@@ -223,7 +319,7 @@ void frappe.container?.change_to("todo-board");
 
 frappe.ui.form.on("ToDo", {
 	refresh(frm) {
-		frappe.contacts?.render_address_and_contact(frm);
+		frappe.contacts.render_address_and_contact(frm);
 	},
 });
 
@@ -246,3 +342,15 @@ if (shell) {
 
 // @ts-expect-error the side panel exists only once its bundle has loaded; narrow it first
 void frappe.ui.SidePanel.prototype.previews;
+
+// @ts-expect-error frappe's own `<doctype>_calendar.js` idiom: the slot is optional, use frappe.provide
+frappe.views.calendar["Event"] = { field_map: { start: "starts_on", end: "ends_on" } };
+
+/** @type {frappe.views.ListViewSettings<"ToDo">} */
+const refresh_settings = {
+	refresh(view) {
+		// @ts-expect-error an app's own BaseList view reaches refresh too: narrow first
+		void view.get_checked_items();
+	},
+};
+void refresh_settings;

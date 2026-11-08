@@ -9,6 +9,8 @@ import type {
 	DataTableGuessedFilter,
 	DocField,
 	DocPreview,
+	Form,
+	FrappeDoc,
 	FrappeGenerateRouteItem,
 	FrappeModuleSidebar,
 	FrappeViewName,
@@ -109,9 +111,46 @@ frappe.listview_settings["Contact"] = {
 		});
 	},
 	refresh(view) {
-		void view.columns.length;
+		// BaseList#refresh makes the call, so an app's own BaseList view gets it too.
+		const ListViewClass = frappe.views.ListView;
+		if (ListViewClass && view instanceof ListViewClass) void view.columns.length;
 	},
 };
+
+// ---- the email composer with frappe's own optional values (form_timeline.js) ----
+
+export function reply(frm: Form, last: (FrappeDoc & { sender: string; recipients: string; subject?: string }) | null): void {
+	const Composer = frappe.views.CommunicationComposer;
+	if (!Composer) return;
+	const composer = new Composer({
+		frm,
+		title: last ? __("Reply") : null,
+		last_email: last,
+		subject: last && last.subject,
+		sender: last?.sender,
+	});
+	const cc: string | null | undefined = composer.cc;
+	void cc;
+}
+
+// ---- a Workspace Shortcut with no doc_view routes to the default view ----
+
+export const default_route: string = frappe.utils.generate_route({ type: "DocType", name: "ToDo", doc_view: "" });
+
+// ---- a Gantt view subclass (pequea) ----------------------------------------
+
+const BaseGanttView = frappe.views.GanttView;
+if (BaseGanttView) {
+	frappe.views.GanttView = class extends BaseGanttView {
+		override fill_width(gantt: unknown): boolean {
+			return super.fill_width(gantt);
+		}
+		override scroll_to_today(gantt: unknown): unknown {
+			this.scroll_to_today_on_view_change = false;
+			return super.scroll_to_today(gantt);
+		}
+	};
+}
 
 // ---- the module sidebar lookup (carbon_theme switcher.ts) ----------------
 
