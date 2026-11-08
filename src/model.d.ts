@@ -42,7 +42,9 @@
 // type-only cycle between two `.d.ts` modules is legal and has no emit.
 // ---------------------------------------------------------------------------
 /// <reference path="./registry.d.ts" />
-import type { FrappeIndicator } from "./core";
+import type { FrappeIndicator, FrappeUserPermissionValue } from "./core";
+import type { BaseControl, ControlDynamicLink, DisplayStatus, GridViewColumn } from "./ui/form";
+import type { FrappeFileUploaderOptions } from "./ui/components";
 
 /* -------------------------------------------------------------------------- */
 /* Fieldtypes                                                                  */
@@ -154,6 +156,10 @@ export type TableFieldType = "Table" | "Table MultiSelect";
  * object. `frappe/public/js/frappe/model/model.js:898`
  * (`frm.set_df_property("default_view", "options", default_views)`) is frappe
  * assigning a `string[]` in-tree.
+ *
+ * The same array feeds two other controls, which read more keys off the
+ * object form: Autocomplete (`description`) and MultiCheck (`checked`,
+ * `danger`, `warning`, `warning_title`, `description`).
  */
 export type SelectOption =
 	| string
@@ -162,7 +168,73 @@ export type SelectOption =
 			label?: string;
 			disabled?: boolean;
 			selected?: boolean;
+			/**
+			 * A second line under the label, and part of what the search matches:
+			 * frappe/public/js/frappe/form/controls/autocomplete.js:61, :76-77. MultiCheck
+			 * puts it in the checkbox's `title`
+			 * (frappe/public/js/frappe/form/controls/multicheck.js:179).
+			 */
+			description?: string;
+			/** MultiCheck: starts checked — frappe/public/js/frappe/form/controls/multicheck.js:113. */
+			checked?: boolean | FrappeCheck;
+			/** MultiCheck: adds a red asterisk — frappe/public/js/frappe/form/controls/multicheck.js:165. */
+			danger?: boolean | FrappeCheck;
+			/** MultiCheck: adds an info icon — frappe/public/js/frappe/form/controls/multicheck.js:171. */
+			warning?: boolean | FrappeCheck;
+			/** MultiCheck: the info icon's tooltip, default "Condition based field" — frappe/public/js/frappe/form/controls/multicheck.js:169. */
+			warning_title?: string;
 	  };
+
+/**
+ * The object an Attach, Attach Image or Date field can hold in `df.options`
+ * instead of a string.
+ *
+ * `ControlAttach#set_upload_options` merges it over the options it hands
+ * `frappe.ui.FileUploader` (`Object.assign(options, this.df.options)`,
+ * `frappe/public/js/frappe/form/controls/attach.js:92-93`), and a web form
+ * puts `{ disable_file_browser: true }` there for every Attach field
+ * (`frappe/public/js/frappe/web_form/webform_script.js:94-99`).
+ * `ControlDate#get_df_options` reads it as extra datepicker options
+ * (`frappe/public/js/frappe/form/controls/date.js:266-281`). Open, because
+ * either consumer takes any key.
+ */
+export interface DocFieldObjectOptions extends FrappeFileUploaderOptions {
+	[option: string]: unknown;
+}
+
+/**
+ * What a Link-like control takes as its query: `ControlLink#set_custom_query`
+ * (`frappe/public/js/frappe/form/controls/link.js:790-845`) accepts
+ *
+ * - a plain object: `{ filters }`, `{ query }` (a whitelisted method path), or
+ *   bare filters (:792-813);
+ * - a string, the query method (:814-815);
+ * - a function, called with the form's document (or the control's `doc`), the
+ *   doctype and the docname (:818-822), that returns either of those (:824-843).
+ *
+ * The same value is what `frm.set_query` stores (`frappe/public/js/frappe/form/form.js:1827-1839`)
+ * and what `df.get_query` holds. The function's first argument is `undefined`
+ * in a dialog with no document.
+ */
+export type LinkQuery =
+	| string
+	| LinkQueryOptions
+	| ((
+			doc: FrappeDoc | ChildDoc | undefined,
+			cdt: string | undefined,
+			cdn: string | undefined,
+	  ) => string | LinkQueryOptions | null | undefined);
+
+/** The object form of a {@link LinkQuery}; every key is copied into the search arguments (`frappe/public/js/frappe/form/controls/link.js:809`, :839). */
+export interface LinkQueryOptions {
+	/** A whitelisted query method — `frappe/public/js/frappe/form/controls/link.js:797-799`, :826. */
+	query?: string;
+	/** Search filters, as a map or a list of filter tuples — `frappe/public/js/frappe/form/controls/link.js:794-796`, :829-830, :842. */
+	filters?: Record<string, unknown> | unknown[];
+	/** Turns translation of the results off — `frappe/public/js/frappe/form/controls/link.js:834-836`. */
+	translate_values?: boolean;
+	[arg: string]: unknown;
+}
 
 /**
  * Extra arguments `frappe.format` threads into a formatter.
@@ -282,9 +354,10 @@ export interface DocField {
 	 * Meaning depends on `fieldtype`: target DocType for Link/Table/Table
 	 * MultiSelect, newline-joined choices for Select, a currency-field pointer
 	 * for Currency, `"URL"`/`"IBAN"` for Data, star count for Rating.
-	 * May be an array — see {@link SelectOption}.
+	 * May be an array — see {@link SelectOption} — and, for Attach, Attach Image
+	 * and Date fields, an object — see {@link DocFieldObjectOptions}.
 	 */
-	options?: string | SelectOption[];
+	options?: string | SelectOption[] | DocFieldObjectOptions;
 	/** The DB column default. Read via `df["default"]` in `frappe/public/js/frappe/model/create_new.js:189-225`. */
 	default?: unknown;
 	/**
@@ -484,6 +557,57 @@ export interface DocField {
 
 	/** Grid perm fallback: `frappe/public/js/frappe/form/grid.js:84` `this.control?.perm || this.frm?.perm || this.df.perm`. */
 	perm?: DocPerm[];
+
+	/**
+	 * Called after the control has set its value in the model, with the
+	 * control as `this` and the change event (if any) as the argument:
+	 * `(me.df.change || me.df.onchange).apply(me, [e])`
+	 * (`frappe/public/js/frappe/form/controls/base_control.js:241-243`). Its
+	 * return value, a promise included, is what the set-value chain waits on
+	 * (:245). The grid wraps it to run per row
+	 * (`frappe/public/js/frappe/form/grid_row.js:1165-1170`).
+	 */
+	change?(this: BaseControl, e?: Event | null): unknown;
+	/** The same hook as {@link DocField.change}, used when `change` is unset — `frappe/public/js/frappe/form/controls/base_control.js:241-243`. */
+	onchange?(this: BaseControl, e?: Event | null): unknown;
+	/**
+	 * The query a Link, Dynamic Link or Autocomplete field searches with, read
+	 * after the control's own `get_query`
+	 * (`frappe/public/js/frappe/form/controls/link.js:790-791`,
+	 * `frappe/public/js/frappe/form/controls/autocomplete.js:175`). See
+	 * {@link LinkQuery}.
+	 */
+	get_query?: LinkQuery;
+	/**
+	 * Dynamic Link: returns the doctype to link to, in place of reading the field
+	 * `options` names — `frappe/public/js/frappe/form/controls/dynamic_link.js:4-5`.
+	 */
+	get_options?(control: ControlDynamicLink): string | undefined;
+	/**
+	 * Replaces `BaseControl#get_status`: called with the control
+	 * (`frappe/public/js/frappe/form/controls/base_control.js:49-51`).
+	 */
+	get_status?(control: BaseControl): DisplayStatus;
+	/** Link: hides the "Create a new …" and advanced-search rows — `frappe/public/js/frappe/form/controls/link.js:502`. Web forms set it (`frappe/public/js/frappe/web_form/webform_script.js:75`, :92). */
+	only_select?: FrappeCheckLoose;
+	/**
+	 * Set to `true` on every web form field (`frappe/public/js/frappe/web_form/webform_script.js:61`, :77):
+	 * the control then decides its status as in a dialog
+	 * (`frappe/public/js/frappe/form/controls/base_control.js:56`), and so does
+	 * the grid (`frappe/public/js/frappe/form/grid.js:674`). Only its truthiness
+	 * is read, so {@link FrappeCheckLoose}, as on `GridDocField`.
+	 */
+	is_web_form?: FrappeCheckLoose;
+	/** Date / Date Range: the datepicker's `minDate` — `frappe/public/js/frappe/form/controls/date.js:72`, `frappe/public/js/frappe/form/controls/date_range.js:22`. */
+	min_date?: Date;
+	/** Date / Date Range: the datepicker's `maxDate` — `frappe/public/js/frappe/form/controls/date.js:73`, `frappe/public/js/frappe/form/controls/date_range.js:23`. */
+	max_date?: Date;
+	/**
+	 * Button outside a form: called on click
+	 * (`frappe/public/js/frappe/form/controls/button.js:48-50`). On a form the
+	 * button triggers the form event named after the field instead.
+	 */
+	click?(): unknown;
 
 	/**
 	 * Frappe documents are open bags: Custom Fields, Property Setters and app
