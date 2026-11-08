@@ -63,14 +63,16 @@ frappe.listview_settings["ToDo"] = todo_settings;
 // A function assigned to a property is typed through the hook's own type, not a
 // cast: TypeScript 5.x does not contextually type it in JavaScript (7 does).
 // `refresh` runs in BaseList#refresh, so an app's own BaseList view reaches it
-// too: narrow to a list view before using one of its members.
+// too: narrow to a list view before using one of its members. Narrow by a
+// member, not `instanceof frappe.views.ListView`: once an app replaces that slot
+// with a subclass, frappe's FileView, ReportView and the other views still
+// extend the class they were defined against (data_steward file_list.js).
 const file_settings = frappe.listview_settings["File"] || (frappe.listview_settings["File"] = {});
 const frappe_refresh = file_settings.refresh;
 /** @type {frappe.views.ListViewSettings["refresh"]} */
 const file_refresh = function (view) {
 	if (frappe_refresh) frappe_refresh.call(file_settings, view);
-	const ListViewClass = frappe.views.ListView;
-	if (ListViewClass && view instanceof ListViewClass) add_merge_action(view);
+	if ("get_checked_items" in view) add_merge_action(view);
 };
 file_settings.refresh = file_refresh;
 

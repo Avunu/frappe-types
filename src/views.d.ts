@@ -416,7 +416,18 @@ export interface ListViewSettings<DT extends string = string> {
 	 * app's own view built on {@link BaseList} (a registered
 	 * {@link FrappeViewModes} view) reaches it too, since every `BaseList` reads
 	 * `frappe.listview_settings[doctype]` (`frappe/public/js/frappe/list/base_list.js:47`).
-	 * Narrow the view before using a `ListView` member.
+	 * Narrow the view before using a `ListView` member, by the member itself
+	 * (`"get_checked_items" in view`) rather than by
+	 * `view instanceof frappe.views.ListView`: that reads the slot as it is when
+	 * `refresh` runs, and an app that replaced it with a subclass has put a class
+	 * there that frappe's own views do not extend. FileView, ReportView, GanttView
+	 * and the rest extend the `frappe.views.ListView` of the moment their file
+	 * ran (`frappe/public/js/frappe/views/file/file_view.js:3`,
+	 * `frappe/public/js/frappe/views/reports/report_view.js:9`), in
+	 * `list.bundle.js` and `report.bundle.js`, which `frappe/hooks.py:24-33`
+	 * loads before any app's `app_include_js`. Only the plain List view is built
+	 * from the slot as it stands at routing time
+	 * (`frappe/public/js/frappe/list/list_factory.js:42-43`, :54).
 	 */
 	refresh?(view: ListView | ReportView | BaseList): void;
 	/**
