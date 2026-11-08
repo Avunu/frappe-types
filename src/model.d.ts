@@ -2532,10 +2532,19 @@ export interface FrappeWorkflowNamespace {
 	 * workflow (it reads `workflows[doctype].states`, :31).
 	 */
 	get_default_state(doctype: string, docstatus: number | string | null | undefined): string | null;
-	/** `frappe/public/js/frappe/model/workflow.js:39-42` — `frappe.model.workflow.get_transitions` on the server. */
-	get_transitions(doc: FrappeDoc): Promise<unknown>;
-	/** `frappe/public/js/frappe/model/workflow.js:43-49` — the `allow_edit` role of each matching state row. */
-	get_document_state_roles(doctype: string, state: string): unknown[];
+	/**
+	 * `frappe/public/js/frappe/model/workflow.js:39-42` — `frappe.model.workflow.get_transitions`
+	 * on the server, which returns the Workflow Transition rows (`as_dict()`) the
+	 * user may take from the document's state, `[]` for an unsaved document
+	 * (`frappe/model/workflow.py:43-78`).
+	 */
+	get_transitions(doc: FrappeDoc): Promise<WorkflowTransition[]>;
+	/**
+	 * `frappe/public/js/frappe/model/workflow.js:43-49` — the `allow_edit` role of
+	 * each matching state row, a required Link to Role
+	 * (`frappe/workflow/doctype/workflow_document_state/workflow_document_state.json:60-68`).
+	 */
+	get_document_state_roles(doctype: string, state: string): string[];
 	/** `frappe/public/js/frappe/model/workflow.js:50-52` — the Workflow's `allow_self_approval`. */
 	is_self_approval_enabled(doctype: string): unknown;
 	/** `frappe/public/js/frappe/model/workflow.js:53-71` — whether the current state lets none of the user's roles edit. */
@@ -2545,7 +2554,25 @@ export interface FrappeWorkflowNamespace {
 	/** `frappe/public/js/frappe/model/workflow.js:80-87` — the document's state, else the default for its docstatus. */
 	get_state(doc: FrappeDoc): unknown;
 	/** `frappe/public/js/frappe/model/workflow.js:88-90` — the Workflow's transition rows. */
-	get_all_transitions(doctype: string): ChildDoc[];
+	get_all_transitions(doctype: string): WorkflowTransition[];
 	/** `frappe/public/js/frappe/model/workflow.js:91-96` — each transition's `action`. */
-	get_all_transition_actions(doctype: string): unknown[];
+	get_all_transition_actions(doctype: string): string[];
+}
+
+/**
+ * A Workflow Transition row, as {@link FrappeWorkflowNamespace.get_transitions}
+ * and {@link FrappeWorkflowNamespace.get_all_transitions} return it. The four
+ * Links are required fields
+ * (`frappe/workflow/doctype/workflow_transition/workflow_transition.json:22-60`);
+ * the rest of the row stays open, as on every {@link ChildDoc}.
+ */
+export interface WorkflowTransition extends ChildDoc {
+	/** The state the transition leaves — a Workflow State. */
+	state: string;
+	/** The button label — a Workflow Action Master. */
+	action: string;
+	/** The state the transition enters — a Workflow State. */
+	next_state: string;
+	/** The Role that may take the transition. */
+	allowed: string;
 }

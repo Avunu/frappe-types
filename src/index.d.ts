@@ -124,6 +124,7 @@ export type {
 	RegisteredDoc,
 	SelectOption,
 	TableFieldType,
+	WorkflowTransition,
 } from "./model";
 
 // ---------------------------------------------------------------------------
