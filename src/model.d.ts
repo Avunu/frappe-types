@@ -42,7 +42,9 @@
 // type-only cycle between two `.d.ts` modules is legal and has no emit.
 // ---------------------------------------------------------------------------
 /// <reference path="./registry.d.ts" />
-import type { FrappeIndicator } from "./core";
+import type { FrappeIndicator, FrappeUserPermissionValue } from "./core";
+import type { BaseControl, ControlDynamicLink, DisplayStatus, GridViewColumn } from "./ui/form";
+import type { FrappeFileUploaderOptions } from "./ui/components";
 
 /* -------------------------------------------------------------------------- */
 /* Fieldtypes                                                                  */
@@ -154,6 +156,10 @@ export type TableFieldType = "Table" | "Table MultiSelect";
  * object. `frappe/public/js/frappe/model/model.js:898`
  * (`frm.set_df_property("default_view", "options", default_views)`) is frappe
  * assigning a `string[]` in-tree.
+ *
+ * The same array feeds two other controls, which read more keys off the
+ * object form: Autocomplete (`description`) and MultiCheck (`checked`,
+ * `danger`, `warning`, `warning_title`, `description`).
  */
 export type SelectOption =
 	| string
@@ -162,7 +168,80 @@ export type SelectOption =
 			label?: string;
 			disabled?: boolean;
 			selected?: boolean;
+			/**
+			 * A second line under the label, and part of what the search matches:
+			 * frappe/public/js/frappe/form/controls/autocomplete.js:61, :76-77. MultiCheck
+			 * puts it in the checkbox's `title`
+			 * (frappe/public/js/frappe/form/controls/multicheck.js:179).
+			 */
+			description?: string;
+			/** MultiCheck: starts checked — frappe/public/js/frappe/form/controls/multicheck.js:113. */
+			checked?: boolean | FrappeCheck;
+			/** MultiCheck: adds a red asterisk — frappe/public/js/frappe/form/controls/multicheck.js:165. */
+			danger?: boolean | FrappeCheck;
+			/** MultiCheck: adds an info icon — frappe/public/js/frappe/form/controls/multicheck.js:171. */
+			warning?: boolean | FrappeCheck;
+			/** MultiCheck: the info icon's tooltip, default "Condition based field" — frappe/public/js/frappe/form/controls/multicheck.js:169. */
+			warning_title?: string;
 	  };
+
+/**
+ * The object an Attach, Attach Image or Date field can hold in `df.options`
+ * instead of a string.
+ *
+ * `ControlAttach#set_upload_options` merges it over the options it hands
+ * `frappe.ui.FileUploader` (`Object.assign(options, this.df.options)`,
+ * `frappe/public/js/frappe/form/controls/attach.js:92-93`), and a web form
+ * puts `{ disable_file_browser: true }` there for every Attach field
+ * (`frappe/public/js/frappe/web_form/webform_script.js:94-99`).
+ * `ControlDate#get_df_options` reads it as extra datepicker options
+ * (`frappe/public/js/frappe/form/controls/date.js:266-281`). Open, because
+ * either consumer takes any key.
+ */
+export interface DocFieldObjectOptions extends FrappeFileUploaderOptions {
+	[option: string]: unknown;
+}
+
+/**
+ * What a Link-like control takes as its query: `ControlLink#set_custom_query`
+ * (`frappe/public/js/frappe/form/controls/link.js:790-845`) accepts
+ *
+ * - a plain object: `{ filters }`, `{ query }` (a whitelisted method path), or
+ *   bare filters (:792-813);
+ * - a string, the query method (:814-815);
+ * - a function, called with the form's document (or the control's `doc`), the
+ *   doctype and the docname (:818-822), that returns either of those (:824-843).
+ *
+ * The same value is what `frm.set_query` stores (`frappe/public/js/frappe/form/form.js:1827-1839`)
+ * and what `df.get_query` holds. The function's first argument is `undefined`
+ * in a dialog with no document.
+ */
+export type LinkQuery =
+	| string
+	| LinkQueryOptions
+	| ((
+			doc: FrappeDoc | ChildDoc | undefined,
+			cdt: string | undefined,
+			cdn: string | undefined,
+	  ) => string | LinkQueryOptions | null | undefined);
+
+/** The object form of a {@link LinkQuery}; every key is copied into the search arguments (`frappe/public/js/frappe/form/controls/link.js:809`, :839). */
+export interface LinkQueryOptions {
+	/** A whitelisted query method — `frappe/public/js/frappe/form/controls/link.js:797-799`, :826. */
+	query?: string;
+	/** Search filters, as a map or a list of filter tuples — `frappe/public/js/frappe/form/controls/link.js:794-796`, :829-830, :842. */
+	filters?: Record<string, unknown> | unknown[];
+	/** Turns translation of the results off — `frappe/public/js/frappe/form/controls/link.js:834-836`. */
+	translate_values?: boolean;
+	/**
+	 * Autocomplete only: merged into the search arguments, its `undefined`
+	 * values dropped (`frappe/public/js/frappe/form/controls/autocomplete.js:194-197`).
+	 * Autocomplete reads nothing else but `query` and `translate_values`
+	 * (:189-202); Link copies every key, `params` included, as is.
+	 */
+	params?: Record<string, unknown>;
+	[arg: string]: unknown;
+}
 
 /**
  * Extra arguments `frappe.format` threads into a formatter.
@@ -282,9 +361,10 @@ export interface DocField {
 	 * Meaning depends on `fieldtype`: target DocType for Link/Table/Table
 	 * MultiSelect, newline-joined choices for Select, a currency-field pointer
 	 * for Currency, `"URL"`/`"IBAN"` for Data, star count for Rating.
-	 * May be an array — see {@link SelectOption}.
+	 * May be an array — see {@link SelectOption} — and, for Attach, Attach Image
+	 * and Date fields, an object — see {@link DocFieldObjectOptions}.
 	 */
-	options?: string | SelectOption[];
+	options?: string | SelectOption[] | DocFieldObjectOptions;
 	/** The DB column default. Read via `df["default"]` in `frappe/public/js/frappe/model/create_new.js:189-225`. */
 	default?: unknown;
 	/**
@@ -484,6 +564,84 @@ export interface DocField {
 
 	/** Grid perm fallback: `frappe/public/js/frappe/form/grid.js:84` `this.control?.perm || this.frm?.perm || this.df.perm`. */
 	perm?: DocPerm[];
+
+	/*
+	 * The runtime hooks below are typed `?: T | undefined`: frappe only tests
+	 * them for truthiness, so an explicit `undefined` (`min_date: cond ? d :
+	 * undefined`) means the same as leaving the key out, as it did when these
+	 * keys fell through to the index signature.
+	 */
+
+	/**
+	 * Called after the control has set its value in the model, with the
+	 * control as `this` and the change event as the argument:
+	 * `(me.df.change || me.df.onchange).apply(me, [e])`
+	 * (`frappe/public/js/frappe/form/controls/base_control.js:241-243`). Its
+	 * return value, a promise included, is what the set-value chain waits on
+	 * (:245). The grid wraps it to run per row
+	 * (`frappe/public/js/frappe/form/grid_row.js:1165-1170`).
+	 *
+	 * `e` is the jQuery `change`/`input` event when the user edited the input
+	 * (`frappe/public/js/frappe/form/controls/data.js:175-185`), `null` from
+	 * `set_value` (`frappe/public/js/frappe/form/controls/base_control.js:207-208`)
+	 * and from a Link pick (`frappe/public/js/frappe/form/controls/link.js:296`, :374),
+	 * and absent from the Code and Text Editor controls
+	 * (`frappe/public/js/frappe/form/controls/code.js:99`,
+	 * `frappe/public/js/frappe/form/controls/text_editor.js:384`).
+	 */
+	change?: ((this: BaseControl, e?: JQuery.TriggeredEvent | null) => unknown) | undefined;
+	/** The same hook as {@link DocField.change}, used when `change` is unset — `frappe/public/js/frappe/form/controls/base_control.js:241-243`. */
+	onchange?: ((this: BaseControl, e?: JQuery.TriggeredEvent | null) => unknown) | undefined;
+	/**
+	 * MultiCheck's own hook, called with no argument each time a box is ticked
+	 * or cleared (`frappe/public/js/frappe/form/controls/multicheck.js:108`) and
+	 * after "select all" / "deselect all" (:138). MultiCheck never calls
+	 * {@link DocField.change} for a toggle.
+	 */
+	on_change?: (() => unknown) | undefined;
+	/**
+	 * The query a Link, Dynamic Link or Autocomplete field searches with, read
+	 * after the control's own `get_query`
+	 * (`frappe/public/js/frappe/form/controls/link.js:790-791`,
+	 * `frappe/public/js/frappe/form/controls/autocomplete.js:175`). See
+	 * {@link LinkQuery}.
+	 *
+	 * Autocomplete reads less of the object form than Link does: `query`,
+	 * `params` (merged into the search arguments) and `translate_values`, and
+	 * never `filters` (`frappe/public/js/frappe/form/controls/autocomplete.js:189-202`).
+	 * Pass Autocomplete filters inside `params`.
+	 */
+	get_query?: LinkQuery | undefined;
+	/**
+	 * Dynamic Link: returns the doctype to link to, in place of reading the field
+	 * `options` names — `frappe/public/js/frappe/form/controls/dynamic_link.js:4-5`.
+	 */
+	get_options?: ((control: ControlDynamicLink) => string | undefined) | undefined;
+	/**
+	 * Replaces `BaseControl#get_status`: called with the control
+	 * (`frappe/public/js/frappe/form/controls/base_control.js:49-51`).
+	 */
+	get_status?: ((control: BaseControl) => DisplayStatus) | undefined;
+	/** Link: hides the "Create a new …" and advanced-search rows — `frappe/public/js/frappe/form/controls/link.js:502`. Web forms set it (`frappe/public/js/frappe/web_form/webform_script.js:75`, :92). */
+	only_select?: FrappeCheckLoose | undefined;
+	/**
+	 * Set to `true` on every web form field (`frappe/public/js/frappe/web_form/webform_script.js:61`, :77):
+	 * the control then decides its status as in a dialog
+	 * (`frappe/public/js/frappe/form/controls/base_control.js:56`), and so does
+	 * the grid (`frappe/public/js/frappe/form/grid.js:674`). Only its truthiness
+	 * is read, so {@link FrappeCheckLoose}, as on `GridDocField`.
+	 */
+	is_web_form?: FrappeCheckLoose | undefined;
+	/** Date / Date Range: the datepicker's `minDate` — `frappe/public/js/frappe/form/controls/date.js:72`, `frappe/public/js/frappe/form/controls/date_range.js:22`. */
+	min_date?: Date | undefined;
+	/** Date / Date Range: the datepicker's `maxDate` — `frappe/public/js/frappe/form/controls/date.js:73`, `frappe/public/js/frappe/form/controls/date_range.js:23`. */
+	max_date?: Date | undefined;
+	/**
+	 * Button outside a form: called on click
+	 * (`frappe/public/js/frappe/form/controls/button.js:48-50`). On a form the
+	 * button triggers the form event named after the field instead.
+	 */
+	click?: (() => unknown) | undefined;
 
 	/**
 	 * Frappe documents are open bags: Custom Fields, Property Setters and app
@@ -2279,7 +2437,142 @@ export interface FrappeModelMetaGlobals {
 	/**
 	 * `model/user_settings.js:51-57`. Always returns an object — `{}` when the
 	 * doctype (or `key`) has nothing cached. The value shape is view-specific
-	 * (`"GridView"`, `"List"`, `"Report"`, …), so it stays open.
+	 * (`"GridView"`, `"List"`, `"Report"`, …), so it stays open, except for
+	 * `"GridView"`: the column layouts saved for the doctype's child tables,
+	 * keyed by child doctype (written by the grid,
+	 * `frappe/public/js/frappe/form/grid.js:634`, read back at
+	 * `frappe/public/js/frappe/form/grid.js:1551-1565`).
 	 */
+	get_user_settings(doctype: string, key: "GridView"): Partial<Record<string, GridViewColumn[]>>;
 	get_user_settings(doctype: string, key?: string): Record<string, unknown>;
+
+	/** `frappe.perm` — `frappe/public/js/frappe/model/perm.js:4`, filled at :19-348. */
+	perm: FrappePermNamespace;
+	/** `frappe.workflow` — `frappe/public/js/frappe/model/workflow.js:6-97`. */
+	workflow: FrappeWorkflowNamespace;
+}
+
+/**
+ * `frappe.perm` — `frappe/public/js/frappe/model/perm.js:19-348`, the
+ * client-side permission evaluator. Its results are {@link Permission} arrays,
+ * indexed by permlevel.
+ */
+export interface FrappePermNamespace {
+	/** The fixed rights, in order — `frappe/public/js/frappe/model/perm.js:20-35`. */
+	rights: string[];
+	/** The per-doctype cache `get_perm` fills — `frappe/public/js/frappe/model/perm.js:37`, :69-73. */
+	doctype_perm: Record<string, Permission[]>;
+	/** `frappe/public/js/frappe/model/perm.js:43-48` — {@link FrappePermNamespace.rights} plus the doctype's custom permission types. */
+	get_rights(doctype?: string | null): string[];
+	/** `frappe/public/js/frappe/model/perm.js:50-53` — `ptype` defaults to `"read"`, `permlevel` to 0. */
+	has_perm(doctype: string, permlevel?: number, ptype?: string, doc?: FrappeDoc | ChildDoc | null): boolean;
+	/**
+	 * `frappe/public/js/frappe/model/perm.js:55-76`. With a saved `doc`, evaluated
+	 * fresh for it (ownership and User Permissions applied); otherwise the
+	 * doctype's cached array.
+	 */
+	get_perm(doctype: string, doc?: FrappeDoc | ChildDoc | null): Permission[];
+	/** `frappe/public/js/frappe/model/perm.js:78-157` — the uncached evaluation behind `get_perm`. */
+	_get_perm(doctype: string, doc?: FrappeDoc | ChildDoc | null): Permission[];
+	/** `frappe/public/js/frappe/model/perm.js:159-196` — the role permissions of `meta`, by permlevel. */
+	get_role_permissions(meta: DocTypeMeta): Permission[];
+	/** `frappe/public/js/frappe/model/perm.js:198-230` — the User Permission and owner rules, for the list view's filter area. */
+	get_match_rules(doctype: string, ptype?: string): Array<Record<string, unknown>>;
+	/**
+	 * `frappe/public/js/frappe/model/perm.js:232-308` — `"Write"`, `"Read"` or
+	 * `"None"` for one field. `perm` defaults to the document's; `explain` logs
+	 * each step to the console.
+	 */
+	get_field_display_status(
+		df: DocField,
+		doc?: FrappeDoc | ChildDoc | null,
+		perm?: Permission[] | null,
+		explain?: boolean,
+	): DisplayStatus;
+	/** `frappe/public/js/frappe/model/perm.js:310-319` — `df` may be a fieldname, looked up on `doc`'s doctype. */
+	is_visible(df: DocField | string, doc: FrappeDoc | ChildDoc, perm?: Permission[] | null): boolean;
+	/** `frappe/public/js/frappe/model/perm.js:321-324` — the names of the permitted documents. */
+	get_allowed_docs_for_doctype(user_permissions: FrappeUserPermissionValue[] | null | undefined, doctype: string): string[];
+	/**
+	 * `frappe/public/js/frappe/model/perm.js:326-347`. The permitted documents
+	 * that apply to `doctype`; with `with_default_doc` (the default) also the
+	 * default one.
+	 */
+	filter_allowed_docs_for_doctype(
+		user_permissions: FrappeUserPermissionValue[] | null | undefined,
+		doctype: string,
+		with_default_doc: false,
+	): string[];
+	filter_allowed_docs_for_doctype(
+		user_permissions: FrappeUserPermissionValue[] | null | undefined,
+		doctype: string,
+		with_default_doc?: true,
+	): { allowed_records: string[]; default_doc: string | undefined };
+}
+
+/**
+ * `frappe.workflow` — `frappe/public/js/frappe/model/workflow.js:6-97`. Reads
+ * the doctype's Workflow document from `locals` (loaded with its meta) and
+ * caches what it finds; `setup` runs on first use.
+ */
+export interface FrappeWorkflowNamespace {
+	/** The workflow state field per doctype, `null` when it has no workflow — `frappe/public/js/frappe/model/workflow.js:7`, :14, :19. */
+	state_fields: Record<string, string | null>;
+	/** The active Workflow document per doctype — `frappe/public/js/frappe/model/workflow.js:8`, :13. */
+	workflows: Record<string, FrappeDoc>;
+	/** The states whose `avoid_status_override` is set, per doctype — `frappe/public/js/frappe/model/workflow.js:9`, :15-17. */
+	avoid_status_override: Record<string, string[]>;
+	/** `frappe/public/js/frappe/model/workflow.js:10-21`. */
+	setup(doctype: string): void;
+	/** `frappe/public/js/frappe/model/workflow.js:22-27` — `null` when the doctype has no workflow. */
+	get_state_fieldname(doctype: string): string | null | undefined;
+	/**
+	 * `frappe/public/js/frappe/model/workflow.js:28-38` — the first state whose
+	 * `doc_status` is `docstatus`, else `null`. Throws when the doctype has no
+	 * workflow (it reads `workflows[doctype].states`, :31).
+	 */
+	get_default_state(doctype: string, docstatus: number | string | null | undefined): string | null;
+	/**
+	 * `frappe/public/js/frappe/model/workflow.js:39-42` — `frappe.model.workflow.get_transitions`
+	 * on the server, which returns the Workflow Transition rows (`as_dict()`) the
+	 * user may take from the document's state, `[]` for an unsaved document
+	 * (`frappe/model/workflow.py:43-78`).
+	 */
+	get_transitions(doc: FrappeDoc): Promise<WorkflowTransition[]>;
+	/**
+	 * `frappe/public/js/frappe/model/workflow.js:43-49` — the `allow_edit` role of
+	 * each matching state row, a required Link to Role
+	 * (`frappe/workflow/doctype/workflow_document_state/workflow_document_state.json:60-68`).
+	 */
+	get_document_state_roles(doctype: string, state: string): string[];
+	/** `frappe/public/js/frappe/model/workflow.js:50-52` — the Workflow's `allow_self_approval`. */
+	is_self_approval_enabled(doctype: string): unknown;
+	/** `frappe/public/js/frappe/model/workflow.js:53-71` — whether the current state lets none of the user's roles edit. */
+	is_read_only(doctype: string, name: string): boolean;
+	/** `frappe/public/js/frappe/model/workflow.js:72-79` — each state's `update_field`. */
+	get_update_fields(doctype: string): unknown[];
+	/** `frappe/public/js/frappe/model/workflow.js:80-87` — the document's state, else the default for its docstatus. */
+	get_state(doc: FrappeDoc): unknown;
+	/** `frappe/public/js/frappe/model/workflow.js:88-90` — the Workflow's transition rows. */
+	get_all_transitions(doctype: string): WorkflowTransition[];
+	/** `frappe/public/js/frappe/model/workflow.js:91-96` — each transition's `action`. */
+	get_all_transition_actions(doctype: string): string[];
+}
+
+/**
+ * A Workflow Transition row, as {@link FrappeWorkflowNamespace.get_transitions}
+ * and {@link FrappeWorkflowNamespace.get_all_transitions} return it. The four
+ * Links are required fields
+ * (`frappe/workflow/doctype/workflow_transition/workflow_transition.json:22-60`);
+ * the rest of the row stays open, as on every {@link ChildDoc}.
+ */
+export interface WorkflowTransition extends ChildDoc {
+	/** The state the transition leaves — a Workflow State. */
+	state: string;
+	/** The button label — a Workflow Action Master. */
+	action: string;
+	/** The state the transition enters — a Workflow State. */
+	next_state: string;
+	/** The Role that may take the transition. */
+	allowed: string;
 }

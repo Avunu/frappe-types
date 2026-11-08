@@ -50,8 +50,11 @@ import type {
 	FormDocTypeOf,
 	FormSetValueArgs,
 	FrappeDoc,
+	LinkQuery,
 	Permission,
+	SelectOption,
 } from "../model";
+import type { FrappeFileUploader, FrappeFileUploaderOptions } from "./components";
 
 /**
  * SEAM — `Page` used to be imported from `../core`, which never declared it.
@@ -484,6 +487,14 @@ export interface ControlOptions {
 	only_input?: boolean;
 	with_link_btn?: boolean;
 	value?: unknown;
+	/**
+	 * Read, never written, by the controls that render read-only without
+	 * `df.read_only`: `ControlCode` (frappe/public/js/frappe/form/controls/code.js:79),
+	 * `ControlTextEditor` (frappe/public/js/frappe/form/controls/text_editor.js:444),
+	 * `ControlRating` (frappe/public/js/frappe/form/controls/rating.js:21) and
+	 * `ControlGeolocation` (frappe/public/js/frappe/form/controls/geolocation.js:62).
+	 */
+	disabled?: boolean;
 	[option: string]: unknown;
 }
 
@@ -502,6 +513,13 @@ export interface ControlHostElement extends HTMLElement {
  * Assigned as a **class expression** (`frappe.ui.form.Control = class BaseControl
  * { … }`), so the only way to name the type is through this declaration or
  * through `typeof frappe.ui.form.Control`.
+ *
+ * The optional fields of the control classes are spelled `?: T | undefined`.
+ * frappe's own subclasses assign them in methods (`this.input =
+ * this.$input.get(0)`, frappe/public/js/frappe/form/controls/data.js:65), and
+ * a JavaScript subclass that does the same is checked as declaring the field
+ * again, with `undefined` in its type; under `exactOptionalPropertyTypes` that
+ * only matches a base field that admits `undefined` too.
  */
 export declare class BaseControl {
 	constructor(opts: ControlOptions);
@@ -509,18 +527,20 @@ export declare class BaseControl {
 	// ---- fields merged in by `$.extend(this, opts)` (frappe/public/js/frappe/form/controls/base_control.js:3) ----
 	df: DocField;
 	parent: HTMLElement | JQuery;
-	doctype?: string;
-	docname?: string;
-	doc?: FrappeDoc | ChildDoc;
-	frm?: Form;
-	layout?: Layout;
-	grid?: Grid;
-	grid_row?: GridRow;
-	only_input?: boolean;
-	render_input?: boolean;
-	with_link_btn?: boolean;
+	doctype?: string | undefined;
+	docname?: string | undefined;
+	doc?: FrappeDoc | ChildDoc | undefined;
+	frm?: Form | undefined;
+	layout?: Layout | undefined;
+	grid?: Grid | undefined;
+	grid_row?: GridRow | undefined;
+	only_input?: boolean | undefined;
+	render_input?: boolean | undefined;
+	with_link_btn?: boolean | undefined;
+	/** See {@link ControlOptions.disabled}. Only ever merged in from the options. */
+	disabled?: boolean | undefined;
 	/** The tab this control's section belongs to — set by `Tab#add_field`. */
-	tab?: Tab;
+	tab?: Tab | undefined;
 
 	// ---- fields built by make() ----
 	/** `.frappe-control` wrapper — frappe/public/js/frappe/form/controls/base_control.js:27. */
@@ -540,13 +560,13 @@ export declare class BaseControl {
 	tooltip: JQuery<HTMLElement>;
 
 	/** Cached result of the last `get_status()` — frappe/public/js/frappe/form/controls/base_control.js:139. */
-	disp_status?: DisplayStatus;
+	disp_status?: DisplayStatus | undefined;
 	/** The control's current (unparsed) value. */
 	value?: unknown;
 	/** Last value pushed to the model — frappe/public/js/frappe/form/controls/base_control.js:274. */
 	last_value?: unknown;
 	/** Re-entrancy guard around the change event — frappe/public/js/frappe/form/controls/base_control.js:217, :231. */
-	inside_change_event?: boolean;
+	inside_change_event?: boolean | undefined;
 
 	/**
 	 * `get perm()` returns `this.frm?.perm` and the setter only logs an error
@@ -575,20 +595,33 @@ export declare class BaseControl {
 	get_parsed_value(value: unknown): unknown;
 	/** frappe/public/js/frappe/form/controls/base_control.js:207-209. */
 	set_value(value: unknown, force_set_value?: boolean): Promise<unknown>;
-	/** frappe/public/js/frappe/form/controls/base_control.js:210-213. */
-	parse_validate_and_set_in_model(value: unknown, e?: Event): Promise<unknown>;
-	/** frappe/public/js/frappe/form/controls/base_control.js:214-260. */
+	/**
+	 * frappe/public/js/frappe/form/controls/base_control.js:210-213. `e` is the
+	 * jQuery event that triggered the change (frappe/public/js/frappe/form/controls/data.js:175-181,
+	 * frappe/public/js/frappe/form/controls/rating.js:88), handed on to
+	 * `df.change` / `df.onchange` (see {@link DocField.change}).
+	 */
+	parse_validate_and_set_in_model(value: unknown, e?: JQuery.TriggeredEvent | null): Promise<unknown>;
+	/** frappe/public/js/frappe/form/controls/base_control.js:214-260. `set_value` passes `e` as `null` (:207-208). */
 	validate_and_set_in_model(
 		value: unknown,
-		e?: Event | null,
+		e?: JQuery.TriggeredEvent | null,
 		force_set_value?: boolean
 	): Promise<unknown>;
 	/** frappe/public/js/frappe/form/controls/base_control.js:261-271. */
 	get_value(): unknown;
 	/** frappe/public/js/frappe/form/controls/base_control.js:272-289. */
 	set_model_value(value: unknown): Promise<unknown>;
-	/** frappe/public/js/frappe/form/controls/base_control.js:290-295. Returns `undefined` when there is no `$input`. */
-	set_focus(): boolean | undefined;
+	/**
+	 * frappe/public/js/frappe/form/controls/base_control.js:290-295. Returns `true`
+	 * after focusing `$input`, and `undefined` when there is none. `void` is in the
+	 * union because the overrides return nothing (`ControlCode#set_focus`,
+	 * frappe/public/js/frappe/form/controls/code.js:255-257;
+	 * `ControlTextEditor#set_focus`,
+	 * frappe/public/js/frappe/form/controls/text_editor.js:598-600), so a subclass
+	 * may as well.
+	 */
+	set_focus(): boolean | void;
 
 	// ---- optional subclass hooks the base only calls when present ----
 	/** Defined by `ControlInput` (frappe/public/js/frappe/form/controls/base_input.js:76). */
@@ -630,16 +663,23 @@ export declare class BaseControl {
 
 	/** Copied from `Grid#get_field(fieldname).get_query` — frappe/public/js/frappe/form/grid_row.js:1164. */
 	get_query?: unknown;
-	/** Rich-text controls expose an editor with its own focus handling. */
-	editor?: { set_focus(): void };
+	/**
+	 * Only `ControlCode` and its subclasses set it: the Ace editor, see
+	 * {@link ControlCode.editor}. `Layout#set_focus` calls `field.editor.set_focus()`
+	 * on whatever is there (frappe/public/js/frappe/form/layout.js:706-707), but
+	 * the Ace editor has no `set_focus` (code.js focuses it with `editor.focus()`,
+	 * frappe/public/js/frappe/form/controls/code.js:256), so the base declares
+	 * nothing about its shape. Narrow to `ControlCode` to use it.
+	 */
+	editor?: unknown;
 	/**
 	 * `ControlLink`'s Awesomplete instance — frappe/public/js/frappe/form/controls/link.js:225.
 	 * `close()` is the one method `Grid#make`'s horizontal-scroll listener calls on it
 	 * (frappe/public/js/frappe/form/grid.js:187).
 	 */
-	awesomplete?: { ul: HTMLElement; list: unknown; close(): void; [key: string]: unknown };
+	awesomplete?: { ul: HTMLElement; list: unknown; close(): void; [key: string]: unknown } | undefined;
 	/** `ControlLink`'s `.link-btn` handle — frappe/public/js/frappe/form/controls/link.js:28. */
-	$link?: JQuery<HTMLElement>;
+	$link?: JQuery<HTMLElement> | undefined;
 }
 
 /**
@@ -656,19 +696,30 @@ export declare class ControlInput extends BaseControl {
 	 */
 	input_area: HTMLElement;
 	/** The `<label>` element — frappe/public/js/frappe/form/controls/base_input.js:51. */
-	label_area?: HTMLElement;
+	label_area?: HTMLElement | undefined;
 	/** Same node as `label_area` — frappe/public/js/frappe/form/controls/base_input.js:51. */
-	label_span?: HTMLElement;
+	label_span?: HTMLElement | undefined;
 	/** `.control-input-wrapper` — frappe/public/js/frappe/form/controls/base_input.js:53. */
-	$input_wrapper?: JQuery<HTMLElement>;
+	$input_wrapper?: JQuery<HTMLElement> | undefined;
 	/** `.control-value` read-only display area — frappe/public/js/frappe/form/controls/base_input.js:56. */
-	disp_area?: HTMLElement;
-	/** The `<input>`, once `make_input()` has run — frappe/public/js/frappe/form/controls/data.js:65. */
-	$input?: JQuery<HTMLInputElement>;
-	/** `this.$input.get(0)` — frappe/public/js/frappe/form/controls/data.js:65. */
-	input?: HTMLInputElement;
+	disp_area?: HTMLElement | undefined;
+	/**
+	 * The control's input element, once `make_input()` has run. Not always an
+	 * `<input>`: `ControlData#make_input` builds whatever tag the class's static
+	 * `html_element` names (frappe/public/js/frappe/form/controls/data.js:10-17),
+	 * which is a `<select>` for `ControlSelect`
+	 * (frappe/public/js/frappe/form/controls/select.js:2) and a `<textarea>` for
+	 * `ControlText` (frappe/public/js/frappe/form/controls/text.js:2), and
+	 * `ControlAttach` and `ControlButton` put a `<button>` here
+	 * (frappe/public/js/frappe/form/controls/attach.js:4,
+	 * frappe/public/js/frappe/form/controls/button.js:24). The subclasses that fix
+	 * the tag narrow it.
+	 */
+	$input?: JQuery<HTMLElement> | undefined;
+	/** `this.$input.get(0)` — frappe/public/js/frappe/form/controls/data.js:65. See {@link ControlInput.$input}. */
+	input?: HTMLElement | undefined;
 	/** Latched by `make_input()` — frappe/public/js/frappe/form/controls/data.js:66. */
-	has_input?: boolean;
+	has_input?: boolean | undefined;
 
 	/** frappe/public/js/frappe/form/controls/base_input.js:41-43. */
 	toggle_label(show: boolean): void;
@@ -715,6 +766,1415 @@ export declare class ControlInput extends BaseControl {
 	set_required(): void;
 	/** frappe/public/js/frappe/form/controls/base_input.js:292-299. */
 	set_bold(): void;
+}
+
+/* -------------------------------------------------------------------------- *
+ * The concrete control classes
+ *
+ * Each `frappe.ui.form.Control<Fieldtype>` is a class expression extending
+ * another one (`frappe.ui.form.ControlData = class ControlData extends
+ * frappe.ui.form.ControlInput`, frappe/public/js/frappe/form/controls/data.js:3),
+ * so each is declared here with the members its own file defines and the rest
+ * inherited, which is what lets an app write
+ * `class extends frappe.ui.form.ControlData { make_input() { super.make_input(); } }`.
+ *
+ * A return type is `void` where the body was read and returns nothing, and
+ * `unknown` where frappe's own overrides disagree or the value is a
+ * third-party object. Parameters frappe calls without are optional.
+ * -------------------------------------------------------------------------- */
+
+/**
+ * The editor `ace.edit()` returns, as `ControlCode` keeps it
+ * (frappe/public/js/frappe/form/controls/code.js:61). Ace is a third-party
+ * library that frappe loads at runtime (`load_lib`, code.js:259-276), so only
+ * the members frappe itself calls are declared; merge more into this
+ * interface if you need them.
+ */
+export interface ControlCodeAceEditor {
+	/** The edit session — frappe/public/js/frappe/form/controls/code.js:92, :227, :246, :252. */
+	session: ControlCodeAceSession;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:13. The same object as {@link ControlCodeAceEditor.session}. */
+	getSession(): ControlCodeAceSession;
+	/** frappe/public/js/frappe/form/controls/code.js:64-65, :85-87 (`maxLines`, `minLines`, `placeholder`, `showPrintMargin`, `wrap`). */
+	setOption(name: string, value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/code.js:121-124, :168-171. */
+	setOptions(options: Record<string, unknown>): unknown;
+	/** frappe/public/js/frappe/form/controls/code.js:80. */
+	setReadOnly(read_only: boolean): unknown;
+	/** frappe/public/js/frappe/form/controls/code.js:84 (`"ace/theme/tomorrow"`). */
+	setTheme(theme: string): unknown;
+	/** frappe/public/js/frappe/form/controls/code.js:228-230; `null` at frappe/public/js/frappe/ui/dropdown_console.js:100. */
+	setKeyboardHandler(handler: string | null): unknown;
+	/** frappe/public/js/frappe/form/controls/code.js:181, :185. */
+	resize(): unknown;
+	/** frappe/public/js/frappe/form/controls/code.js:256. */
+	focus(): unknown;
+	/** frappe/public/js/print_format_builder/composables/useHtmlEditorDialog.js:77. */
+	getValue(): string;
+	/** frappe/public/js/print_format_builder/composables/useHtmlEditorDialog.js:75-78. */
+	on(event: string, handler: (...args: unknown[]) => unknown): unknown;
+	/** frappe/public/js/frappe/ui/dropdown_console.js:92 — inserts at the cursor. */
+	insert(text: string): unknown;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:97 — passed straight back to `session.insert`. */
+	getCursorPosition(): unknown;
+	/** frappe/public/js/frappe/ui/dropdown_console.js:101-112. */
+	commands: { addCommand(command: Record<string, unknown>): unknown };
+}
+
+/** The Ace edit session behind {@link ControlCodeAceEditor.session}; only the members frappe calls. */
+export interface ControlCodeAceSession {
+	/** frappe/public/js/frappe/form/controls/code.js:92-95 (`"change"`). */
+	on(event: string, handler: (...args: unknown[]) => unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/code.js:227, frappe/public/js/frappe/form/controls/json.js:3. */
+	setMode(mode: string): unknown;
+	/** frappe/public/js/frappe/form/controls/code.js:246. */
+	setValue(value: string): unknown;
+	/** frappe/public/js/frappe/form/controls/code.js:252. */
+	getValue(): string;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:13. */
+	setUseWrapMode(wrap: boolean): unknown;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:96-99. */
+	insert(position: unknown, text: string): unknown;
+}
+
+/**
+ * The Quill instance `ControlTextEditor` builds
+ * (frappe/public/js/frappe/form/controls/text_editor.js:201). Quill is a
+ * third-party library; only the members frappe calls are declared.
+ */
+export interface ControlTextEditorQuill {
+	/** The `.ql-editor` element — frappe/public/js/frappe/form/controls/text_editor.js:388, :555. */
+	root: HTMLElement;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:378 (`"text-change"`). */
+	on(event: string, handler: (...args: unknown[]) => unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:202, :353, :400 (`"toolbar"`, `"table"`, `"imageResize"`). */
+	getModule(name: string): unknown;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:540, frappe/public/js/frappe/form/controls/comment.js:98. */
+	setText(text: string): unknown;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:551. */
+	setContents(delta: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:545-550. */
+	clipboard: { convert(content: { html: string; text: string }, formats?: Record<string, unknown>): unknown };
+	/** frappe/public/js/frappe/form/controls/text_editor.js:599. */
+	focus(): unknown;
+	/** frappe/public/js/frappe/form/controls/comment.js:102. */
+	disable(): unknown;
+	/** frappe/public/js/frappe/form/controls/comment.js:107. */
+	enable(): unknown;
+}
+
+/**
+ * `frappe.ui.form.ControlData` — frappe/public/js/frappe/form/controls/data.js:3,
+ * extending `ControlInput`. The base of nearly every input control; also
+ * registered as `ControlReadOnly` (data.js:336).
+ */
+export declare class ControlData extends ControlInput {
+	/** frappe/public/js/frappe/form/controls/data.js:4 — the tag `make_input` builds (`$("<" + html_element + ">")`, :10-12). */
+	static html_element: string;
+	/** frappe/public/js/frappe/form/controls/data.js:5 — its `type` attribute (:13). */
+	static input_type: string;
+	/**
+	 * The `inputmode` attribute (frappe/public/js/frappe/form/controls/data.js:10, :14).
+	 * Unset here; `ControlInt` sets `"numeric"` (frappe/public/js/frappe/form/controls/int.js:4)
+	 * and `ControlFloat` `"decimal"` (frappe/public/js/frappe/form/controls/float.js:2).
+	 */
+	static input_mode?: string;
+	/** frappe/public/js/frappe/form/controls/data.js:6 — also bind the change handler to `input`, debounced (:184-187). */
+	static trigger_change_on_input_event: boolean;
+	/**
+	 * Read at frappe/public/js/frappe/form/controls/data.js:189 — mark the form
+	 * dirty on `input` without parsing. Set by `ControlInt`
+	 * (frappe/public/js/frappe/form/controls/int.js:3).
+	 */
+	static trigger_dirty_on_input_event?: boolean;
+
+	/** The URL field's open button — frappe/public/js/frappe/form/controls/data.js:91. */
+	$link_open?: JQuery<HTMLElement> | undefined;
+	/** The Barcode-option scan button — frappe/public/js/frappe/form/controls/data.js:155. */
+	$scan_btn?: JQuery<HTMLElement> | undefined;
+	/** `frappe.get_meta(df.parent)` — frappe/public/js/frappe/form/controls/data.js:197. */
+	meta?: DocTypeMeta | null | undefined;
+	/** The pending name-exists check — frappe/public/js/frappe/form/controls/data.js:211, :227-229. */
+	last_check?: ReturnType<typeof setTimeout> | null | undefined;
+	/**
+	 * A change handler merged in from the options. When set it replaces the
+	 * default parse-and-set on `change` (frappe/public/js/frappe/form/controls/data.js:176-181).
+	 */
+	change?(e: JQuery.TriggeredEvent): unknown;
+
+	/**
+	 * frappe/public/js/frappe/form/controls/data.js:7-79. A no-op once `$input`
+	 * exists (:8). Builds the input into `input_area`, sets `input` and
+	 * `has_input`, then binds the change event and the URL / Barcode / IBAN extras.
+	 */
+	make_input(): void;
+	/** frappe/public/js/frappe/form/controls/data.js:81-122. */
+	setup_url_field(): void;
+	/** frappe/public/js/frappe/form/controls/data.js:124-128. */
+	setup_iban_field(): void;
+	/** frappe/public/js/frappe/form/controls/data.js:130-144. Only when `df.with_copy_button`. */
+	setup_copy_button(): void;
+	/** frappe/public/js/frappe/form/controls/data.js:146-173. */
+	setup_barcode_field(): void;
+	/** frappe/public/js/frappe/form/controls/data.js:175-194. */
+	bind_change_event(): void;
+	/** frappe/public/js/frappe/form/controls/data.js:195-233. */
+	setup_autoname_check(): void;
+	/** frappe/public/js/frappe/form/controls/data.js:234-267 — maxlength, data attributes, placeholder, `input_css` / `input_class`, alignment. */
+	set_input_attributes(): void;
+	/** frappe/public/js/frappe/form/controls/data.js:268-274 — stores the value, then `set_formatted_input`, `set_disp_area` and `set_mandatory`. */
+	set_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/data.js:275-277 — `$input.val(format_for_input(value))`. */
+	set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/data.js:278-280 — `$input.val()`, or `undefined` before `make_input`. */
+	get_input_value(): unknown;
+	/** frappe/public/js/frappe/form/controls/data.js:281-286 — `""` for a nullish value, the formatted IBAN for an IBAN field. */
+	format_for_input(val: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/data.js:287-292 — strips spaces from an IBAN, else the value unchanged. */
+	parse(value: unknown): unknown;
+	/**
+	 * frappe/public/js/frappe/form/controls/data.js:293-326 — `""` for a falsy
+	 * value; for the Phone / Name / Email / URL options it sets `df.invalid`.
+	 */
+	validate(v: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/data.js:327-330. */
+	toggle_container_scroll(el_class: string, scroll_class: string, add?: boolean): void;
+	/** frappe/public/js/frappe/form/controls/data.js:331-333 — the grid this control is editing in, if any. */
+	in_grid(): Grid | undefined;
+}
+
+/**
+ * `frappe.ui.form.ControlSelect` — frappe/public/js/frappe/form/controls/select.js:1.
+ * The input is a `<select>` (`static html_element = "select"`, :2).
+ */
+export declare class ControlSelect extends ControlData {
+	override $input?: JQuery<HTMLSelectElement> | undefined;
+	override input?: HTMLSelectElement | undefined;
+	/** `JSON.stringify` of the options last rendered — frappe/public/js/frappe/form/controls/select.js:70-73. */
+	last_options?: string | undefined;
+
+	/** frappe/public/js/frappe/form/controls/select.js:4-13. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/select.js:14-26. `is_xs_input` is tested for truthiness only. */
+	set_icon(is_xs_input?: unknown): void;
+	/** frappe/public/js/frappe/form/controls/select.js:27-40. */
+	set_placeholder(is_xs_input?: unknown): void;
+	/**
+	 * frappe/public/js/frappe/form/controls/select.js:41-60. Re-renders the
+	 * options first; when the value is not among them, writes what the
+	 * `<select>` did select back to the model (:55-59).
+	 */
+	override set_formatted_input(value: unknown): void;
+	/**
+	 * frappe/public/js/frappe/form/controls/select.js:61-89. Splits a string
+	 * `df.options` on newlines; a no-op when the options have not changed.
+	 */
+	set_options(value?: unknown): void;
+	/** frappe/public/js/frappe/form/controls/select.js:90-104 — the form's attachment URLs, `undefined` without a form. */
+	get_file_attachment_list(): string[] | undefined;
+	/** frappe/public/js/frappe/form/controls/select.js:105-108. */
+	toggle_placeholder(): void;
+}
+
+/**
+ * `frappe.ui.form.ControlText` — frappe/public/js/frappe/form/controls/text.js:1,
+ * also registered as `ControlLongText` (text.js:23). The input is a
+ * `<textarea>` (`static html_element = "textarea"`, :2), and the class is not
+ * horizontal (:3).
+ */
+export declare class ControlText extends ControlData {
+	override $input?: JQuery<HTMLTextAreaElement> | undefined;
+	override input?: HTMLTextAreaElement | undefined;
+	/** frappe/public/js/frappe/form/controls/text.js:4-13. */
+	override make_wrapper(): void;
+	/** frappe/public/js/frappe/form/controls/text.js:14-20 — 300px high, capped by `df.max_height`. */
+	override make_input(): void;
+}
+
+/** `frappe.ui.form.ControlSmallText` — frappe/public/js/frappe/form/controls/text.js:24. */
+export declare class ControlSmallText extends ControlText {
+	/** frappe/public/js/frappe/form/controls/text.js:25-28 — 150px high. */
+	override make_input(): void;
+}
+
+/**
+ * `frappe.ui.form.ControlCode` — frappe/public/js/frappe/form/controls/code.js:1.
+ * An Ace editor in place of the `<textarea>`: `make_input` loads Ace and builds
+ * the editor (:2-5), so `$input` is never set.
+ */
+export declare class ControlCode extends ControlText {
+	/**
+	 * The Ace editor, once `make_ace_editor` has run
+	 * (frappe/public/js/frappe/form/controls/code.js:61). `undefined` until Ace has
+	 * loaded, which is asynchronous (:4).
+	 */
+	override editor?: ControlCodeAceEditor | undefined;
+	/** The copy button shown when not writable — frappe/public/js/frappe/form/controls/code.js:17-18, :26. */
+	copy_button?: JQuery<HTMLElement> | null | undefined;
+	/** The element Ace is mounted in — frappe/public/js/frappe/form/controls/code.js:47. */
+	ace_editor_target?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/code.js:67, :72. */
+	expanded?: boolean | undefined;
+	/** frappe/public/js/frappe/form/controls/code.js:68-76. */
+	$expand_button?: JQuery<HTMLElement> | undefined;
+	/** Suppresses the change handler while `set_formatted_input` writes — frappe/public/js/frappe/form/controls/code.js:89, :245-247. */
+	is_setting_content?: boolean | undefined;
+	/** frappe/public/js/frappe/form/controls/code.js:263-265. */
+	root_lib_path?: string | undefined;
+	/** The promise `load_lib` caches — frappe/public/js/frappe/form/controls/code.js:268. */
+	library_loaded?: Promise<void> | undefined;
+
+	/** frappe/public/js/frappe/form/controls/code.js:2-5. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/code.js:7-13. */
+	override refresh(): void;
+	/** frappe/public/js/frappe/form/controls/code.js:15-43. */
+	override setup_copy_button(): void;
+	/** frappe/public/js/frappe/form/controls/code.js:45-128. */
+	make_ace_editor(): void;
+	/** frappe/public/js/frappe/form/controls/code.js:130-177. */
+	setup_autocompletion(customGetCompletions?: unknown): void;
+	/** frappe/public/js/frappe/form/controls/code.js:179-182. */
+	refresh_height(): void;
+	/** frappe/public/js/frappe/form/controls/code.js:184-186. */
+	override on_section_collapse(hide: boolean): void;
+	/** frappe/public/js/frappe/form/controls/code.js:188-190 — relabels the expand button; it shadows `ControlInput#toggle_label`. */
+	override toggle_label(): void;
+	/** frappe/public/js/frappe/form/controls/code.js:192-196. */
+	get_button_label(): string;
+	/** frappe/public/js/frappe/form/controls/code.js:198-231 — maps `df.options` to an Ace mode. */
+	set_language(): void;
+	/** frappe/public/js/frappe/form/controls/code.js:233-238 — `""` for a nullish value. */
+	override parse(value: unknown): unknown;
+	/**
+	 * frappe/public/js/frappe/form/controls/code.js:240-249. Returns the
+	 * `load_lib()` promise, which `ControlMarkdownEditor` chains on
+	 * (frappe/public/js/frappe/form/controls/markdown_editor.js:55); its own
+	 * override returns nothing, hence `unknown`.
+	 */
+	override set_formatted_input(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/code.js:251-253 — `""` before the editor exists. */
+	override get_input_value(): string;
+	/** frappe/public/js/frappe/form/controls/code.js:255-257. */
+	override set_focus(): void;
+	/** frappe/public/js/frappe/form/controls/code.js:259-276 — requires Ace once and caches the promise. */
+	load_lib(): Promise<void>;
+}
+
+/** `frappe.ui.form.ControlJSON` — frappe/public/js/frappe/form/controls/json.js:1. */
+export declare class ControlJSON extends ControlCode {
+	/** frappe/public/js/frappe/form/controls/json.js:2-5 — always JSON mode. */
+	override set_language(): void;
+}
+
+/** `frappe.ui.form.ControlMarkdownEditor` — frappe/public/js/frappe/form/controls/markdown_editor.js:1. */
+export declare class ControlMarkdownEditor extends ControlCode {
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:4 — the CSS prefix of its container and preview. */
+	static editor_class: string;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:11. */
+	markdown_container?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:15, :29. */
+	showing_preview?: boolean | undefined;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:16. */
+	preview_toggle_btn?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:35. */
+	markdown_preview?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:5-39. */
+	override make_ace_editor(): void;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:41-46 — defaults `df.options` to `"Markdown"`. */
+	override set_language(): void;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:48-52. */
+	update_preview(): void;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:54-58. Returns nothing. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:60-62 — the raw text. */
+	override set_disp_area(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/markdown_editor.js:64-103. */
+	setup_image_drop(): void;
+}
+
+/** `frappe.ui.form.ControlHTMLEditor` — frappe/public/js/frappe/form/controls/html_editor.js:1. */
+export declare class ControlHTMLEditor extends ControlMarkdownEditor {
+	/** frappe/public/js/frappe/form/controls/html_editor.js:5-8 — always HTML mode. */
+	override set_language(): void;
+	/** frappe/public/js/frappe/form/controls/html_editor.js:9-14 — the HTML, scripts and styles removed. */
+	override update_preview(): void;
+}
+
+/**
+ * `frappe.ui.form.ControlTextEditor` — frappe/public/js/frappe/form/controls/text_editor.js:185.
+ * A Quill editor; it extends `ControlCode` but never builds the Ace editor,
+ * because its `make_input` builds Quill instead (:190-193).
+ */
+export declare class ControlTextEditor extends ControlCode {
+	/** frappe/public/js/frappe/form/controls/text_editor.js:201. */
+	quill?: ControlTextEditorQuill | undefined;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:197. */
+	quill_container?: JQuery<HTMLElement> | undefined;
+	/**
+	 * Merged in from the options; with `df.enable_mentions` it turns on @-mentions
+	 * (frappe/public/js/frappe/form/controls/text_editor.js:459). The form's
+	 * comment box passes it (frappe/public/js/frappe/form/footer/footer.js:50).
+	 */
+	enable_mentions?: boolean | undefined;
+
+	/** frappe/public/js/frappe/form/controls/text_editor.js:186-188. */
+	override make_wrapper(): void;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:190-193. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:195-207. */
+	make_quill_editor(): void;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:209. */
+	dress_toolbar_pickers(toolbar: unknown): void;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:300. */
+	add_toolbar_tooltips(toolbar: unknown): void;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:352-362. */
+	handle_table_actions(value: string): void;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:377-421. */
+	bind_events(): void;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:423-427. */
+	is_quill_dirty(source: string): boolean;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:429-456 — the options `new Quill` gets. */
+	get_quill_options(): Record<string, unknown>;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:458. `null` without mentions. */
+	get_mention_options(): unknown;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:498. */
+	get_toolbar_options(): unknown[];
+	/** frappe/public/js/frappe/form/controls/text_editor.js:528-533 — scripts and styles removed. */
+	override parse(value: unknown): string;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:535-552. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:554-569 — the editor's HTML, wrapped in `.ql-editor.read-mode`. */
+	override get_input_value(): string;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:571-596. */
+	patch_unordered_list(value: string): string;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:598-600. */
+	override set_focus(): void;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:602. */
+	get_keyboard_bindings(): Record<string, unknown>;
+	/** frappe/public/js/frappe/form/controls/text_editor.js:487-496 — the mention list with the form's involved users first. */
+	prioritize_involved_users_in_mention<T extends { id?: unknown }>(values: T[]): T[];
+}
+
+/**
+ * `frappe.ui.form.ControlComment` — frappe/public/js/frappe/form/controls/comment.js:6.
+ * The form footer's comment box is one (`Form#comment_box`).
+ */
+export declare class ControlComment extends ControlTextEditor {
+	/** Merged in from the options: skip the comment card around the editor — frappe/public/js/frappe/form/controls/comment.js:8. */
+	no_wrapper?: boolean | undefined;
+	/**
+	 * Merged in from the options: called with the editor's value by `submit()`
+	 * (frappe/public/js/frappe/form/controls/comment.js:63-65). The form footer
+	 * passes one that posts the comment (frappe/public/js/frappe/form/footer/footer.js:55-74).
+	 */
+	on_submit?: ((comment: string) => unknown) | undefined;
+	/** frappe/public/js/frappe/form/controls/comment.js:8. */
+	comment_wrapper?: JQuery<HTMLElement> | undefined;
+	/** The Comment button — frappe/public/js/frappe/form/controls/comment.js:37. */
+	button?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/comment.js:7. */
+	override make_wrapper(): void;
+	/** frappe/public/js/frappe/form/controls/comment.js:40. */
+	override bind_events(): void;
+	/** frappe/public/js/frappe/form/controls/comment.js:63-65. */
+	submit(): void;
+	/** frappe/public/js/frappe/form/controls/comment.js:67-74. */
+	update_state(): void;
+	/** frappe/public/js/frappe/form/controls/comment.js:76-83. */
+	override get_quill_options(): Record<string, unknown>;
+	/** frappe/public/js/frappe/form/controls/comment.js:85-95. */
+	override get_toolbar_options(): unknown[];
+	/** frappe/public/js/frappe/form/controls/comment.js:97-99. */
+	clear(): void;
+	/** frappe/public/js/frappe/form/controls/comment.js:101-104. */
+	disable(): void;
+	/** frappe/public/js/frappe/form/controls/comment.js:106-109. */
+	enable(): void;
+}
+
+/**
+ * `frappe.ui.form.ControlInt` — frappe/public/js/frappe/form/controls/int.js:1,
+ * also registered as `ControlLongInt` (int.js:28).
+ */
+export declare class ControlInt extends ControlData {
+	override $input?: JQuery<HTMLInputElement> | undefined;
+	override input?: HTMLInputElement | undefined;
+	/** frappe/public/js/frappe/form/controls/int.js:5-7. */
+	override make(): void;
+	/** frappe/public/js/frappe/form/controls/int.js:8-14 — selects the text on focus. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/int.js:15-17 — `this.parse(value)`. */
+	override validate(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/int.js:18-22 — evaluates a string through `frappe.utils.eval_expression`. */
+	eval_expression(value: unknown, number_format?: string): unknown;
+	/** frappe/public/js/frappe/form/controls/int.js:23-25 — `cint(…, null)`. */
+	override parse(value: unknown): number | null;
+}
+
+/** `frappe.ui.form.ControlFloat` — frappe/public/js/frappe/form/controls/float.js:1. */
+export declare class ControlFloat extends ControlInt {
+	/** frappe/public/js/frappe/form/controls/float.js:3-6 — `null` when not a number, else rounded to `get_precision()`. */
+	override parse(value: unknown): number | null;
+	/** frappe/public/js/frappe/form/controls/float.js:8-10 — with the field's number format. */
+	override eval_expression(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/float.js:12-18 — `""` for a non-number. */
+	override format_for_input(value: unknown): string;
+	/** frappe/public/js/frappe/form/controls/float.js:20-29 — `undefined` for Rating and for a Float without options. */
+	get_number_format(): string | undefined;
+	/** frappe/public/js/frappe/form/controls/float.js:31-34 — `df.precision`, else the system float precision, else `null`. */
+	get_precision(): string | number | null | undefined;
+}
+
+/** `frappe.ui.form.ControlCurrency` — frappe/public/js/frappe/form/controls/currency.js:1. */
+export declare class ControlCurrency extends ControlFloat {
+	/** frappe/public/js/frappe/form/controls/currency.js:2-13 — `df.precision`, else the currency precision. */
+	override get_precision(): string | number | null | undefined;
+}
+
+/** `frappe.ui.form.ControlPercent` — frappe/public/js/frappe/form/controls/percent.js:1. */
+export declare class ControlPercent extends ControlFloat {
+	/** frappe/public/js/frappe/form/controls/percent.js:2-12. */
+	override format_for_input(value: unknown): string;
+}
+
+/** `frappe.ui.form.ControlRating` — frappe/public/js/frappe/form/controls/rating.js:1. */
+export declare class ControlRating extends ControlFloat {
+	/** frappe/public/js/frappe/form/controls/rating.js:2-44 — replaces the input area with stars. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/rating.js:45. */
+	update_rating(ev: JQuery.TriggeredEvent, click?: boolean): void;
+	/** frappe/public/js/frappe/form/controls/rating.js:95-97 — `this.value`. */
+	override get_value(): unknown;
+	/** frappe/public/js/frappe/form/controls/rating.js:98-113. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/rating.js:114-116 — `parseFloat`. */
+	override validate(fraction: unknown): number;
+}
+
+/**
+ * `frappe.ui.form.ControlLink` — frappe/public/js/frappe/form/controls/link.js:11.
+ * `make_input` builds its own `<input>` with the open and clear buttons (:13-73).
+ */
+export declare class ControlLink extends ControlData {
+	override $input?: JQuery<HTMLInputElement> | undefined;
+	override input?: HTMLInputElement | undefined;
+	/** `$(this.input_area)` — frappe/public/js/frappe/form/controls/link.js:26. */
+	$input_area?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/link.js:29. */
+	$link_clear?: JQuery<HTMLElement> | undefined;
+	/** Whether to translate the search results — frappe/public/js/frappe/form/controls/link.js:69; a `get_query` result can turn it off (:834-836). */
+	translate_values?: boolean | undefined;
+	/** Translated title → value — frappe/public/js/frappe/form/controls/link.js:116, :145. */
+	title_value_map?: Record<string, unknown> | undefined;
+	/** frappe/public/js/frappe/form/controls/link.js:152. */
+	label?: string | undefined;
+	/** frappe/public/js/frappe/form/controls/link.js:301. */
+	autocomplete_open?: boolean | undefined;
+	/**
+	 * Set by `Form#set_query` (frappe/public/js/frappe/form/form.js:1827-1839) and
+	 * copied from the grid's control (frappe/public/js/frappe/form/grid_row.js:1164).
+	 * Read before `df.get_query` (frappe/public/js/frappe/form/controls/link.js:790-791).
+	 */
+	override get_query?: LinkQuery | undefined;
+
+	/** frappe/public/js/frappe/form/controls/link.js:13-73. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/link.js:75-83. */
+	show_link_and_clear_buttons(): void;
+	/** frappe/public/js/frappe/form/controls/link.js:85-87. */
+	is_clear_button_enabled(): boolean;
+	/** frappe/public/js/frappe/form/controls/link.js:89-92. */
+	hide_link_and_clear_buttons(): void;
+	/** frappe/public/js/frappe/form/controls/link.js:94-96 — `df.options`, the linked doctype. */
+	get_options(): string | undefined;
+	/** frappe/public/js/frappe/form/controls/link.js:97-105 — the doctype the field is in, else the List route's. */
+	get_reference_doctype(): string | null | undefined;
+	/** frappe/public/js/frappe/form/controls/link.js:106-110. */
+	setup_buttons(): void;
+	/** frappe/public/js/frappe/form/controls/link.js:111-119 — then shows the link title. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/link.js:120-122. */
+	get_translated(value: string): string;
+	/** frappe/public/js/frappe/form/controls/link.js:123-125. */
+	is_translatable(): boolean;
+	/** frappe/public/js/frappe/form/controls/link.js:126-128. */
+	is_title_link(): boolean;
+	/** frappe/public/js/frappe/form/controls/link.js:129-142. */
+	set_link_title(value: string): Promise<void>;
+	/** frappe/public/js/frappe/form/controls/link.js:143-148. */
+	translate_and_set_input_value(link_title: string, value: string): void;
+	/** frappe/public/js/frappe/form/controls/link.js:149-157 — `label` records the value's link title. */
+	override parse_validate_and_set_in_model(value: unknown, e?: JQuery.TriggeredEvent | null, label?: string): Promise<unknown>;
+	/**
+	 * frappe/public/js/frappe/form/controls/link.js:158-160 — `strip_html(value)`.
+	 * `unknown` because `ControlTableMultiSelect` returns rows (frappe/public/js/frappe/form/controls/table_multiselect.js:108).
+	 */
+	override parse(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/link.js:161-167 — the value behind a shown title; `null` before `make_input`. */
+	override get_input_value(): unknown;
+	/** frappe/public/js/frappe/form/controls/link.js:168-170 — the text in the input. */
+	get_label_value(): string;
+	/** frappe/public/js/frappe/form/controls/link.js:171-173. */
+	set_input_value(value: string): void;
+	/** frappe/public/js/frappe/form/controls/link.js:174-183 — opens the Link Selector; `false`, or `undefined` without a doctype. */
+	open_advanced_search(): false | undefined;
+	/** frappe/public/js/frappe/form/controls/link.js:184. */
+	new_doc(): unknown;
+	/** frappe/public/js/frappe/form/controls/link.js:220. */
+	setup_awesomeplete(): void;
+	/** frappe/public/js/frappe/form/controls/link.js:425-449 — the search arguments, `undefined` without a doctype. */
+	get_search_args(txt: string): Record<string, unknown> | undefined;
+	/** frappe/public/js/frappe/form/controls/link.js:451. */
+	on_input(e?: JQuery.TriggeredEvent): void;
+	/** frappe/public/js/frappe/form/controls/link.js:768-871 — applies `get_query`, `df.filters` and `df.link_filters` to `args`. */
+	set_custom_query(args: Record<string, unknown>): void;
+	/** frappe/public/js/frappe/form/controls/link.js:873-880. */
+	apply_link_field_filters(): Record<string, unknown>;
+	/** frappe/public/js/frappe/form/controls/link.js:901-908. */
+	override validate(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/link.js:909-913. */
+	override after_set_value(): void;
+	/** frappe/public/js/frappe/form/controls/link.js:914 — validates the value and fetches `fetch_from` fields. */
+	validate_link_and_fetch(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/link.js:393-400 — whether the typed text is in the item's label, value or description. */
+	input_matches_item(input: string, item: Record<string, unknown>): unknown;
+	/**
+	 * frappe/public/js/frappe/form/controls/link.js:407-423 — `[too_large_for_get, filters_as_string]`; the search
+	 * uses POST when the first is `true` (:470-471, :964-965).
+	 */
+	are_filters_large(filters: unknown, max_get_size?: number): [boolean, unknown];
+	/** frappe/public/js/frappe/form/controls/link.js:553-556. */
+	show_untranslated(): void;
+	/** frappe/public/js/frappe/form/controls/link.js:558-575 — joins the descriptions of results with the same value. */
+	merge_duplicates<T extends { value?: unknown; description?: string }>(results: T[]): T[];
+	/** frappe/public/js/frappe/form/controls/link.js:577-584 — hides the link button when the user may select but not read `doctype`. */
+	toggle_href(doctype: string): void;
+	/** frappe/public/js/frappe/form/controls/link.js:586-766 — the "Filtered by: …" line shown under the results. */
+	get_filter_description(filters: Record<string, unknown> | unknown[]): Promise<string>;
+	/** frappe/public/js/frappe/form/controls/link.js:882-899 — `df.link_filters` rows as a filter map, `eval:` values evaluated. */
+	parse_filters(link_filters: unknown[][]): Record<string, [unknown, unknown]>;
+	/** frappe/public/js/frappe/form/controls/link.js:1001-1066 — the fetch map built from a quick entry layout's `fetch_from` fields. */
+	fetch_map_for_quick_entry(): Record<string, string>;
+	/**
+	 * frappe/public/js/frappe/form/controls/link.js:1068-1085 — target field → source field for the values this
+	 * link fetches, from `frm.fetch_dict`, or from the layout in a quick entry.
+	 */
+	get fetch_map(): Record<string, string>;
+}
+
+/** `frappe.ui.form.ControlDynamicLink` — frappe/public/js/frappe/form/controls/dynamic_link.js:1. */
+export declare class ControlDynamicLink extends ControlLink {
+	/**
+	 * frappe/public/js/frappe/form/controls/dynamic_link.js:2-29. `df.get_options(this)`
+	 * when set (:4-5); else the value of the field `df.options` names, read from
+	 * the dialog, the list's or page's filter, or the document. Throws for a
+	 * single doctype (:24-26).
+	 */
+	override get_options(): string | undefined;
+}
+
+/** `frappe.ui.form.ControlTableMultiSelect` — frappe/public/js/frappe/form/controls/table_multiselect.js:1. */
+export declare class ControlTableMultiSelect extends ControlLink {
+	/** The child rows — frappe/public/js/frappe/form/controls/table_multiselect.js:23, :98. */
+	rows?: ChildDoc[] | undefined;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:5-12. */
+	override make(): void;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:13. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:105-107. */
+	override setup_buttons(): void;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:108 — the rows. */
+	override parse(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:176-191 — also fires `<fieldname>_add` when one row was added. */
+	override set_model_value(value: unknown): Promise<unknown>;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:193-198. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:199-204. */
+	set_pill_html(values: unknown[]): void;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:205-216. */
+	get_pill_html(value: string): string;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:217-219 — the child table's Link field's options. */
+	override get_options(): string | undefined;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:220-229 — throws when the child table has no Link field. */
+	get_link_field(): DocField;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:241-243. */
+	override get_input_value(): unknown;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:244-250. */
+	update_value(): void;
+	/** The link values of the rows, read by the search filter — frappe/public/js/frappe/form/controls/table_multiselect.js:101, :234. */
+	_rows_list?: unknown[] | undefined;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:94-96 — the model's rows, else the last ones set. */
+	_get_rows(): ChildDoc[];
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:97-104 — returns `rows`. */
+	_update_rows(rows: ChildDoc[]): ChildDoc[];
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:142-175 — `async`: the rows, the last validated through the link (dropped when invalid). */
+	override validate(value: unknown): Promise<unknown>;
+	/** frappe/public/js/frappe/form/controls/table_multiselect.js:230-240 — hides values already chosen. */
+	custom_awesomplete_filter(awesomplete: { filter?: unknown }): void;
+}
+
+/** `frappe.ui.form.ControlAutocomplete` — frappe/public/js/frappe/form/controls/autocomplete.js:3. */
+export declare class ControlAutocomplete extends ControlData {
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:114. */
+	selected?: boolean | undefined;
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:124. */
+	autocomplete_open?: boolean | undefined;
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:202. */
+	translate_values?: boolean | undefined;
+	/** The parsed options — frappe/public/js/frappe/form/controls/autocomplete.js:246. */
+	_data?: SelectOption[] | undefined;
+	/** Read before `df.get_query` — frappe/public/js/frappe/form/controls/autocomplete.js:175. */
+	override get_query?: LinkQuery | undefined;
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:5-9. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:11-19. */
+	set_options(): void;
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:21-30 — the option's label. */
+	override format_for_input(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:32-38 — the value behind the label typed. */
+	override get_input_value(): unknown;
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:40-90. */
+	get_awesomplete_settings(): Record<string, unknown>;
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:92. */
+	setup_awesomplete(): void;
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:136-149 — `""` for a value not among the options. */
+	override validate(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:151-171 — `{ label, value }` objects. */
+	parse_options(options: unknown): SelectOption[];
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:173. */
+	execute_query_if_exists(term: string): unknown;
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:237-239. */
+	get_data(): unknown[];
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:241-247. */
+	set_data(data: unknown): void;
+	/** frappe/public/js/frappe/form/controls/autocomplete.js:249-259 — loads the installed apps as the options. `frm` is unused. */
+	load_installed_apps(frm?: unknown): Promise<void>;
+}
+
+/** `frappe.ui.form.ControlMultiSelect` — frappe/public/js/frappe/form/controls/multiselect.js:3. */
+export declare class ControlMultiSelect extends ControlAutocomplete {
+	/** frappe/public/js/frappe/form/controls/multiselect.js:6-41. */
+	override get_awesomplete_settings(): Record<string, unknown>;
+	/** frappe/public/js/frappe/form/controls/multiselect.js:43-59 — the comma-separated values. */
+	override get_value(): unknown;
+	/** frappe/public/js/frappe/form/controls/multiselect.js:61. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/multiselect.js:80-88. */
+	get_parsed_options(): unknown;
+	/** frappe/public/js/frappe/form/controls/multiselect.js:90-93. */
+	get_values(): string[];
+	/** frappe/public/js/frappe/form/controls/multiselect.js:95-104. */
+	override get_data(): unknown[];
+	/** frappe/public/js/frappe/form/controls/multiselect.js:106-126. */
+	override validate(value: unknown): unknown;
+}
+
+/** `frappe.ui.form.ControlMultiSelectPills` — frappe/public/js/frappe/form/controls/multiselect_pills.js:3. */
+export declare class ControlMultiSelectPills extends ControlAutocomplete {
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:8. */
+	$input_area?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:9. */
+	$multiselect_wrapper?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:21. */
+	rows?: unknown[] | undefined;
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:6. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:42. */
+	override parse(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:54. */
+	override validate(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:77. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:82. */
+	set_pill_html(values: unknown[]): void;
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:89. */
+	get_pill_html(value: string): string;
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:105. */
+	override get_awesomplete_settings(): Record<string, unknown>;
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:137. */
+	override get_value(): unknown;
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:141. */
+	get_values(): unknown;
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:145. */
+	override get_data(): unknown[];
+	/** frappe/public/js/frappe/form/controls/multiselect_pills.js:100-103 — the option's label, else its value; `null` when it is not an option. */
+	get_label(value: unknown): unknown;
+}
+
+/** `frappe.ui.form.ControlMultiSelectList` — frappe/public/js/frappe/form/controls/multiselect_list.js:1. */
+export declare class ControlMultiSelectList extends ControlData {
+	/** The selected values — frappe/public/js/frappe/form/controls/multiselect_list.js:35, :200. */
+	values?: unknown[] | undefined;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:5. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:139. */
+	override set_input_attributes(): void;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:188-211 — selects the values in the list; resolves at once. */
+	override set_value(value: unknown): Promise<unknown>;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:266. */
+	set_options(): unknown;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:308-310 — `this.values`. */
+	override get_value(): unknown;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:157-163. */
+	clear_all_selections(): void;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:165-171. */
+	select_all_options(): void;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:173-186. */
+	toggle_select_item($selectable_item: JQuery<HTMLElement>): void;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:213-226. */
+	update_selected_values(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:228-240 — the placeholder, the one label, or a count. */
+	update_status(): void;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:242-244. */
+	get_placeholder_text(): string;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:246-248 — `text` is set as HTML. */
+	set_status(text: string): void;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:250-264 — strings become `{ label, value, description }`; a missing label is the value. */
+	process_options(options: SelectOption[]): Array<Exclude<SelectOption, string>>;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:286-306. */
+	set_selectable_items(options: Array<Exclude<SelectOption, string>>): void;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:312-330 — moves the keyboard highlight by `value` rows. */
+	highlight_item(value: number): void;
+	/** frappe/public/js/frappe/form/controls/multiselect_list.js:332-338. */
+	scroll_dropdown_if_needed($item: HTMLElement): void;
+}
+
+/** `frappe.ui.form.ControlDate` — frappe/public/js/frappe/form/controls/date.js:1. */
+export declare class ControlDate extends ControlData {
+	override $input?: JQuery<HTMLInputElement> | undefined;
+	override input?: HTMLInputElement | undefined;
+	/** The air-datepicker instance — frappe/public/js/frappe/form/controls/date.js:109. */
+	datepicker?: unknown;
+	/** The options it was built with — frappe/public/js/frappe/form/controls/date.js:65. */
+	datepicker_options?: Record<string, unknown> | undefined;
+	/** frappe/public/js/frappe/form/controls/date.js:64. */
+	date_format?: string | undefined;
+	/** frappe/public/js/frappe/form/controls/date.js:63. */
+	today_text?: string | undefined;
+	/** frappe/public/js/frappe/form/controls/date.js:3-6. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/date.js:7-11. */
+	make_picker(): void;
+	/** frappe/public/js/frappe/form/controls/date.js:12-49 — `"Today"` becomes the current date. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/date.js:50 — reads `df.min_date` / `df.max_date` (:72-73). */
+	set_date_options(): void;
+	/** frappe/public/js/frappe/form/controls/date.js:103-105. */
+	get_start_date(): unknown;
+	/** frappe/public/js/frappe/form/controls/date.js:107-117. */
+	set_datepicker(): void;
+	/** frappe/public/js/frappe/form/controls/date.js:118. */
+	update_datepicker_position(): void;
+	/** frappe/public/js/frappe/form/controls/date.js:147-151. */
+	get_now_date(): unknown;
+	/** frappe/public/js/frappe/form/controls/date.js:152-170 — the `t` shortcut. */
+	set_t_for_today(): void;
+	/** frappe/public/js/frappe/form/controls/date.js:171. */
+	eval_expression(value: unknown, type?: string): unknown;
+	/** frappe/public/js/frappe/form/controls/date.js:242-249. */
+	override parse(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/date.js:250-255. */
+	override format_for_input(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/date.js:256-265 — `""` (after a message) for an invalid date. */
+	override validate(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/date.js:266-281 — `df.options` as an object, parsed from JSON when a string. */
+	get_df_options(): Record<string, unknown>;
+}
+
+/** `frappe.ui.form.ControlDatetime` — frappe/public/js/frappe/form/controls/datetime.js:1. */
+export declare class ControlDatetime extends ControlDate {
+	/** frappe/public/js/frappe/form/controls/datetime.js:2. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/datetime.js:73. */
+	override parse(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/datetime.js:87. */
+	override format_for_input(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/datetime.js:109. */
+	get_user_time_zone(): unknown;
+	/** frappe/public/js/frappe/form/controls/datetime.js:123. */
+	override get_model_value(): unknown;
+	/** frappe/public/js/frappe/form/controls/datetime.js:24-51 — brings the datepicker's selection and time up to `date`, when they differ. */
+	sync_datepicker_state(date: Date): void;
+	/** frappe/public/js/frappe/form/controls/datetime.js:53-57. */
+	override get_start_date(): unknown;
+	/** frappe/public/js/frappe/form/controls/datetime.js:58-69 — adds the timepicker. */
+	override set_date_options(): void;
+	/** frappe/public/js/frappe/form/controls/datetime.js:70-72. */
+	override get_now_date(): unknown;
+	/** frappe/public/js/frappe/form/controls/datetime.js:91-108 — appends the user's time zone to `df.description` unless `df.hide_timezone`. */
+	override set_description(): void;
+	/** frappe/public/js/frappe/form/controls/datetime.js:112-121. */
+	override set_datepicker(): void;
+}
+
+/** `frappe.ui.form.ControlTime` — frappe/public/js/frappe/form/controls/time.js:1. */
+export declare class ControlTime extends ControlDate {
+	/** frappe/public/js/frappe/form/controls/time.js:6. */
+	timepicker_only?: boolean | undefined;
+	/** frappe/public/js/frappe/form/controls/time.js:20. */
+	time_format?: string | undefined;
+	/** frappe/public/js/frappe/form/controls/time.js:2. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/time.js:5. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/time.js:14. */
+	set_time_options(): void;
+	/** frappe/public/js/frappe/form/controls/time.js:46. */
+	override set_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/time.js:95. */
+	override parse(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/time.js:103. */
+	override format_for_input(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/time.js:109. */
+	override validate(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/time.js:9-13. */
+	override make_picker(): void;
+	/** frappe/public/js/frappe/form/controls/time.js:65-80. */
+	override set_datepicker(): void;
+	/** frappe/public/js/frappe/form/controls/time.js:81-94 — appends the system time zone to `df.description` when the user's differs. */
+	override set_description(): void;
+}
+
+/** `frappe.ui.form.ControlDateRange` — frappe/public/js/frappe/form/controls/date_range.js:1. */
+export declare class ControlDateRange extends ControlData {
+	/** frappe/public/js/frappe/form/controls/date_range.js:33. */
+	datepicker?: unknown;
+	/** frappe/public/js/frappe/form/controls/date_range.js:17 — reads `df.min_date` / `df.max_date` (:22-23). */
+	datepicker_options?: Record<string, unknown> | undefined;
+	/** frappe/public/js/frappe/form/controls/date_range.js:2. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/date_range.js:8. */
+	make_picker(): void;
+	/** frappe/public/js/frappe/form/controls/date_range.js:13. */
+	set_date_options(): void;
+	/** frappe/public/js/frappe/form/controls/date_range.js:31. */
+	set_datepicker(): void;
+	/** frappe/public/js/frappe/form/controls/date_range.js:35 — a `[from, to]` pair, or the two dates. */
+	override set_input(value: unknown, value2?: unknown): void;
+	/** frappe/public/js/frappe/form/controls/date_range.js:51. */
+	override parse(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/date_range.js:67. */
+	override format_for_input(value1: unknown, value2?: unknown): unknown;
+}
+
+/** `frappe.ui.form.ControlDuration` — frappe/public/js/frappe/form/controls/duration.js:1. */
+export declare class ControlDuration extends ControlData {
+	/** frappe/public/js/frappe/form/controls/duration.js:2. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/duration.js:7. */
+	override validate(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/duration.js:14. */
+	make_picker(): void;
+	/** frappe/public/js/frappe/form/controls/duration.js:155. */
+	override get_value(): unknown;
+	/** frappe/public/js/frappe/form/controls/duration.js:159. */
+	override parse(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/duration.js:180. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/duration.js:191. */
+	override format_for_input(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/duration.js:195. */
+	get_duration(): unknown;
+	/** The four number inputs, by unit — frappe/public/js/frappe/form/controls/duration.js:15, :54. */
+	inputs?: Record<string, JQuery<HTMLElement>> | undefined;
+	/** frappe/public/js/frappe/form/controls/duration.js:16. */
+	reposition_picker?: (() => void) | undefined;
+	/** frappe/public/js/frappe/form/controls/duration.js:18-22. */
+	$picker?: JQuery<HTMLElement> | undefined;
+	/** `frappe.utils.get_duration_options(df)` — frappe/public/js/frappe/form/controls/duration.js:69. */
+	duration_options?: unknown;
+	/** frappe/public/js/frappe/form/controls/duration.js:43-66 — one unit's number input. */
+	build_numeric_input(name: string, hidden: unknown, max: number, label: string): void;
+	/** frappe/public/js/frappe/form/controls/duration.js:68-70. */
+	set_duration_options(): void;
+	/** frappe/public/js/frappe/form/controls/duration.js:72-80 — `value` in seconds. */
+	set_duration_picker_value(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/duration.js:82-124. */
+	bind_events(): void;
+	/** frappe/public/js/frappe/form/controls/duration.js:126-132. */
+	show_picker(): void;
+	/** frappe/public/js/frappe/form/controls/duration.js:134-139. */
+	hide_picker(): void;
+	/** frappe/public/js/frappe/form/controls/duration.js:141-153 — under the input; hides the picker once the input is detached. */
+	position_picker(): void;
+	/** frappe/public/js/frappe/form/controls/duration.js:185-189. */
+	override refresh_input(): void;
+	/** frappe/public/js/frappe/form/controls/duration.js:216-224 — whether any unit is non-zero. */
+	is_duration_picker_set(inputs: Record<string, JQuery<HTMLElement>>): boolean;
+}
+
+/**
+ * `frappe.ui.form.ControlAttach` — frappe/public/js/frappe/form/controls/attach.js:1.
+ * `$input` is the Attach `<button>` (:3-14).
+ */
+export declare class ControlAttach extends ControlData {
+	override $input?: JQuery<HTMLButtonElement> | undefined;
+	override input?: HTMLButtonElement | undefined;
+	/** The attached-file row — frappe/public/js/frappe/form/controls/attach.js:15-27. */
+	$value?: JQuery<HTMLElement> | undefined;
+	/** The uploader the button opened — frappe/public/js/frappe/form/controls/attach.js:58, :72. */
+	file_uploader?: FrappeFileUploader | undefined;
+	/**
+	 * frappe/public/js/frappe/form/controls/attach.js:74-96. The control's own
+	 * options, with an object `df.options` merged over them (:92-93).
+	 */
+	upload_options?: FrappeFileUploaderOptions | undefined;
+	/** Cleared by `clear_attachment` without a form — frappe/public/js/frappe/form/controls/attach.js:48-49. */
+	dataurl?: string | null | undefined;
+	/** frappe/public/js/frappe/form/controls/attach.js:49. */
+	fileobj?: File | null | undefined;
+	/** frappe/public/js/frappe/form/controls/attach.js:2-33. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/attach.js:34-55 — after confirming. */
+	clear_attachment(): void;
+	/** frappe/public/js/frappe/form/controls/attach.js:56-59 — opens a `frappe.ui.FileUploader`. */
+	on_attach_click(): void;
+	/** frappe/public/js/frappe/form/controls/attach.js:60-73. */
+	on_attach_doc_image(): void;
+	/** frappe/public/js/frappe/form/controls/attach.js:74-96. */
+	set_upload_options(): void;
+	/** frappe/public/js/frappe/form/controls/attach.js:98-134. A `"name,data:…"` value carries its data URL. */
+	override set_input(value: unknown, dataurl?: string): void;
+	/** frappe/public/js/frappe/form/controls/attach.js:136-138 — `this.value`, or `null`. */
+	override get_value(): unknown;
+	/** frappe/public/js/frappe/form/controls/attach.js:140-149 — `attachment` is the uploaded File document. */
+	on_upload_complete(attachment: FrappeDoc & { file_url?: string }): Promise<void>;
+}
+
+/** `frappe.ui.form.ControlAttachImage` — frappe/public/js/frappe/form/controls/attach_image.js:1. */
+export declare class ControlAttachImage extends ControlAttach {
+	/** frappe/public/js/frappe/form/controls/attach_image.js:2-20 — adds a preview popover. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/attach_image.js:21-33 — images only. */
+	override set_upload_options(): void;
+}
+
+/**
+ * `frappe.ui.form.ControlButton` — frappe/public/js/frappe/form/controls/button.js:1.
+ * `$input` is the `<button>` (:24-33).
+ */
+export declare class ControlButton extends ControlData {
+	override $input?: JQuery<HTMLButtonElement> | undefined;
+	override input?: HTMLButtonElement | undefined;
+	/** frappe/public/js/frappe/form/controls/button.js:2-5 — always `true`. */
+	override can_write(): boolean;
+	/** frappe/public/js/frappe/form/controls/button.js:6-38. */
+	override make_input(): void;
+	/**
+	 * frappe/public/js/frappe/form/controls/button.js:39-51. On a form, triggers
+	 * the form event named after the field (or the deprecated `run_doc_method`
+	 * when there is none and `df.options` is set); elsewhere calls `df.click()`.
+	 */
+	onclick(): void;
+	/** frappe/public/js/frappe/form/controls/button.js:52-67. Deprecated upstream. */
+	run_server_script(): void;
+	/** frappe/public/js/frappe/form/controls/button.js:68-70. */
+	hide(): void;
+	/** frappe/public/js/frappe/form/controls/button.js:71-74. */
+	override set_input_areas(): void;
+	/** frappe/public/js/frappe/form/controls/button.js:75-77. */
+	override set_empty_description(): void;
+	/** frappe/public/js/frappe/form/controls/button.js:78-87 — the label goes on the button. */
+	override set_label(label?: string): void;
+}
+
+/**
+ * `frappe.ui.form.ControlCheck` — frappe/public/js/frappe/form/controls/check.js:1.
+ * An `<input type="checkbox">` (:2-3).
+ */
+export declare class ControlCheck extends ControlData {
+	override $input?: JQuery<HTMLInputElement> | undefined;
+	override input?: HTMLInputElement | undefined;
+	/** frappe/public/js/frappe/form/controls/check.js:5-17. */
+	override make_wrapper(): void;
+	/** frappe/public/js/frappe/form/controls/check.js:18-24. */
+	override set_input_areas(): void;
+	/** frappe/public/js/frappe/form/controls/check.js:25-28. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/check.js:29-31. */
+	override get_input_value(): 0 | 1;
+	/** frappe/public/js/frappe/form/controls/check.js:32-34 — `cint(value)`. */
+	override validate(value: unknown): number;
+	/** frappe/public/js/frappe/form/controls/check.js:35-45. */
+	override set_input(value: unknown): void;
+}
+
+/** `frappe.ui.form.ControlSwitch` — frappe/public/js/frappe/form/controls/switch.js:5. A restyled `ControlCheck`. */
+export declare class ControlSwitch extends ControlCheck {
+	/** frappe/public/js/frappe/form/controls/switch.js:6-11 — adds `role="switch"`. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/switch.js:13. */
+	override make_wrapper(): void;
+}
+
+/** `frappe.ui.form.ControlSignature` — frappe/public/js/frappe/form/controls/signature.js:1. */
+export declare class ControlSignature extends ControlData {
+	/** frappe/public/js/frappe/form/controls/signature.js:4, :116-118. */
+	saving?: boolean | undefined;
+	/** frappe/public/js/frappe/form/controls/signature.js:5, :85, :99. */
+	loading?: boolean | undefined;
+	/** The jSignature host — frappe/public/js/frappe/form/controls/signature.js:14, once its library has loaded. */
+	body?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/signature.js:19. */
+	img_wrapper?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/signature.js:23. */
+	img?: JQuery<HTMLElement> | undefined;
+	/** The jSignature pad — frappe/public/js/frappe/form/controls/signature.js:31. */
+	$pad?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/signature.js:42. */
+	$reset_button_wrapper?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/signature.js:2-26. */
+	override make(): void;
+	/** frappe/public/js/frappe/form/controls/signature.js:28-56. */
+	make_pad(): void;
+	/** frappe/public/js/frappe/form/controls/signature.js:57-68. */
+	override refresh_input(): void;
+	/** frappe/public/js/frappe/form/controls/signature.js:69-77. */
+	set_image(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/signature.js:78-101. */
+	load_pad(): void;
+	/** frappe/public/js/frappe/form/controls/signature.js:102-113. */
+	set_editable(editable: boolean): void;
+	/** frappe/public/js/frappe/form/controls/signature.js:114-119. */
+	set_my_value(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/signature.js:120-122 — `this.value`, else the model's. */
+	override get_value(): unknown;
+	/** frappe/public/js/frappe/form/controls/signature.js:124-127. */
+	on_reset_sign(): void;
+	/** frappe/public/js/frappe/form/controls/signature.js:129-134. */
+	on_save_sign(): void;
+	/** frappe/public/js/frappe/form/controls/signature.js:135-137. */
+	override on_section_collapse(): void;
+}
+
+/**
+ * `frappe.ui.form.ControlGeolocation` — frappe/public/js/frappe/form/controls/geolocation.js:3.
+ * A Leaflet map in the display area. Leaflet is a third-party library frappe
+ * loads at runtime (`load_lib`, :49-54), so its objects are `unknown` here.
+ */
+export declare class ControlGeolocation extends ControlData {
+	/** frappe/public/js/frappe/form/controls/geolocation.js:17. */
+	map_id?: string | undefined;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:18-22. */
+	map_area?: JQuery<HTMLElement> | undefined;
+	/** The Leaflet map — frappe/public/js/frappe/form/controls/geolocation.js:167. */
+	map?: unknown;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:189. */
+	editableLayers?: unknown;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:211. */
+	locate_control?: unknown;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:217. */
+	draw_control?: unknown;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:272. */
+	bound_event_listeners?: boolean | undefined;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:6-9 — `async`, and hides the input area. */
+	override make(): Promise<void>;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:11-47 — builds the map area, then the map once Leaflet has loaded. */
+	override set_disp_area(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:49-54 — requires `leaflet.bundle.js` and `.css`. */
+	load_lib(): Promise<unknown>;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:56-79. Builds the map; `value` is not read. */
+	make_map(value?: unknown): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:81-94 — draws the stored GeoJSON string. */
+	bind_leaflet_data(value: string): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:106-115 — an override point for how points render. */
+	point_to_layer(geoJsonPoint: unknown, latlng: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:125-127 — an override point; `{}` here. */
+	set_style(geoJsonFeature: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:137 — an override point; empty here. */
+	on_each_feature(feature: unknown, layer: unknown): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:139. */
+	customize_draw_controls(): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:166-190. */
+	bind_leaflet_map(): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:192. */
+	bind_leaflet_layers_control(): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:209. */
+	bind_leaflet_locate_control(): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:215. */
+	bind_leaflet_draw_control(): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:226. */
+	get_leaflet_controls(): unknown;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:260-269. */
+	display_leaflet_overlays_control(display?: string): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:271-309. */
+	bind_leaflet_event_listeners(): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:311-321. */
+	add_non_group_layers(source_layer: unknown, target_group: unknown): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:323-327. */
+	clear_editable_layers(): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:329-339. */
+	fit_and_recenter_map(): void;
+	/** frappe/public/js/frappe/form/controls/geolocation.js:341-343. */
+	override on_section_collapse(hide: boolean): void;
+}
+
+/** `frappe.ui.form.ControlPassword` — frappe/public/js/frappe/form/controls/password.js:1. */
+export declare class ControlPassword extends ControlData {
+	override $input?: JQuery<HTMLInputElement> | undefined;
+	override input?: HTMLInputElement | undefined;
+	/** frappe/public/js/frappe/form/controls/password.js:3. */
+	override make(): void;
+	/** frappe/public/js/frappe/form/controls/password.js:7. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/password.js:55. */
+	disable_password_checks(): void;
+	/** frappe/public/js/frappe/form/controls/password.js:59. */
+	get_password_strength(value: string): unknown;
+	/** frappe/public/js/frappe/form/controls/password.js:85. */
+	set_strength_indicator(color: string): void;
+	/** frappe/public/js/frappe/form/controls/password.js:5, cleared by {@link ControlPassword.disable_password_checks} (:56). */
+	enable_password_checks?: boolean | undefined;
+	/** The strength meter — frappe/public/js/frappe/form/controls/password.js:11-21. */
+	indicator?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/password.js:23. */
+	progress_text?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/password.js:24. */
+	progress_bar?: JQuery<HTMLElement> | undefined;
+	/** The field's `.help-box` — frappe/public/js/frappe/form/controls/password.js:25. */
+	message?: JQuery<HTMLElement> | undefined;
+	/** The show/hide button — frappe/public/js/frappe/form/controls/password.js:36-40. */
+	toggle_password?: JQuery<HTMLElement> | undefined;
+}
+
+/** `frappe.ui.form.ControlPhone` — frappe/public/js/frappe/form/controls/phone.js:4. */
+export declare class ControlPhone extends ControlData {
+	/** frappe/public/js/frappe/form/controls/phone.js:5 — `async`. */
+	override make_input(): Promise<void>;
+	/** frappe/public/js/frappe/form/controls/phone.js:153. */
+	override refresh(): void;
+	/** frappe/public/js/frappe/form/controls/phone.js:175. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/phone.js:199. */
+	override get_value(): unknown;
+	/** Country name → its `code`, `isd`, … — frappe/public/js/frappe/form/controls/phone.js:18, :21. */
+	country_codes?: Record<string, Record<string, unknown>> | undefined;
+	/** The `PhonePicker` — frappe/public/js/frappe/form/controls/phone.js:95. */
+	country_code_picker?: unknown;
+	/** frappe/public/js/frappe/form/controls/phone.js:127, :130. */
+	selected_icon?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/phone.js:135. */
+	$isd?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/phone.js:14-24 — from localforage, else the server; cached. */
+	setup_country_codes(): Promise<void>;
+	/** frappe/public/js/frappe/form/controls/phone.js:26-33 — `sys_defaults.country`, else India, when the field is empty. */
+	set_default_country(): void;
+	/** frappe/public/js/frappe/form/controls/phone.js:35. */
+	input_events(): void;
+	/** frappe/public/js/frappe/form/controls/phone.js:93. */
+	setup_country_code_picker(): void;
+	/** frappe/public/js/frappe/form/controls/phone.js:142-151 — the popper's offset, aligned to the input's start. */
+	get_popover_offset(offsets: {
+		reference: { left: number; width: number };
+		popper: { top: number; width: number };
+	}): { popper: Record<string, unknown> };
+	/** frappe/public/js/frappe/form/controls/phone.js:164-173. */
+	reset_input(): void;
+	/** frappe/public/js/frappe/form/controls/phone.js:203-207 — `country_code` is the lower-case ISO code, as `"in"`. */
+	set_flag(country_code: string): void;
+	/** frappe/public/js/frappe/form/controls/phone.js:210-225. */
+	get_country_code_and_change_flag(isd: string): void;
+	/** frappe/public/js/frappe/form/controls/phone.js:227-230 — the country's ISD code. */
+	get_country(country: string): unknown;
+	/** frappe/public/js/frappe/form/controls/phone.js:232-236 — `frappe.utils.flag` of the country's code. */
+	get_country_flag(country: string): unknown;
+	/** frappe/public/js/frappe/form/controls/phone.js:238-243. */
+	update_padding(): void;
+}
+
+/** `frappe.ui.form.ControlColor` — frappe/public/js/frappe/form/controls/color.js:3. */
+export declare class ControlColor extends ControlData {
+	/** frappe/public/js/frappe/form/controls/color.js:4. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/color.js:10. */
+	make_color_input(): void;
+	/** frappe/public/js/frappe/form/controls/color.js:92. */
+	override refresh(): void;
+	/** frappe/public/js/frappe/form/controls/color.js:101. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/color.js:110. */
+	get_color(): unknown;
+	/** frappe/public/js/frappe/form/controls/color.js:114. */
+	override validate(value: unknown): unknown;
+}
+
+/** `frappe.ui.form.ControlIcon` — frappe/public/js/frappe/form/controls/icon.js:3. */
+export declare class ControlIcon extends ControlData {
+	/** frappe/public/js/frappe/form/controls/icon.js:4. */
+	override make_input(): void;
+	/** frappe/public/js/frappe/form/controls/icon.js:18. */
+	make_icon_input(): void;
+	/** frappe/public/js/frappe/form/controls/icon.js:93. */
+	override refresh(): void;
+	/** frappe/public/js/frappe/form/controls/icon.js:102. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/icon.js:109. */
+	get_icon(): unknown;
+	/** frappe/public/js/frappe/form/controls/icon.js:11-16 — fills `frappe.symbols` with the names of the sprite's icons. */
+	get_all_icons(): void;
+}
+
+/** `frappe.ui.form.ControlBarcode` — frappe/public/js/frappe/form/controls/barcode.js:3. */
+export declare class ControlBarcode extends ControlData {
+	/** frappe/public/js/frappe/form/controls/barcode.js:4. */
+	override make_wrapper(): void;
+	/** frappe/public/js/frappe/form/controls/barcode.js:14. */
+	override parse(value: unknown): unknown;
+	/** frappe/public/js/frappe/form/controls/barcode.js:25. */
+	override set_formatted_input(value: unknown): void;
+	/** frappe/public/js/frappe/form/controls/barcode.js:44. */
+	get_barcode_html(value: unknown): unknown;
+	/**
+	 * frappe/public/js/frappe/form/controls/barcode.js:59-78 — the JsBarcode options: defaults, then `df.options`
+	 * when it is JSON. With a `valueField` there it also sets that field to
+	 * `value` (:72-75).
+	 */
+	get_options(value: string): Record<string, unknown>;
+}
+
+/**
+ * An attachment as `ControlAttachmentGallery#get_attachments` lists it: the
+ * File row from `frm.get_files()` or the server, with `file_name` defaulted to
+ * the URL, `file_url` resolved and `is_image` added
+ * (frappe/public/js/frappe/form/controls/attachment_gallery.js:94-99).
+ */
+export interface ControlAttachmentGalleryItem {
+	name?: string;
+	file_name: string;
+	file_url: string;
+	is_image: boolean;
+	[field: string]: unknown;
+}
+
+/** `frappe.ui.form.ControlAttachmentGallery` — frappe/public/js/frappe/form/controls/attachment_gallery.js:1, extending `ControlInput` directly. */
+export declare class ControlAttachmentGallery extends ControlInput {
+	/** frappe/public/js/frappe/form/controls/attachment_gallery.js:8. */
+	$gallery?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/attachment_gallery.js:6. */
+	override make(): void;
+	/** frappe/public/js/frappe/form/controls/attachment_gallery.js:14 — `async`. */
+	override refresh_input(): Promise<void>;
+	/** Bumped by every refresh, so a stale `get_attachments` result is dropped — frappe/public/js/frappe/form/controls/attachment_gallery.js:18-19, :38, :46. */
+	refresh_id?: number | undefined;
+	/** The `<img>` of each image, by File name — frappe/public/js/frappe/form/controls/attachment_gallery.js:23, :162. */
+	image_thumbnails?: Map<string, HTMLElement> | undefined;
+	/** The attachments last rendered — frappe/public/js/frappe/form/controls/attachment_gallery.js:51. */
+	attachments?: ControlAttachmentGalleryItem[] | undefined;
+	/** The PhotoSwipe bundle load, shared by every gallery — frappe/public/js/frappe/form/controls/attachment_gallery.js:253-265. */
+	static photoswipe_ready?: Promise<unknown> | undefined;
+	/** frappe/public/js/frappe/form/controls/attachment_gallery.js:72-74 — `message` is set as text. */
+	render_empty_state(message: string): void;
+	/**
+	 * frappe/public/js/frappe/form/controls/attachment_gallery.js:76-100. The form's files, or with `df.link_filters`
+	 * the server's filtered list (it throws on a malformed response, :88-90),
+	 * sorted by name.
+	 */
+	get_attachments(): Promise<ControlAttachmentGalleryItem[]>;
+	/** frappe/public/js/frappe/form/controls/attachment_gallery.js:102-122 — `df.link_filters` parsed, `eval:` values evaluated; `[]` when unset or invalid. */
+	get_filters(): unknown[];
+	/** frappe/public/js/frappe/form/controls/attachment_gallery.js:124-132. */
+	can_add_attachment(): unknown;
+	/** frappe/public/js/frappe/form/controls/attachment_gallery.js:134-186. */
+	render_attachment($grid: JQuery<HTMLElement>, attachment: ControlAttachmentGalleryItem, can_delete: unknown): void;
+	/** frappe/public/js/frappe/form/controls/attachment_gallery.js:188-202. */
+	render_delete_button($item_wrapper: JQuery<HTMLElement>, attachment: ControlAttachmentGalleryItem): void;
+	/** frappe/public/js/frappe/form/controls/attachment_gallery.js:204-218 — opens the form's attachment dialog for this field. */
+	render_upload_button($grid: JQuery<HTMLElement>): void;
+	/** frappe/public/js/frappe/form/controls/attachment_gallery.js:220-224 — asks first. */
+	delete_attachment(attachment: ControlAttachmentGalleryItem): void;
+	/** frappe/public/js/frappe/form/controls/attachment_gallery.js:226-233 — the image attachments, each with its `thumbnail` element. */
+	get_image_attachments(): Array<ControlAttachmentGalleryItem & { thumbnail: HTMLElement | undefined }>;
+	/** frappe/public/js/frappe/form/controls/attachment_gallery.js:235-250. */
+	open_lightbox(images: Array<ControlAttachmentGalleryItem & { thumbnail?: HTMLElement | undefined }>, index: number): void;
+	/** frappe/public/js/frappe/form/controls/attachment_gallery.js:252-266. */
+	load_photoswipe(): Promise<unknown>;
+}
+
+/** `frappe.ui.form.ControlHTML` — frappe/public/js/frappe/form/controls/html.js:1, extending `BaseControl` directly. */
+export declare class ControlHTML extends BaseControl {
+	/** `this.wrapper` — frappe/public/js/frappe/form/controls/html.js:4. */
+	disp_area?: HTMLElement | undefined;
+	/** frappe/public/js/frappe/form/controls/html.js:2-5. */
+	override make(): void;
+	/** frappe/public/js/frappe/form/controls/html.js:6-11. */
+	override refresh_input(): void;
+	/** frappe/public/js/frappe/form/controls/html.js:12-20 — `df.options`, translated and rendered as a template. */
+	get_content(): string;
+	/** frappe/public/js/frappe/form/controls/html.js:21-23. */
+	html(html?: string): void;
+	/** frappe/public/js/frappe/form/controls/html.js:24-34 — HTML or a jQuery element; resolves at once. */
+	override set_value(html: string | JQuery): Promise<void>;
+	/** frappe/public/js/frappe/form/controls/html.js:35-40. */
+	_set_html(html: unknown): void;
+}
+
+/** `frappe.ui.form.ControlHeading` — frappe/public/js/frappe/form/controls/heading.js:1. */
+export declare class ControlHeading extends ControlHTML {
+	/** frappe/public/js/frappe/form/controls/heading.js:2-4 — the label in an `<h4>`. */
+	override get_content(): string;
+}
+
+/** `frappe.ui.form.ControlImage` — frappe/public/js/frappe/form/controls/image.js:1, extending `BaseControl` directly. */
+export declare class ControlImage extends BaseControl {
+	/** frappe/public/js/frappe/form/controls/image.js:5. */
+	$body?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/image.js:13. */
+	$img?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/image.js:17. */
+	$buffer?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/image.js:2-7. */
+	override make(): void;
+	/** frappe/public/js/frappe/form/controls/image.js:8-22 — shows the image the field `df.options` names. Returns `false`. */
+	override refresh_input(): false;
+}
+
+/** `frappe.ui.form.ControlMultiCheck` — frappe/public/js/frappe/form/controls/multicheck.js:1, extending `BaseControl` directly. */
+export declare class ControlMultiCheck extends BaseControl {
+	/** frappe/public/js/frappe/form/controls/multicheck.js:45, :49, :59. */
+	options?: SelectOption[] | undefined;
+	/** The checked values — frappe/public/js/frappe/form/controls/multicheck.js:113, :128. */
+	selected_options?: unknown[] | undefined;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:22. */
+	$checkbox_area?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:6-25. */
+	override make(): void;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:27-31. */
+	override refresh(): void;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:33-35. */
+	override refresh_input(): void;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:37-55 — from `df.get_data`, else `df.options`. */
+	set_options(): void;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:112-115 — selects the options marked `checked`. */
+	set_checked_options(): void;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:127-139. */
+	select_all(deselect?: boolean): void;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:141-148. */
+	select_options(selected_options: unknown[]): void;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:150-152 — the checked values. */
+	override get_value(): unknown[] | undefined;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:154-156. */
+	get_checked_options(): unknown[] | undefined;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:158-162. */
+	get_unchecked_options(): unknown[];
+	/** frappe/public/js/frappe/form/controls/multicheck.js:9-11 — only with `df.label`. */
+	$label?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:13. */
+	$load_state?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:14. */
+	$select_buttons?: JQuery<HTMLElement> | undefined;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:57-74 — `options` from `df.options`, an array or JSON. */
+	parse_df_options(): void;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:76-93 — sorted by label unless `df.sort_options` is `false`. */
+	make_checkboxes(): void;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:95-110 — calls `df.on_change` on every toggle (:108). */
+	bind_checkboxes(): void;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:117-125. */
+	setup_select_all(): void;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:164-187. */
+	get_checkbox_element(option: Exclude<SelectOption, string>): JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/controls/multicheck.js:189-200. */
+	get_select_buttons(): JQuery<HTMLElement>;
 }
 
 /**
@@ -881,6 +2341,15 @@ export declare class Layout {
 		ignore_errors?: boolean,
 		check_invalid?: boolean
 	) => Record<string, unknown> | null;
+	/**
+	 * Where a Link control without a form writes its `fetch_from` values:
+	 * `ControlLink` reads `this.layout?.set_value` and calls it with each target
+	 * fieldname and value (frappe/public/js/frappe/form/controls/link.js:928-938).
+	 * `FieldGroup` (and so `Dialog`) defines it; a plain `Layout` does not, so an
+	 * app laying out controls itself can assign one. It is called detached, with
+	 * no `this`, so assign an arrow function.
+	 */
+	set_value?(fieldname: string, value: unknown): unknown;
 
 	// ---- built by make() ----
 	/** `.form-layout` — frappe/public/js/frappe/form/layout.js:25. */
@@ -1373,7 +2842,7 @@ export declare class Toolbar {
  * `$.extend(this, opts)` runs in `Layout`'s constructor (frappe/public/js/frappe/form/layout.js:18), so every
  * key of {@link LayoutOptions} lands on the instance verbatim here too.
  */
-export declare class FieldGroup extends Layout {
+export declare class FieldGroup<TValues extends object = Record<string, unknown>> extends Layout {
 	constructor(opts?: LayoutOptions);
 
 	/** frappe/public/js/frappe/ui/field_group.js:8, flipped by the `change`/`input` handlers at :88-101. */
@@ -1384,7 +2853,7 @@ export declare class FieldGroup extends Layout {
 	 */
 	fetch_dict: Record<string, Record<string, Record<string, string>>>;
 	/** From `opts` — applied by `set_values()` in the constructor (frappe/public/js/frappe/ui/field_group.js:16-18). */
-	values?: Record<string, unknown>;
+	values?: Partial<TValues>;
 	/** From `opts` — frappe/public/js/frappe/ui/field_group.js:84 skips {@link FieldGroup.catch_enter_as_submit}. */
 	no_submit_on_enter?: boolean;
 	/** From `opts` — frappe/public/js/frappe/ui/field_group.js:106 makes {@link FieldGroup.focus_on_first_input} a no-op. */
@@ -1452,22 +2921,31 @@ export declare class FieldGroup extends Layout {
 	 * Returns **`null`** (after `frappe.msgprint`) when a `reqd` field is empty
 	 * and `ignore_errors` is falsy (:169-180), or when a field carries
 	 * `df.invalid` and `check_invalid` is set (:182-193). Keys are omitted
-	 * entirely for null-ish values (:157), so the result is a partial map.
+	 * entirely for null-ish values (:157), so the result is a partial map:
+	 * `Partial<TValues>`, where `TValues` is the class's type parameter, the
+	 * values keyed by fieldname. It defaults to `Record<string, unknown>`;
+	 * name it on the variable to type the values:
+	 * `const g: frappe.ui.FieldGroup<{ qty: number }> = new frappe.ui.FieldGroup(…)`
+	 * (see {@link FieldGroupConstructor}).
 	 */
 	override get_values: (
 		ignore_errors?: boolean,
 		check_invalid?: boolean
-	) => Record<string, unknown> | null;
-	/** frappe/public/js/frappe/ui/field_group.js:197-200 — `null` when the field exists but has no `get_value`. */
-	get_value(key: string): unknown;
+	) => Partial<TValues> | null;
+	/**
+	 * frappe/public/js/frappe/ui/field_group.js:197-200 — the control's
+	 * `get_value()`; `null` when the field exists but has no `get_value`, and
+	 * `undefined` for an unknown fieldname.
+	 */
+	get_value<K extends keyof TValues & string>(key: K): TValues[K] | null | undefined;
 	/** frappe/public/js/frappe/ui/field_group.js:202-215. Resolves immediately when the fieldname is unknown. */
-	set_value(key: string, val: unknown): Promise<void>;
+	override set_value<K extends keyof TValues & string>(key: K, val: TValues[K] | null | undefined): Promise<void>;
 	/** frappe/public/js/frappe/ui/field_group.js:217-219. */
 	has_field(fieldname: string): boolean;
 	/** frappe/public/js/frappe/ui/field_group.js:221-223 — an alias of {@link FieldGroup.set_value}. */
-	set_input(key: string, val: unknown): Promise<void>;
+	set_input<K extends keyof TValues & string>(key: K, val: TValues[K] | null | undefined): Promise<void>;
 	/** frappe/public/js/frappe/ui/field_group.js:225-234. Silently skips keys with no matching field. */
-	set_values(dict: Record<string, unknown>): Promise<void[]>;
+	set_values(dict: Partial<TValues>): Promise<void[]>;
 	/** frappe/public/js/frappe/ui/field_group.js:236-243. Resets every control to its `df.default` or `""`. */
 	clear(): void;
 	/**
@@ -1493,15 +2971,33 @@ export declare class FieldGroup extends Layout {
 	is_new(): boolean | undefined;
 }
 
-/** The modal width classes `Dialog#set_modal_size` picks from — frappe/public/js/frappe/ui/dialog.js:170-193. */
-export type DialogSize = "small" | "large" | "extra-large" | "";
+/**
+ * The type of `frappe.ui.FieldGroup` itself (frappe/public/js/frappe/ui/field_group.js:5).
+ * See {@link DialogConstructor}: its one construct signature is not generic
+ * for the same reason, so annotate the variable to name `TValues`.
+ */
+export interface FieldGroupConstructor {
+	new (opts?: LayoutOptions): FieldGroup;
+	readonly prototype: FieldGroup;
+}
+
+/**
+ * The modal width classes `Dialog#set_modal_size` picks from — frappe/public/js/frappe/ui/dialog.js:170-193.
+ *
+ * `"medium"` adds no class, but any truthy size skips the automatic sizing
+ * (frappe/public/js/frappe/ui/dialog.js:44), so it keeps the default width
+ * however many columns the dialog has. frappe passes it itself
+ * (frappe/public/js/frappe/ui/naming_series.js:21,
+ * frappe/public/js/frappe/list/list_filter/manage_layouts_dialog.js:12).
+ */
+export type DialogSize = "small" | "medium" | "large" | "extra-large" | "";
 
 /**
  * The `action` bag an older dialog API passes instead of
  * `primary_action` / `secondary_action` — read at frappe/public/js/frappe/ui/dialog.js:69-90.
  */
 export interface DialogActions {
-	primary: { label?: string; onsubmit?: (values: Record<string, unknown>) => void };
+	primary: { label?: string; onsubmit?(values: Record<string, unknown>): unknown };
 	secondary: { label?: string };
 }
 
@@ -1513,7 +3009,7 @@ export interface DialogActions {
  * (frappe/public/js/frappe/form/layout.js:18), so anything else you pass lands on the instance — hence the
  * open index signature, inherited from {@link LayoutOptions}.
  */
-export interface DialogOptions extends LayoutOptions {
+export interface DialogOptions<TValues extends object = Record<string, unknown>> extends LayoutOptions {
 	/** frappe/public/js/frappe/ui/dialog.js:298 — set as the `.modal-title` HTML, not text. */
 	title?: string;
 	/**
@@ -1542,8 +3038,13 @@ export interface DialogOptions extends LayoutOptions {
 	 * frappe/public/js/frappe/ui/dialog.js:70-76. Called with the result of `get_values()`, `this` bound to the
 	 * dialog. If it returns a thenable the primary button shows its busy state
 	 * until that settles (frappe/public/js/frappe/ui/dialog.js:267-273), hence `unknown` rather than `void`.
+	 *
+	 * `values` is `Partial<TValues>`: `get_values()` leaves out every empty
+	 * field (frappe/public/js/frappe/ui/field_group.js:157), so a key can be
+	 * missing however the dialog was typed. Declared as a method, so a callback
+	 * whose parameter names its own values type is accepted as well.
 	 */
-	primary_action?: (values: Record<string, unknown>) => unknown;
+	primary_action?(this: Dialog<TValues>, values: Partial<TValues>): unknown;
 	/** frappe/public/js/frappe/ui/dialog.js:72-74 — defaults to `__("Submit", null, "Primary action in dialog")`. */
 	primary_action_label?: string;
 	/**
@@ -1567,6 +3068,39 @@ export interface DialogOptions extends LayoutOptions {
 	on_page_show?: () => void;
 	/** frappe/public/js/frappe/ui/dialog.js:385 — fired by {@link Dialog.toggle_minimize}. */
 	on_minimize_toggle?: (is_minimized: boolean) => void;
+}
+
+/**
+ * The type of `frappe.ui.Dialog` itself — frappe/public/js/frappe/ui/dialog.js:10-31.
+ *
+ * It has one construct signature, and it is not generic, on purpose. A dialog
+ * whose options refer to the dialog being built is the usual frappe pattern:
+ *
+ * ```js
+ * const d = new frappe.ui.Dialog({
+ *   fields: [{ fieldname: "a", fieldtype: "Data", onchange: () => d.get_value("a") }],
+ *   primary_action: () => d.hide(),
+ * });
+ * ```
+ *
+ * TypeScript can give `d` a type without checking the options first only
+ * when the construct signature is single and not generic; a generic or
+ * overloaded one turns that code into TS7022 ("'d' implicitly has type
+ * 'any'"). So `new frappe.ui.Dialog(…)` is a `Dialog<Record<string, unknown>>`,
+ * and the values type is named on the variable, which that instance is
+ * assignable to:
+ *
+ * ```ts
+ * const d: frappe.ui.Dialog<{ qty: number }> = new frappe.ui.Dialog({ … });
+ * d.get_value("qty"); // number | null | undefined
+ * ```
+ *
+ * `primary_action` is a method, so its `values` parameter can name the same
+ * shape (`primary_action(values: { qty?: number }) { … }`).
+ */
+export interface DialogConstructor {
+	new (opts?: DialogOptions): Dialog;
+	readonly prototype: Dialog;
 }
 
 /**
@@ -1607,8 +3141,13 @@ export interface DialogOptions extends LayoutOptions {
  * **Read {@link Dialog.display} instead** — frappe/public/js/frappe/ui/dialog.js:13, :104, :126 keep it in
  * sync with `shown.bs.modal` / `hide.bs.modal` and nothing shadows it.
  */
-export declare class Dialog extends FieldGroup {
-	constructor(opts?: DialogOptions);
+export declare class Dialog<TValues extends object = Record<string, unknown>> extends FieldGroup<TValues> {
+	/**
+	 * frappe/public/js/frappe/ui/dialog.js:11-31. `frappe.ui.Dialog` itself is
+	 * typed {@link DialogConstructor}, whose one construct signature is not
+	 * generic; see there for how to name `TValues`.
+	 */
+	constructor(opts?: DialogOptions<TValues>);
 
 	// ---- constructor (frappe/public/js/frappe/ui/dialog.js:13-27) ----
 	/** frappe/public/js/frappe/ui/dialog.js:13, :104, :126 — `true` between `shown.bs.modal` and `hide.bs.modal`. */
@@ -1637,7 +3176,8 @@ export declare class Dialog extends FieldGroup {
 	title?: string;
 	indicator?: string;
 	minimizable?: boolean;
-	primary_action?: (values: Record<string, unknown>) => unknown;
+	/** See {@link DialogOptions.primary_action}. */
+	primary_action?(this: Dialog<TValues>, values: Partial<TValues>): unknown;
 	primary_action_label?: string;
 	primary_action_loading_label?: string;
 	secondary_action?: (event: JQuery.ClickEvent) => void;
@@ -1724,7 +3264,7 @@ export declare class Dialog extends FieldGroup {
 	 */
 	set_primary_action(
 		label: string,
-		click?: (values: Record<string, unknown>) => unknown
+		click?: (this: Dialog<TValues>, values: Partial<TValues>) => unknown
 	): JQuery<HTMLElement>;
 	/** frappe/public/js/frappe/ui/dialog.js:279-282. */
 	set_secondary_action(click: (event: JQuery.ClickEvent) => void): JQuery<HTMLElement>;
@@ -1829,7 +3369,18 @@ export declare class Form<DT extends string = string> {
 	grids: ControlTable[];
 	/** The client-script controller instance — frappe/public/js/frappe/form/form.js:78. */
 	cscript: FormController;
-	events: Record<string, unknown>;
+	/**
+	 * frappe/public/js/frappe/form/form.js:79 — `{}`, then filled by
+	 * `frappe.ui.form.on`: a handler registered while a form of its doctype is
+	 * open is also stored here under its event name, so a script can call
+	 * another handler as `frm.events.my_helper(frm)`
+	 * (frappe/public/js/frappe/form/script_manager.js:39-43). Removed again by
+	 * `frappe.ui.form.off` (:66-68). Only the last handler of each name is kept,
+	 * and a name may be missing, so check before calling. What is stored is a
+	 * wrapper that forwards its arguments (:28-35), and scripts call it with the
+	 * form alone, so `cdt` and `cdn` are optional here.
+	 */
+	events: Record<string, FormEventsEntrySignature<DT>["handler"] | undefined>;
 	fetch_dict: Record<string, unknown>;
 	parent: HTMLElement;
 	doctype_layout?: DocTypeMeta;
@@ -1861,7 +3412,16 @@ export declare class Form<DT extends string = string> {
 	layout: Layout;
 	script_manager: ScriptManager;
 	dashboard: Dashboard;
-	footer?: unknown;
+	/**
+	 * The comments and activity footer — frappe/public/js/frappe/form/form.js:173-176.
+	 * Only built when the doctype shows its toolbar and the user's desk settings
+	 * show the timeline (:167), hence optional.
+	 */
+	footer?: FormFooter;
+	/** The footer's comment box — frappe/public/js/frappe/form/footer/footer.js:46. Set with {@link Form.footer}. */
+	comment_box?: ControlComment;
+	/** The footer's activity timeline — frappe/public/js/frappe/form/footer/footer.js:78. Set with {@link Form.footer}. */
+	timeline?: FormTimeline;
 	tour?: unknown;
 	states?: unknown;
 	form_wrapper?: JQuery<HTMLElement>;
@@ -1929,6 +3489,33 @@ export declare class Form<DT extends string = string> {
 		btn?: HTMLElement | JQuery,
 		on_error?: (...args: unknown[]) => void
 	): Promise<unknown>;
+	/**
+	 * frappe/public/js/frappe/form/form.js:929-972. Confirms "Permanently Submit
+	 * …?", runs `before_submit`, saves with `"Submit"`, then `callback()` and the
+	 * `on_submit` event. The promise resolves with the form only after
+	 * `on_submit` has run (:950-952). It rejects when the user may not submit:
+	 * `validate_form_action("Submit")` runs inside the promise's executor
+	 * (:932) and calls `frappe.throw` (:1202-1228). Otherwise it never rejects,
+	 * and stays pending when the user cancels, `before_submit` sets
+	 * `frappe.validated = false`, or the save fails (`on_error` is called
+	 * instead, :939, :946, :964, :969).
+	 */
+	savesubmit(
+		btn?: HTMLElement | JQuery | null,
+		callback?: () => void,
+		on_error?: () => void
+	): Promise<this>;
+	/**
+	 * frappe/public/js/frappe/form/form.js:974-1000. Cancels the document, after
+	 * offering to cancel its submitted linked documents too. Returns nothing.
+	 */
+	savecancel(btn?: HTMLElement | JQuery | null, callback?: () => void, on_error?: () => void): void;
+	/**
+	 * frappe/public/js/frappe/form/form.js:918-927. Confirms, runs
+	 * `before_discard`, then discards the draft. The promise it returns never
+	 * settles: nothing calls its `resolve` (:920).
+	 */
+	discard(btn?: HTMLElement | JQuery | null, callback?: () => void, on_error?: () => void): Promise<unknown>;
 	/** frappe/public/js/frappe/form/form.js:1166-1171. */
 	savetrash(): void;
 	/** frappe/public/js/frappe/form/form.js:1503-1512. */
@@ -2127,6 +3714,135 @@ export declare class Form<DT extends string = string> {
 }
 
 /**
+ * `frappe.ui.form.Footer` (class `FormFooter`) — frappe/public/js/frappe/form/footer/footer.js:4-97.
+ * The comment box and activity timeline under a form; {@link Form.footer}
+ * holds the form's own. `$.extend(this, opts)` merges the options onto the
+ * instance (:6), then the constructor builds the footer, the comment box and
+ * the timeline (:7-9).
+ */
+export declare class FormFooter {
+	/** frappe/public/js/frappe/form/footer/footer.js:5-14. Form builds it with `{ frm, parent }` (frappe/public/js/frappe/form/form.js:173-176). */
+	constructor(opts: { frm: Form; parent: JQuery<HTMLElement>; [option: string]: unknown });
+	frm: Form;
+	/** Hidden for a new document — frappe/public/js/frappe/form/footer/footer.js:84-87. */
+	parent: JQuery<HTMLElement>;
+	/** The rendered `form_footer` template — frappe/public/js/frappe/form/footer/footer.js:16. */
+	wrapper: JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/footer.js:15-21. */
+	make(): void;
+	/** frappe/public/js/frappe/form/footer/footer.js:22-32. */
+	setup_scroll_to_top(): void;
+	/** frappe/public/js/frappe/form/footer/footer.js:33-44. */
+	toggle_scroll_to_top_button($button: JQuery<HTMLElement>, $container: JQuery<HTMLElement>): void;
+	/** frappe/public/js/frappe/form/footer/footer.js:45-76 — sets `frm.comment_box`. */
+	make_comment_box(): void;
+	/** frappe/public/js/frappe/form/footer/footer.js:77-82 — sets `frm.timeline`. */
+	make_timeline(): void;
+	/** frappe/public/js/frappe/form/footer/footer.js:83-91 — refreshes the timeline, or hides the footer for a new document. */
+	refresh(): void;
+	/** frappe/public/js/frappe/form/footer/footer.js:93-96. */
+	refresh_comments_count(): void;
+}
+
+/**
+ * One timeline entry, as `BaseTimeline#get_timeline_item` renders it
+ * (frappe/public/js/frappe/form/footer/base_timeline.js:96-155). `content` and
+ * `creation` are always read; the rest are optional.
+ */
+export interface FormTimelineItem {
+	/** Appended into `.timeline-content` — frappe/public/js/frappe/form/footer/base_timeline.js:138-139. */
+	content: string | JQuery;
+	/** Sorts the entries and renders the time — frappe/public/js/frappe/form/footer/base_timeline.js:53-55, :59-61, :140-148. */
+	creation: string;
+	doctype?: string;
+	name?: string;
+	/** A `frappe.utils.icon` name — frappe/public/js/frappe/form/footer/base_timeline.js:123-128. */
+	icon?: string;
+	icon_size?: string;
+	icon_class?: string;
+	title?: string;
+	/** HTML used when there is no `icon` — frappe/public/js/frappe/form/footer/base_timeline.js:129-130. */
+	timeline_badge?: string | JQuery;
+	hide_timestamp?: boolean;
+	is_card?: boolean;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:150-152. */
+	id?: string;
+}
+
+/**
+ * The form's activity timeline, `FormTimeline`
+ * (frappe/public/js/frappe/form/footer/form_timeline.js:10), extending
+ * `BaseTimeline` (frappe/public/js/frappe/form/footer/base_timeline.js:4, also
+ * `frappe.ui.BaseTimeline`, :158). Neither class is on `frappe.ui.form`; the
+ * instance is {@link Form.timeline}. Only the shared, public members are
+ * declared.
+ */
+export declare class FormTimeline {
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:5-8 — `Object.assign(this, opts)`, then `make()`. */
+	constructor(opts: { parent: JQuery<HTMLElement>; frm: Form; [option: string]: unknown });
+	frm: Form;
+	/** Replaced by the timeline in `make()` — frappe/public/js/frappe/form/footer/base_timeline.js:26. */
+	parent: JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:11-12. */
+	timeline_wrapper: JQuery<HTMLElement>;
+	/** The same element — frappe/public/js/frappe/form/footer/base_timeline.js:12. */
+	wrapper: JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:13. */
+	timeline_items_wrapper: JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:14-20. */
+	timeline_actions_wrapper: JQuery<HTMLElement>;
+	/** The entries `prepare_timeline_contents` collected — frappe/public/js/frappe/form/footer/base_timeline.js:27, :48. */
+	timeline_items: FormTimelineItem[];
+	/** `frm.get_docinfo()` at the last render — frappe/public/js/frappe/form/footer/base_timeline.js:49. */
+	doc_info?: unknown;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:11-16. */
+	make(): void;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:18-23 — re-renders and fires the form's `timeline_refresh` event. */
+	refresh(): void;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:34-44 — a button above the entries; returns it. */
+	add_action_button(
+		label: string,
+		action: (event: JQuery.ClickEvent) => unknown,
+		icon?: string | null,
+		btn_class?: string | null
+	): JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:123-127. */
+	render_timeline_items(): void;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:162-179 — fills `timeline_items`. */
+	prepare_timeline_contents(): unknown;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:70-78 — renders one entry, newest first unless `append_at_the_end`. */
+	add_timeline_item(item: FormTimelineItem, append_at_the_end?: boolean): JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:80-82. */
+	add_timeline_items(items: FormTimelineItem[], append_at_the_end?: boolean): void;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:96-155. */
+	get_timeline_item(item: FormTimelineItem): JQuery<HTMLElement>;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:559 — opens the email composer, as a reply when given a Communication. */
+	compose_mail(communication_doc?: FrappeDoc | null, reply_all?: boolean): void;
+}
+
+/**
+ * The jQuery events a form triggers on `document`, with the arguments
+ * `trigger` passes: `$(document).trigger("form-refresh", [this])`
+ * (frappe/public/js/frappe/form/form.js:670), and the same for `form-load`
+ * (:611), `form-unload` (:613) and `form-rename` (:620). The email composer
+ * adds `form-typing` when it opens on a form and `form-stopped-typing` when it
+ * closes (frappe/public/js/frappe/views/communication.js:48-50, :1213-1215).
+ * Handlers receive the jQuery event first, then these:
+ *
+ * ```ts
+ * $(document).on("form-refresh", (_e: JQuery.TriggeredEvent, ...[frm]: FormDocumentEvents["form-refresh"]) => {});
+ * ```
+ */
+export interface FormDocumentEvents {
+	"form-load": [frm: Form];
+	"form-unload": [frm: Form];
+	"form-rename": [frm: Form];
+	"form-refresh": [frm: Form];
+	"form-typing": [frm: Form];
+	"form-stopped-typing": [frm: Form];
+}
+
+/**
  * What {@link Form.set_value} accepts for a field whose document type is `V`:
  * `V` itself, plus — for a Table field — an array of partial rows, because
  * frappe builds the real rows from them (frappe/public/js/frappe/form/form.js:1873-1901).
@@ -2165,6 +3881,15 @@ export type CurFrm = Form | null;
  */
 interface FormEventHandlerSignature<FrmDT extends string> {
 	handler(frm: Form<FrmDT>, cdt: string, cdn: string): unknown;
+}
+
+/**
+ * An entry of {@link Form.events}: the same handler, as scripts call it
+ * (`frm.events.helper(frm)`). A method signature for the same reason as
+ * {@link FormEventHandlerSignature}.
+ */
+interface FormEventsEntrySignature<FrmDT extends string> {
+	handler(frm: Form<FrmDT>, cdt?: string, cdn?: string): unknown;
 }
 
 /**
@@ -2523,16 +4248,22 @@ export interface PrintView {}
  * below is source-verified — that assignment exists. The TYPE is only as strong
  * as this package has evidence for:
  *
- * - The 50 `Control*` classes are `typeof BaseControl`. Verified: every one is
- *   `class Control… extends frappe.ui.form.Control…`, and every chain
- *   terminates at `frappe.ui.form.Control` (= {@link BaseControl}) — see
- *   `controls/base_input.js` (`ControlInput`, the parent of `ControlData` and
- *   so of nearly every other control), `controls/html.js`, `controls/table.js`,
- *   `controls/multicheck.js` and `controls/image.js`, which are the five
- *   direct subclasses; the other 44 descend through those. This is
- *   also exactly how `make_control` resolves a fieldtype to a class
+ * - Each `Control*` member is typed as its own class (`typeof ControlData`,
+ *   `typeof ControlCode`, …), declared above with the members its file
+ *   defines, and each class extends the one its file extends. Every chain
+ *   terminates at `frappe.ui.form.Control` (= {@link BaseControl}) through
+ *   one of its five direct subclasses: `ControlInput`
+ *   (`frappe/public/js/frappe/form/controls/base_input.js:2`, the parent of
+ *   `ControlData` and so of nearly every other control), `ControlHTML`,
+ *   `ControlTable`, `ControlMultiCheck` and `ControlImage`. The three aliases
+ *   share their target's class: `ControlReadOnly` is `ControlData`
+ *   (`frappe/public/js/frappe/form/controls/data.js:336`), `ControlLongText` is
+ *   `ControlText` (`frappe/public/js/frappe/form/controls/text.js:23`) and
+ *   `ControlLongInt` is `ControlInt`
+ *   (`frappe/public/js/frappe/form/controls/int.js:28`). This is the registry
+ *   `make_control` resolves a fieldtype in
  *   (`frappe/public/js/frappe/form/controls/control.js:48`).
- * - The remaining members are `unknown`. Their shapes are NOT declared by this
+ * - The remaining members are `unknown`, unless typed below. Their shapes are NOT declared by this
  *   package, and `unknown` says so rather than guessing. This is no worse than
  *   the index signature it replaces — those names resolved to `unknown` under it
  *   too — and it is strictly better for everything NOT on the list.
@@ -2601,56 +4332,111 @@ export interface FrappeUiFormNamespace {
 		label: string;
 		href?: string;
 	}>;
-	/* -- Control classes, by fieldtype name (`controls/*.js`). All extend
-	 * `frappe.ui.form.Control` = BaseControl; this is the registry
-	 * `make_control` reads (frappe/public/js/frappe/form/controls/control.js:48). -------------------- */
-	ControlAttach: typeof BaseControl;
-	ControlAttachImage: typeof BaseControl;
-	ControlAttachmentGallery: typeof BaseControl;
-	ControlAutocomplete: typeof BaseControl;
-	ControlBarcode: typeof BaseControl;
-	ControlButton: typeof BaseControl;
-	ControlCheck: typeof BaseControl;
-	ControlCode: typeof BaseControl;
-	ControlColor: typeof BaseControl;
-	ControlComment: typeof BaseControl;
-	ControlCurrency: typeof BaseControl;
-	ControlData: typeof BaseControl;
-	ControlDate: typeof BaseControl;
-	ControlDateRange: typeof BaseControl;
-	ControlDatetime: typeof BaseControl;
-	ControlDuration: typeof BaseControl;
-	ControlDynamicLink: typeof BaseControl;
-	ControlFloat: typeof BaseControl;
-	ControlGeolocation: typeof BaseControl;
-	ControlHTML: typeof BaseControl;
-	ControlHTMLEditor: typeof BaseControl;
-	ControlHeading: typeof BaseControl;
-	ControlIcon: typeof BaseControl;
-	ControlImage: typeof BaseControl;
-	ControlInt: typeof BaseControl;
-	ControlJSON: typeof BaseControl;
-	ControlLink: typeof BaseControl;
-	ControlLongInt: typeof BaseControl;
-	ControlLongText: typeof BaseControl;
-	ControlMarkdownEditor: typeof BaseControl;
-	ControlMultiCheck: typeof BaseControl;
-	ControlMultiSelect: typeof BaseControl;
-	ControlMultiSelectList: typeof BaseControl;
-	ControlMultiSelectPills: typeof BaseControl;
-	ControlPassword: typeof BaseControl;
-	ControlPercent: typeof BaseControl;
-	ControlPhone: typeof BaseControl;
-	ControlRating: typeof BaseControl;
-	ControlReadOnly: typeof BaseControl;
-	ControlSelect: typeof BaseControl;
-	ControlSignature: typeof BaseControl;
-	ControlSmallText: typeof BaseControl;
-	ControlSwitch: typeof BaseControl;
-	ControlTableMultiSelect: typeof BaseControl;
-	ControlText: typeof BaseControl;
-	ControlTextEditor: typeof BaseControl;
-	ControlTime: typeof BaseControl;
+	/* -- Control classes, by fieldtype name (`controls/*.js`). Each is its own
+	 * class, ending at `frappe.ui.form.Control` = BaseControl; this is the
+	 * registry `make_control` reads (frappe/public/js/frappe/form/controls/control.js:48).
+	 *
+	 * Each slot is a get/set pair. Reading it gives the precise class, so
+	 * `class extends frappe.ui.form.ControlData` sees every member and static
+	 * that file defines. Writing it takes any control class: `make_control`
+	 * only calls `new frappe.ui.form["Control" + fieldtype](opts)`
+	 * (frappe/public/js/frappe/form/controls/control.js:48-55), so an app may
+	 * register a replacement that does not descend from the class it replaces.
+	 * -------------------- */
+	get ControlAttach(): typeof ControlAttach;
+	set ControlAttach(value: typeof BaseControl);
+	get ControlAttachImage(): typeof ControlAttachImage;
+	set ControlAttachImage(value: typeof BaseControl);
+	get ControlAttachmentGallery(): typeof ControlAttachmentGallery;
+	set ControlAttachmentGallery(value: typeof BaseControl);
+	get ControlAutocomplete(): typeof ControlAutocomplete;
+	set ControlAutocomplete(value: typeof BaseControl);
+	get ControlBarcode(): typeof ControlBarcode;
+	set ControlBarcode(value: typeof BaseControl);
+	get ControlButton(): typeof ControlButton;
+	set ControlButton(value: typeof BaseControl);
+	get ControlCheck(): typeof ControlCheck;
+	set ControlCheck(value: typeof BaseControl);
+	get ControlCode(): typeof ControlCode;
+	set ControlCode(value: typeof BaseControl);
+	get ControlColor(): typeof ControlColor;
+	set ControlColor(value: typeof BaseControl);
+	get ControlComment(): typeof ControlComment;
+	set ControlComment(value: typeof BaseControl);
+	get ControlCurrency(): typeof ControlCurrency;
+	set ControlCurrency(value: typeof BaseControl);
+	get ControlData(): typeof ControlData;
+	set ControlData(value: typeof BaseControl);
+	get ControlDate(): typeof ControlDate;
+	set ControlDate(value: typeof BaseControl);
+	get ControlDateRange(): typeof ControlDateRange;
+	set ControlDateRange(value: typeof BaseControl);
+	get ControlDatetime(): typeof ControlDatetime;
+	set ControlDatetime(value: typeof BaseControl);
+	get ControlDuration(): typeof ControlDuration;
+	set ControlDuration(value: typeof BaseControl);
+	get ControlDynamicLink(): typeof ControlDynamicLink;
+	set ControlDynamicLink(value: typeof BaseControl);
+	get ControlFloat(): typeof ControlFloat;
+	set ControlFloat(value: typeof BaseControl);
+	get ControlGeolocation(): typeof ControlGeolocation;
+	set ControlGeolocation(value: typeof BaseControl);
+	get ControlHTML(): typeof ControlHTML;
+	set ControlHTML(value: typeof BaseControl);
+	get ControlHTMLEditor(): typeof ControlHTMLEditor;
+	set ControlHTMLEditor(value: typeof BaseControl);
+	get ControlHeading(): typeof ControlHeading;
+	set ControlHeading(value: typeof BaseControl);
+	get ControlIcon(): typeof ControlIcon;
+	set ControlIcon(value: typeof BaseControl);
+	get ControlImage(): typeof ControlImage;
+	set ControlImage(value: typeof BaseControl);
+	get ControlInt(): typeof ControlInt;
+	set ControlInt(value: typeof BaseControl);
+	get ControlJSON(): typeof ControlJSON;
+	set ControlJSON(value: typeof BaseControl);
+	get ControlLink(): typeof ControlLink;
+	set ControlLink(value: typeof BaseControl);
+	get ControlLongInt(): typeof ControlInt;
+	set ControlLongInt(value: typeof BaseControl);
+	get ControlLongText(): typeof ControlText;
+	set ControlLongText(value: typeof BaseControl);
+	get ControlMarkdownEditor(): typeof ControlMarkdownEditor;
+	set ControlMarkdownEditor(value: typeof BaseControl);
+	get ControlMultiCheck(): typeof ControlMultiCheck;
+	set ControlMultiCheck(value: typeof BaseControl);
+	get ControlMultiSelect(): typeof ControlMultiSelect;
+	set ControlMultiSelect(value: typeof BaseControl);
+	get ControlMultiSelectList(): typeof ControlMultiSelectList;
+	set ControlMultiSelectList(value: typeof BaseControl);
+	get ControlMultiSelectPills(): typeof ControlMultiSelectPills;
+	set ControlMultiSelectPills(value: typeof BaseControl);
+	get ControlPassword(): typeof ControlPassword;
+	set ControlPassword(value: typeof BaseControl);
+	get ControlPercent(): typeof ControlPercent;
+	set ControlPercent(value: typeof BaseControl);
+	get ControlPhone(): typeof ControlPhone;
+	set ControlPhone(value: typeof BaseControl);
+	get ControlRating(): typeof ControlRating;
+	set ControlRating(value: typeof BaseControl);
+	get ControlReadOnly(): typeof ControlData;
+	set ControlReadOnly(value: typeof BaseControl);
+	get ControlSelect(): typeof ControlSelect;
+	set ControlSelect(value: typeof BaseControl);
+	get ControlSignature(): typeof ControlSignature;
+	set ControlSignature(value: typeof BaseControl);
+	get ControlSmallText(): typeof ControlSmallText;
+	set ControlSmallText(value: typeof BaseControl);
+	get ControlSwitch(): typeof ControlSwitch;
+	set ControlSwitch(value: typeof BaseControl);
+	get ControlTableMultiSelect(): typeof ControlTableMultiSelect;
+	set ControlTableMultiSelect(value: typeof BaseControl);
+	get ControlText(): typeof ControlText;
+	set ControlText(value: typeof BaseControl);
+	get ControlTextEditor(): typeof ControlTextEditor;
+	set ControlTextEditor(value: typeof BaseControl);
+	get ControlTime(): typeof ControlTime;
+	set ControlTime(value: typeof BaseControl);
 
 	/* -- Everything else frappe assigns onto the namespace. The NAMES are
 	 * source-verified; the SHAPES are not declared by this package, so they
@@ -2668,8 +4454,8 @@ export interface FrappeUiFormNamespace {
 	Attachments: unknown;
 	/** `form/dashboard.js — instance shape is the exported {@link Dashboard} interface` */
 	Dashboard: unknown;
-	/** `form/footer/footer.js` */
-	Footer: unknown;
+	/** frappe/public/js/frappe/form/footer/footer.js:4. See {@link FormFooter}. */
+	Footer: typeof FormFooter;
 	/** `form/form_tour.js` */
 	FormTour: unknown;
 	/** `form/form_viewers.js` */
@@ -2698,8 +4484,19 @@ export interface FrappeUiFormNamespace {
 	States: unknown;
 	/** `form/success_action.js` */
 	SuccessAction: unknown;
-	/** `form/controls/select.js` */
-	add_options: unknown;
+	/**
+	 * frappe/public/js/frappe/form/controls/select.js:111-136. Appends an
+	 * `<option>` per entry to the `<select>` (sorted by label when `sort`),
+	 * translating labels in `doctype`'s context, selects the first and fires
+	 * `select-change`. A non-array `options_list` is ignored. Returns the
+	 * `<select>`, wrapped.
+	 */
+	add_options(
+		input: HTMLElement | JQuery,
+		options_list: ReadonlyArray<SelectOption | null | undefined> | null | undefined,
+		sort?: unknown,
+		doctype?: string | null,
+	): JQuery<HTMLElement>;
 	/** `form/save.js` */
 	check_mandatory: unknown;
 	/**

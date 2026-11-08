@@ -1,0 +1,210 @@
+// Dialogs, prompts and the field definitions they take, the form footer, and
+// the model helpers, as desk scripts use them, with no casts.
+
+// A primary action whose parameter names its own values type is accepted:
+// primary_action is a method, so the narrower parameter is allowed. Every key
+// is optional, because get_values() leaves empty fields out.
+const merge = new frappe.ui.Dialog({
+	title: __("Merge"),
+	size: "medium",
+	fields: [
+		{
+			fieldname: "keep",
+			fieldtype: "Link",
+			options: "File",
+			only_select: 1,
+			get_query: () => ({ filters: { is_folder: 0 } }),
+			onchange() {
+				// `this` is the control.
+				void this.df.fieldname;
+			},
+		},
+		{ fieldname: "since", fieldtype: "Date", min_date: new Date() },
+		{
+			fieldname: "parts",
+			fieldtype: "MultiCheck",
+			options: [
+				{ value: "double_sided", label: "Double Sided", checked: true },
+				{ value: "color", label: "Color", description: __("Costs extra"), danger: 1 },
+			],
+		},
+		{ fieldname: "scan", fieldtype: "Attach", options: { disable_file_browser: true } },
+	],
+	/** @param {{ keep?: string; since?: string }} values */
+	primary_action(values) {
+		if (values.keep) merge.hide();
+	},
+});
+
+// Or type the whole dialog through the variable it is assigned to: get_value,
+// set_value and get_values are then checked against the values type.
+/** @type {frappe.ui.Dialog<{ percentage: number }>} */
+const discount = new frappe.ui.Dialog({
+	fields: [{ fieldname: "percentage", fieldtype: "Percent" }],
+	/** @param {{ percentage?: number }} values */
+	primary_action(values) {
+		/** @type {number | undefined} */
+		const pct = values.percentage;
+		void pct;
+		discount.hide();
+	},
+});
+/** @type {number | null | undefined} */
+const same = discount.get_value("percentage");
+void same;
+
+// A dialog whose fields and actions refer to the dialog itself, the usual
+// frappe pattern, needs no annotation (TS7022 when frappe.ui.Dialog was generic).
+// TypeScript 5.x still needs one when a hook that returns a value (get_query,
+// get_data) refers to the dialog; TypeScript 7 does not.
+/** @type {frappe.ui.Dialog} */
+const picker = new frappe.ui.Dialog({
+	fields: [
+		{
+			fieldname: "doctype",
+			fieldtype: "Link",
+			options: "DocType",
+			onchange() {
+				void picker.get_value("doctype");
+			},
+		},
+		{
+			fieldname: "format",
+			fieldtype: "Link",
+			options: "Print Format",
+			get_query() {
+				const filters = { doc_type: picker.get_value("doctype") };
+				return { filters };
+			},
+		},
+	],
+	primary_action() {
+		picker.hide();
+	},
+});
+picker.show();
+/** @type {frappe.ui.FieldGroup} */
+const group = new frappe.ui.FieldGroup({
+	fields: [
+		{
+			fieldname: "package",
+			fieldtype: "Select",
+			get_data() {
+				const kind = group.get_value("package");
+				return kind ? [String(kind)] : [];
+			},
+		},
+	],
+	body: document.body,
+});
+group.make();
+const plain = new frappe.ui.Dialog({
+	fields: [
+		{
+			fieldname: "doctype",
+			fieldtype: "Link",
+			options: "DocType",
+			onchange() {
+				plain.set_value("format", null);
+			},
+		},
+		{ fieldname: "format", fieldtype: "Link", options: "Print Format" },
+	],
+	primary_action() {
+		plain.hide();
+	},
+	secondary_action() {
+		plain.hide();
+	},
+});
+plain.show();
+const asked = frappe.prompt(
+	[
+		{
+			fieldname: "reason",
+			fieldtype: "Data",
+			onchange() {
+				void asked.get_value("reason");
+			},
+		},
+	],
+	(values) => void values["reason"],
+);
+
+// frappe.prompt infers the values type from the callback's parameter.
+frappe.prompt(
+	[{ fieldname: "tasks", fieldtype: "Small Text", label: __("Tasks") }],
+	/** @param {{ tasks?: string }} values */
+	async (values) => {
+		const subjects = (values.tasks ?? "").split("\n");
+		void subjects;
+	},
+);
+
+// A web form's attach fields take an object in options.
+/** @param {import("frappe-types").DocField} df */
+function no_file_browser(df) {
+	if (df.fieldtype === "Attach") {
+		df.options = { ...(typeof df.options === "object" && !Array.isArray(df.options) ? df.options : {}), disable_file_browser: true };
+		df.is_web_form = true;
+	}
+}
+void no_file_browser;
+
+// The upload dialog, which arrives in a lazily required bundle.
+const Uploader = frappe.ui.FileUploader;
+if (Uploader) {
+	const uploader = new Uploader({
+		doctype: "ToDo",
+		docname: "TD-0001",
+		restrictions: { allowed_file_types: ["image/*"] },
+		on_success(file) {
+			if (file && "file_url" in file) void file.file_url;
+		},
+	});
+	if (uploader.dialog) uploader.dialog.keep_grid_form_open = true;
+	void uploader.uploader.files.map((f) => f.doc?.name);
+	void uploader.upload_files();
+}
+
+// The form footer, its comment box and timeline, and frm.events.
+frappe.ui.form.on("ToDo", {
+	refresh(frm) {
+		if (!frm.footer && frappe.boot.desk_settings?.timeline) {
+			frm.footer = new frappe.ui.form.Footer({ frm, parent: $("<div>").appendTo(frm.page.main.parent()) });
+			frm.footer.refresh();
+		}
+		frm.comment_box?.set_value("");
+		frm.timeline?.add_action_button(__("Call"), () => void frm.trigger("call"), "phone");
+		void frm.events.status?.(frm);
+	},
+	async status(frm) {
+		const submitted = await frm.savesubmit();
+		void submitted.doc.status;
+	},
+});
+
+// The per-user grid layout, the permission and workflow helpers.
+const grid_view = frappe.get_user_settings("Sales Order", "GridView");
+for (const column of grid_view["Sales Order Item"] ?? []) {
+	void column.fieldname, column.width;
+}
+if (frappe.perm.has_perm("ToDo", 0, "write")) {
+	void frappe.workflow.get_state_fieldname("ToDo");
+}
+
+// ---- negative cases -------------------------------------------------------
+
+new frappe.ui.Dialog({
+	fields: [
+		// @ts-expect-error min_date is a Date, as the datepicker takes it
+		{ fieldname: "since", fieldtype: "Date", min_date: "2026-01-01" },
+	],
+});
+
+/** @type {frappe.ui.Dialog<{ percentage: number }>} */
+const typed = new frappe.ui.Dialog({});
+// @ts-expect-error not a field of this dialog
+void typed.get_value("percent");
+// @ts-expect-error FileUploader is lazily loaded: narrow it first
+void new frappe.ui.FileUploader({});
