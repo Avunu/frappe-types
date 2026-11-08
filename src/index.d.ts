@@ -610,6 +610,7 @@ export type {
 	CurrentForm,
 	CurrentPageContainer,
 	DeskGlobals,
+	DeskHelperGlobals,
 	DeskTemplateGlobals,
 	DeskWindow,
 	DevServerFlag,
@@ -627,6 +628,7 @@ export type {
 	MaybeJQuery,
 	SelectOptionInput,
 	TranslateFunction,
+	TranslateStringFunction,
 	TranslationArgs,
 } from "./globals";
 
