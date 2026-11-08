@@ -115,7 +115,7 @@
  * @packageDocumentation
  */
 
-import type { DocField } from "./model";
+import type { DocField, FieldType } from "./model";
 // Single-sourced from `utils.d.ts`; see the note on `DataTableTranslations` below.
 import type { DataTableTranslations } from "./utils";
 
@@ -237,13 +237,27 @@ export type DataTableCompareValue = (
 
 /**
  * The filter descriptor `filterRows` derives from a user's keyword
- * (`filterRows.js:143-209` `guessFilter`). `{}` for an empty keyword.
+ * (`filterRows.js:143-209` `guessFilter`), discriminated on `type`: each branch
+ * returns exactly one `text` type. A leading `>`, `<`, `=` or `!=` is first
+ * stripped from the keyword (`:146-152`); "the rest" below is what remains.
+ *
+ *   - `>x` greaterThan, `<x` lessThan — the rest, trimmed (`:154-170`)
+ *   - `=5` equals — the rest as a number (`:172-179`). A bare `=` gives
+ *     equals `0`: the empty rest counts as a number (`utils.js:119-121`
+ *     `isNumber`) and `Number("")` is `0`.
+ *   - `5` containsNumber — the rest, untrimmed (`:181-186`): `!=5` gives
+ *     `"5"`, and a bare `>`, `<` or `!=` gives `""`.
+ *   - `!=5` notEquals — a number (`:188-195`). Unreachable in practice: a
+ *     numeric `!=` keyword has already returned as containsNumber at `:181`.
+ *   - `5:10` range — both ends, trimmed (`:197-203`)
+ *   - anything else: contains — the rest, lower-cased (`:205-208`)
+ *   - an empty keyword: `{}` (`:144`), the last member.
  */
-export interface DataTableGuessedFilter {
-	type?: "contains" | "containsNumber" | "greaterThan" | "lessThan" | "equals" | "notEquals" | "range";
-	/** `string` for text filters, `number` for `=`/`!=`, `string[]` (length 2) for `a:b` ranges. */
-	text?: string | number | string[];
-}
+export type DataTableGuessedFilter =
+	| { type: "greaterThan" | "lessThan" | "containsNumber" | "contains"; text: string }
+	| { type: "equals" | "notEquals"; text: number }
+	| { type: "range"; text: [string, string] }
+	| { type?: undefined; text?: undefined };
 
 /**
  * Inline-filter keywords, keyed by column index.
@@ -468,10 +482,18 @@ export interface DataTableColumn extends DataTableCellBase {
 	 * (`frappe/public/js/frappe/utils/utils.js:1005-1012`), and the link side panel falls back to `column.fieldtype`
 	 * when there is no `docfield` (`frappe/public/js/frappe/views/reports/link_side_panel.js:28`).
 	 */
-	fieldtype?: string;
+	fieldtype?: FieldType;
 	fieldname?: string;
 	label?: string;
 	disable_total?: boolean | 0 | 1;
+	/**
+	 * A Query Report column's `options` (the Link target, say), carried through
+	 * the same `Object.assign`. A `"Label:Link/DocType:width"` column string is
+	 * split into it (`frappe/public/js/frappe/views/reports/report_utils.js:96-109`),
+	 * and `frappe.format` reads it when it formats the cell with the column as
+	 * its docfield (`frappe/public/js/frappe/views/reports/query_report.js:1504-1509`).
+	 */
+	options?: string | string[];
 }
 
 /**

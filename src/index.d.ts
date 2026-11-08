@@ -398,6 +398,7 @@ export type {
 	DeskThemeMode,
 	FrappeAppLogoSource,
 	FrappeBrowserInfo,
+	FrappeContactsNamespace,
 	FrappeDebouncedFunction,
 	FrappeDesktopIconRecord,
 	FrappeDoctypeRoute,
@@ -406,6 +407,8 @@ export type {
 	FrappeDurationParts,
 	FrappeEventEmitter,
 	FrappeFactoryView,
+	FrappeGenerateRouteDocView,
+	FrappeGenerateRouteDocViews,
 	FrappeGenerateRouteItem,
 	FrappeHelpDropdownItem,
 	FrappeIconSize,
@@ -454,9 +457,11 @@ export type {
 /** Classes and functions (runtime values as well as types). */
 export {
 	BaseList,
+	CommunicationComposer,
 	Container,
 	Factory,
 	FileView,
+	GanttView,
 	GroupBy,
 	ListFactory,
 	ListSettings,
@@ -470,9 +475,15 @@ export {
 
 export type {
 	BaseListOptions,
+	CalendarFieldMap,
+	CalendarSettings,
+	CommunicationComposerOptions,
 	CurrentListView,
 	CurrentPage,
+	DocPreview,
 	FilterArea,
+	FrappeBreadcrumbSource,
+	FrappeBreadcrumbs,
 	FrappeDatatableClassName,
 	FrappeDeskSelector,
 	FrappeIconSpriteId,
@@ -481,14 +492,19 @@ export type {
 	FrappeListDoc,
 	FrappeListDocFields,
 	FrappeQueryReportGlobals,
+	FrappeStandardViewName,
+	FrappeViewModes,
 	FrappeViewName,
+	FrappeViewsGlobals,
 	FrappeViewsNamespace,
+	GanttViewTask,
 	GetCurrentPage,
 	GetListView,
 	GroupBySettings,
 	ListColumn,
 	ListColumnType,
 	ListDocOf,
+	ListFactoryViewOptions,
 	ListFilter,
 	ListFilterTuple,
 	ListLayout,
@@ -496,9 +512,11 @@ export type {
 	ListPagingButtonGroup,
 	ListSettingsField,
 	ListViewArgs,
+	ListViewConstructor,
 	ListViewDBSettings,
 	ListViewElementFactory,
 	ListViewMenuItem,
+	ListViewSelectLabelMap,
 	ListViewSelectView,
 	ListViewSettings,
 	ListViewSettingsButton,
@@ -810,6 +828,7 @@ import type {
 } from "./utils";
 import type {
 	FrappeQueryReportGlobals,
+	FrappeViewsGlobals,
 	FrappeViewsNamespace,
 	GroupBy,
 	PageContainerElement,
@@ -1240,7 +1259,8 @@ export interface Frappe
 		FrappeModelMetaGlobals,
 		FrappeUtilsDomRouterGlobals,
 		FrappeDataTableNamespace,
-		FrappeQueryReportGlobals {
+		FrappeQueryReportGlobals,
+		FrappeViewsGlobals {
 	/** frappe/public/js/frappe/ui/dialog.js:4 and passim. */
 	ui: FrappeUiNamespace;
 	/**

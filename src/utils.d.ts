@@ -84,9 +84,10 @@ import type { FrappeBaseChart } from "./charts";
  *   writes verbatim into the pill's `data-theme` attribute
  *   (`frappe/public/js/frappe/ui/page.js:259`), owned by `core.d.ts`.
  */
-import type { BaseControl } from "./ui/form";
+import type { BaseControl, Form } from "./ui/form";
 import type { FrappeIndicator } from "./core";
 import type { FrappeCheck } from "./model";
+import type { FrappeModuleSidebar } from "./ui/sidebar";
 import type { JQueryRegion } from "./globals";
 // Single-sourced: `report_column_total`'s cell parameter IS frappe-datatable's
 // total-row cell. See the note on `FrappeReportColumnTotalCell` below, and the
@@ -234,6 +235,40 @@ export interface FrappeMapDefaults {
 }
 
 /**
+ * The registry of `doc_view`s {@link FrappeGenerateRouteItem} accepts: its keys
+ * are {@link FrappeGenerateRouteDocView}. Seeded with the views
+ * `generate_route`'s switch routes to
+ * (`frappe/public/js/frappe/utils/utils.js:1635-1665`), which are the non-empty
+ * options of the Workspace Shortcut `doc_view` field
+ * (`frappe/desk/doctype/workspace_shortcut/workspace_shortcut.json:48`); any
+ * other value routes to the doctype's default view (`:1666-1667`). The field's
+ * empty option is not a key: `doc_view` accepts `""` on its own. The values
+ * carry no meaning.
+ *
+ * An interface so that an app which wraps `frappe.utils.generate_route` to
+ * route a view of its own can register it:
+ *
+ * ```ts
+ * declare module "frappe-types" {
+ *   interface FrappeGenerateRouteDocViews { Chat: true }
+ * }
+ * ```
+ */
+export interface FrappeGenerateRouteDocViews {
+	List: true;
+	Tree: true;
+	"Report Builder": true;
+	Dashboard: true;
+	New: true;
+	Calendar: true;
+	Kanban: true;
+	Image: true;
+}
+
+/** A key of {@link FrappeGenerateRouteDocViews}: frappe's eight, and any an app registered. */
+export type FrappeGenerateRouteDocView = Extract<keyof FrappeGenerateRouteDocViews, string>;
+
+/**
  * The argument `frappe.utils.generate_route()` reads.
  * `frappe/public/js/frappe/utils/utils.js:1620-1717`. Only `type` is required;
  * every other member is consulted per `type`, and unknown members are ignored.
@@ -247,7 +282,16 @@ export interface FrappeGenerateRouteItem {
 	/** Short-circuits every branch when present (`frappe/public/js/frappe/utils/utils.js:1626,1695-1697`). */
 	route?: string;
 	link?: string;
-	doc_view?: "List" | "Tree" | "Report Builder" | "Dashboard" | "New" | "Calendar" | "Kanban" | "Image";
+	/**
+	 * Doctypes only: the view to route to (`frappe/public/js/frappe/utils/utils.js:1635`).
+	 * See {@link FrappeGenerateRouteDocViews}. `""` is the Workspace Shortcut
+	 * field's empty option
+	 * (`frappe/desk/doctype/workspace_shortcut/workspace_shortcut.json:48`), which
+	 * the shortcut widget forwards as it is
+	 * (`frappe/public/js/frappe/widgets/shortcut_widget.js:41-49`): the doctype's
+	 * default view (`frappe/public/js/frappe/utils/utils.js:1666-1667`).
+	 */
+	doc_view?: FrappeGenerateRouteDocView | "";
 	kanban_board?: string;
 	filters?: Record<string, unknown>;
 	tab?: string;
@@ -365,22 +409,15 @@ export interface FrappeAppLogoSource {
 }
 
 /**
- * An entry of `frappe.boot.module_sidebars`, as far as `frappe.utils` reads it:
- * the map is keyed by shell (a `Sidebar` document's name, or the module's name
- * where the base was computed), and every entry carries the `module` it belongs
- * to (`frappe/public/js/frappe/utils/utils.js:1393-1404`); `get_route_for_icon`
- * reads its `items` (`:1420`). The entry is assembled by `as_boot_entry()` in
- * `frappe/desk/doctype/sidebar/sidebar.py:1545-1566` (`name`, `module`, `label`,
- * `app`, `header_icon`, `module_onboarding`, `customized`, `computed`,
- * `workspaces`, `items`) inside `get_module_sidebars()` (`frappe/boot.py:610-648`);
- * only the two members `frappe.utils` reads are declared, so `items` stays
- * `unknown` and the rest rides on the index signature.
+ * An entry of `frappe.boot.module_sidebars`: what
+ * {@link FrappeUtils.sidebar_for_module} returns.
+ *
+ * @deprecated The same type as {@link FrappeModuleSidebar}; use that name.
+ * `sidebar_for_module` returns the boot entry itself
+ * (`frappe/public/js/frappe/utils/utils.js:1400-1404`), so it is now typed as
+ * one, rather than as this narrower `{module, items}` view of it.
  */
-export interface FrappeModuleSidebarShell {
-	module: string | null;
-	items: readonly unknown[];
-	[key: string]: unknown;
-}
+export type FrappeModuleSidebarShell = FrappeModuleSidebar;
 
 /** `utils/utils.js:2260-2300` — a navbar Help dropdown entry. */
 export interface FrappeHelpDropdownItem {
@@ -1000,9 +1037,10 @@ export interface FrappeUtils {
 	 * `frappe/public/js/frappe/utils/utils.js:1400-1404`. The boot entry for a
 	 * module's own shell: `frappe.boot.module_sidebars[module]`, else the entry
 	 * whose `module` equals it (a renamed `Sidebar`). `undefined` when `module` is
-	 * falsy or nothing matches.
+	 * falsy or nothing matches. The entry is returned as it is in the boot, so it
+	 * is a {@link FrappeModuleSidebar}, the type of `frappe.boot.module_sidebars`.
 	 */
-	sidebar_for_module(module: string | null | undefined): FrappeModuleSidebarShell | undefined;
+	sidebar_for_module(module: string | null | undefined): FrappeModuleSidebar | undefined;
 
 	/** `frappe/public/js/frappe/utils/utils.js:1501-1504`. Only `blue` and `gray` ship; indexed by colour name. */
 	desktop_pallete: { blue: string; gray: string; [color: string]: string | undefined };
@@ -3640,4 +3678,48 @@ export interface FrappeUtilsDomRouterGlobals {
 	set_route: FrappeRouterBase["set_route"];
 	/** `frappe/public/js/frappe/router.js:1085-1091` — the route before the current one, or `[]`. */
 	get_prev_route(): FrappeStandardRoute | [];
+
+	/**
+	 * `frappe/public/js/frappe/router.js:14` — values for the view the next route
+	 * opens: `null` until something sets them. Set them before
+	 * `frappe.set_route(...)`; the router also fills them from a route's query
+	 * string (`frappe/public/js/frappe/router.js:584-587`, `:790-800`) and from an
+	 * object in the route (`:644-646`, `:680-682`). A list view reads them as
+	 * filters, a new form as field values.
+	 */
+	route_options: Record<string, unknown> | null;
+
+	/**
+	 * `frappe/public/js/frappe/utils/address_and_contact.js:1`, `:286-339` — the
+	 * Address and Contact helpers of a party's form. In `form.bundle.js`
+	 * (`frappe/public/js/form.bundle.js:16`), which every desk page loads
+	 * (`frappe/hooks.py:23-32`, `app_include_js`), so it is not optional, like
+	 * `frappe.ui.form`.
+	 */
+	contacts: FrappeContactsNamespace;
+}
+
+/**
+ * `frappe.contacts` — `frappe.provide("frappe.contacts")`
+ * (`frappe/public/js/frappe/utils/address_and_contact.js:1`), extended at
+ * `frappe/public/js/frappe/utils/address_and_contact.js:286-339`.
+ */
+export interface FrappeContactsNamespace {
+	/** `frappe/public/js/frappe/utils/address_and_contact.js:287-291` — empties the form's `address_html` and `contact_html` fields. */
+	clear_address_and_contact(frm: Form): void;
+	/** `frappe/public/js/frappe/utils/address_and_contact.js:293-298` — renders the form's linked addresses and contacts into those fields. */
+	render_address_and_contact(frm: Form): void;
+	/**
+	 * `frappe/public/js/frappe/utils/address_and_contact.js:300-318` — the form
+	 * the user came from, if the previous route was another doctype's form;
+	 * both `null` otherwise.
+	 */
+	get_last_doc(frm: Form): { doctype: string | null; docname: string | null };
+	/**
+	 * `frappe/public/js/frappe/utils/address_and_contact.js:320-338` — sets
+	 * `display_field` (default `"address_display"`) to the formatted address of
+	 * `address_field` (default `"address"`), or to `""` when it is empty. Does
+	 * nothing while `frm.updating_party_details` is set.
+	 */
+	get_address_display(frm: Form, address_field?: string, display_field?: string): void;
 }

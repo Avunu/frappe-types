@@ -177,7 +177,20 @@ const report = {
 frappe.provide("frappe.query_reports")["Sales Summary"] = report;
 ```
 
-The namespace provides `frappe.Doc<DT>`, `frappe.ListDoc<DT>`, `frappe.DocType`, `frappe.FieldName<DT>` and `frappe.FieldValue<DT, F>`. It also provides `frappe.ui.Dialog<TValues>`, `DialogOptions<TValues>`, `FieldGroup<TValues>`, `FieldGroupOptions`, `FileUploader`, `FileUploaderOptions`, `Page`, `SortSelector`, `SortSelectorOptions` and `GroupBy`; `frappe.ui.form.Form<DT>`, `FormEvents<DT>`, `FormEventHandler`, `StandardFormEvents`, `Controller`, `Control`, `ControlOptions`, every `Control<Fieldtype>` class (`ControlData`, `ControlCode`, `ControlLink`, …), `Footer`, `QuickEntryForm`, `QuickEntryAfterInsert`, `PrintView` and `PrintViewTarget`; and `frappe.views.ListViewSettings<DT>`, `ListView`, `ReportView`, `ListViewSelect`, `PageWrapper`, `QueryReport`, `QueryReportSettings`, `QueryReportColumn` and `QueryReportFilter`. Each is an alias of a named export of `frappe-types`, so compiled TypeScript can import the same types instead (`import type { FormEvents } from "frappe-types"`).
+```js
+// project_calendar.js, a doctype's Calendar and Gantt settings. frappe.views.calendar is
+// optional, like every frappe.views member, so frappe's own `frappe.views.calendar["Event"] = {...}`
+// reports it as possibly undefined. frappe.provide returns it typed too.
+frappe.provide("frappe.views.calendar")["Project"] = {
+  field_map: { start: "expected_start_date", end: "expected_end_date", id: "name", title: "project_name" },
+  gantt: true,
+  get_css_class(event) {
+    return event.status === "Completed" ? "green" : "blue";
+  },
+};
+```
+
+The namespace provides `frappe.Doc<DT>`, `frappe.ListDoc<DT>`, `frappe.DocType`, `frappe.FieldName<DT>` and `frappe.FieldValue<DT, F>`. It also provides `frappe.ui.Dialog<TValues>`, `DialogOptions<TValues>`, `FieldGroup<TValues>`, `FieldGroupOptions`, `FileUploader`, `FileUploaderOptions`, `Page`, `SortSelector`, `SortSelectorOptions` and `GroupBy`; `frappe.ui.form.Form<DT>`, `FormEvents<DT>`, `FormEventHandler`, `StandardFormEvents`, `Controller`, `Control`, `ControlOptions`, every `Control<Fieldtype>` class (`ControlData`, `ControlCode`, `ControlLink`, …), `Footer`, `QuickEntryForm`, `QuickEntryAfterInsert`, `PrintView` and `PrintViewTarget`; `frappe.views.ListViewSettings<DT>`, `BaseList`, `ListView`, `ReportView`, `ListViewSelect`, `GanttView`, `CalendarSettings`, `CommunicationComposer`, `CommunicationComposerOptions`, `PageWrapper`, `QueryReport`, `QueryReportSettings`, `QueryReportColumn` and `QueryReportFilter`; `frappe.ui.SidePanel` and `DocPreview`; and `frappe.DataTable` (what `new frappe.DataTable(...)` returns) and `frappe.DataTableOptions`. Each is an alias of a named export of `frappe-types`, so compiled TypeScript can import the same types instead (`import type { FormEvents } from "frappe-types"`).
 
 Dialogs carry the shape of their values as a type parameter, `frappe.ui.Dialog<TValues>`. Name it on the variable, not on `new`: the constructor takes no type argument, so a dialog whose fields or actions refer to the dialog itself (`onchange() { d.get_value("a"); }`, `primary_action: () => d.hide()`) type-checks without an annotation. `get_value(fieldname)`, `set_value(fieldname, value)` and `get_values()` are then checked against `TValues`. `primary_action` receives `Partial<TValues>`, because frappe leaves every empty field out of `get_values()`, and it is declared as a method, so it can annotate its own parameter:
 
@@ -228,6 +241,20 @@ declare module "frappe-types" {
 
 The namespaces are `Frappe` (the root), `FrappeUiNamespace` (`frappe.ui`), `FrappeUiFormNamespace` (`frappe.ui.form`), `FrappeViewsNamespace` (`frappe.views`) and `FrappeBoot` (`frappe.boot`). Put the file in the tsconfig's `include`, and pass it to `audit-consumer.mjs --types`, which runs from a clone of this repository (see "Can my app compile against this?" under [Maintaining it across frappe versions](#maintaining-it-across-frappe-versions)).
 
+Two name lists that frappe keeps open at runtime are registries too. An app with a view of its own (a route `/desk/<doctype>/view/chat`, built by `frappe.views.ChatView`) registers the view mode in `FrappeViewModes`; `FrappeViewName` is its keys, so `frappe.views.view_modes.push("Chat")`, the switcher's `label_map["Chat"]` and a `"Chat"` key in `ListViewSelect#get_views()` need no cast. An app that wraps `frappe.utils.generate_route` to route a Workspace Shortcut to it registers the `doc_view` in `FrappeGenerateRouteDocViews`:
+
+```ts
+import type { ListFactoryViewOptions, ListView } from "frappe-types";
+
+declare module "frappe-types" {
+  interface FrappeViewModes { Chat: true }
+  interface FrappeGenerateRouteDocViews { Chat: true }
+  interface FrappeViewsNamespace { ChatView?: new (opts: ListFactoryViewOptions) => ListView }
+}
+```
+
+An instance member an app hangs on a frappe class merges into the class's interface the same way. A generic class repeats its type parameter: `interface ListView<TColumn> { chat_unread?: number }`.
+
 Each of frappe's controls is its own class, extending the one its file extends (`ControlFloat` extends `ControlInt` extends `ControlData` extends `ControlInput`), with the members its file defines. So a subclass calls `super.make_input()` and reads `this.input_area`, `this.$input` or `this.editor` without a cast. `$input` is an `HTMLElement` on `ControlData`, because subclasses put a `<select>`, `<textarea>` or `<button>` there; the classes that fix the element narrow it (`ControlSelect`, `ControlText`, `ControlInt`, `ControlLink`, `ControlCheck`, `ControlAttach`, `ControlButton`, …):
 
 ```js
@@ -262,6 +289,10 @@ if (Base) {
   };
 }
 ```
+
+The same goes for `frappe.views.ListView`, which frappe's own views extend and apps replace. The class is generic (`ListView<TColumn>`, so that `ReportView` can hold datatable columns), but the slot is typed `ListViewConstructor`, a plain constructor of `ListView`, so `frappe.views.ListView = class extends Base { … }` needs no cast. `view_name` is declared as the getter it is, so an app's own view overrides it with a getter. In desk JavaScript the getter's literal return widens to `string`, so annotate it: `/** @override @returns {import("frappe-types").FrappeViewName} */ get view_name() { return "Tasks"; }`. A `listview_settings` `onload` receives the view: a `ListView`, or a `ReportView` on the Report view. `refresh` is called by every `BaseList`, including an app's own view built on it, so it receives a `ListView | ReportView | BaseList`; narrow it (`view instanceof ListView`) before using a list view's members.
+
+The side panel's prototype can be patched the same way: besides its public calls, `frappe.ui.SidePanel` declares the members it renders through (`render_doc`, `set_header`, `make_buttons`, `show_preview`, …) and its `previews` cache of `DocPreview`s, what `frappe.desk.doc_preview.get_preview` returns.
 
 ### Server calls: `frappe.call`, `frappe.xcall`, `frm.call`
 

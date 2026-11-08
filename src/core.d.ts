@@ -47,6 +47,7 @@ import type {
 } from "./ui/sidebar";
 import type { FrappeDesktopIconRecord } from "./utils";
 import type {
+	CalendarSettings,
 	ListViewSettings,
 	ListViewSettingsButton,
 	ListViewSettingsDropdownButton,
@@ -2400,7 +2401,7 @@ export interface FrappeCore {
 	 * `frappe.locals` (provide.js:21). Returns the deepest object; the return
 	 * value is genuinely untyped, hence the honest open record.
 	 *
-	 * Two overloads name the registries desk scripts write into, where the
+	 * Three overloads name the registries desk scripts write into, where the
 	 * object `provide` returns IS the typed registry:
 	 * `frappe.provide("frappe.query_reports")` — what
 	 * `frappe/public/js/frappe/views/reports/query_report.js:12` itself calls —
@@ -2409,9 +2410,13 @@ export interface FrappeCore {
 	 * script to reach `frappe.query_reports` without a null check: the property
 	 * is optional on `frappe` because it does not exist until the report bundle
 	 * has loaded, and `provide` creates it when missing (`provide.js:13-15`).
+	 * The third, `frappe.provide("frappe.views.calendar")`, does the same for a
+	 * `<doctype>_calendar.js`.
 	 */
 	provide(namespace: "frappe.query_reports"): Record<string, QueryReportSettings | undefined>;
 	provide(namespace: "frappe.listview_settings"): Record<string, ListViewSettings | undefined>;
+	/** `frappe/public/js/frappe/views/calendar/calendar.js:4` — where a `<doctype>_calendar.js` assigns its settings. */
+	provide(namespace: "frappe.views.calendar"): Record<string, CalendarSettings | undefined>;
 	provide(namespace: string): Record<string, unknown>;
 
 	// -- assets and sequencing ----------------------------------------------

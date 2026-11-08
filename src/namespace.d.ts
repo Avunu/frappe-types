@@ -104,7 +104,14 @@ import type {
 	QuickEntryForm as QuickEntryFormClass,
 	StandardFormEvents as StandardFormEventsType,
 } from "./ui/form";
+import type { DataTableInstance, DataTableOptions as DataTableOptionsShape } from "./datatable";
 import type {
+	BaseList as BaseListClass,
+	CalendarSettings as CalendarSettingsShape,
+	CommunicationComposer as CommunicationComposerClass,
+	CommunicationComposerOptions as CommunicationComposerOptionsShape,
+	DocPreview as DocPreviewShape,
+	GanttView as GanttViewClass,
 	GroupBy as GroupByClass,
 	ListDocOf,
 	ListView as ListViewClass,
@@ -116,6 +123,7 @@ import type {
 	QueryReportFilterControl as QueryReportFilterControlShape,
 	QueryReportSettings as QueryReportSettingsShape,
 	ReportView as ReportViewClass,
+	SidePanel as SidePanelClass,
 	SortSelector as SortSelectorClass,
 	SortSelectorOptions as SortSelectorOptionsShape,
 } from "./views";
@@ -134,6 +142,10 @@ declare global {
 		type FieldName<DT extends string = string> = DocFieldName<DT>;
 		/** The value type of field `F` on `DT` — see {@link DocFieldValue}. */
 		type FieldValue<DT extends string, F extends string> = DocFieldValue<DT, F>;
+		/** What `new frappe.DataTable(...)` returns — `frappe/public/js/frappe/ui/datatable.js:3`. See {@link DataTableInstance}. */
+		type DataTable = DataTableInstance;
+		/** The options `new frappe.DataTable(wrapper, options)` takes. */
+		type DataTableOptions = DataTableOptionsShape;
 
 		namespace ui {
 			/**
@@ -159,6 +171,10 @@ declare global {
 			type FileUploader = FrappeFileUploader;
 			/** The options `new frappe.ui.FileUploader(...)` takes. */
 			type FileUploaderOptions = FrappeFileUploaderOptions;
+			/** `frappe.ui.SidePanel` — `frappe/public/js/frappe/ui/side_panel.js:399`. */
+			type SidePanel = SidePanelClass;
+			/** A document preview the side panel shows: what `frappe.desk.doc_preview.get_preview` returns. */
+			type DocPreview = DocPreviewShape;
 
 			namespace form {
 				/** `frappe.ui.form.Form` — `frappe/public/js/frappe/form/form.js:64`. */
@@ -295,8 +311,18 @@ declare global {
 			 * assigns. `DT` types the row documents its callbacks receive.
 			 */
 			type ListViewSettings<DT extends string = string> = ListViewSettingsShape<DT>;
+			/** `frappe.views.BaseList` — `frappe/public/js/frappe/list/base_list.js:5`. */
+			type BaseList = BaseListClass;
 			/** `frappe.views.ListView` — `frappe/public/js/frappe/list/list_view.js:6`. */
 			type ListView = ListViewClass;
+			/** `frappe.views.GanttView` — `frappe/public/js/frappe/views/gantt/gantt_view.js:13`. */
+			type GanttView = GanttViewClass;
+			/** `frappe.views.calendar[doctype]` — what a `<doctype>_calendar.js` assigns. */
+			type CalendarSettings = CalendarSettingsShape;
+			/** `frappe.views.CommunicationComposer` — `frappe/public/js/frappe/views/communication.js:11`. */
+			type CommunicationComposer = CommunicationComposerClass;
+			/** The options `new frappe.views.CommunicationComposer(...)` takes. */
+			type CommunicationComposerOptions = CommunicationComposerOptionsShape;
 			/** `frappe.views.ReportView` — `frappe/public/js/frappe/views/reports/report_view.js:9`. */
 			type ReportView = ReportViewClass;
 			/** `frappe.views.ListViewSelect` — `frappe/public/js/frappe/list/list_view_select.js:15`. */
