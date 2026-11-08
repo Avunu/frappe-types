@@ -177,7 +177,27 @@ const report = {
 frappe.provide("frappe.query_reports")["Sales Summary"] = report;
 ```
 
-The namespace provides `frappe.Doc<DT>`, `frappe.ListDoc<DT>`, `frappe.DocType`, `frappe.FieldName<DT>` and `frappe.FieldValue<DT, F>`. It also provides `frappe.ui.Dialog`, `DialogOptions`, `FieldGroup`, `FieldGroupOptions`, `Page`, `SortSelector`, `SortSelectorOptions` and `GroupBy`; `frappe.ui.form.Form<DT>`, `FormEvents<DT>`, `FormEventHandler`, `StandardFormEvents`, `Controller`, `Control`, `ControlOptions`, `QuickEntryForm`, `QuickEntryAfterInsert`, `PrintView` and `PrintViewTarget`; and `frappe.views.ListViewSettings<DT>`, `ListView`, `ReportView`, `ListViewSelect`, `PageWrapper`, `QueryReport`, `QueryReportSettings`, `QueryReportColumn` and `QueryReportFilter`. Each is an alias of a named export of `frappe-types`, so compiled TypeScript can import the same types instead (`import type { FormEvents } from "frappe-types"`).
+The namespace provides `frappe.Doc<DT>`, `frappe.ListDoc<DT>`, `frappe.DocType`, `frappe.FieldName<DT>` and `frappe.FieldValue<DT, F>`. It also provides `frappe.ui.Dialog<TValues>`, `DialogOptions<TValues>`, `FieldGroup<TValues>`, `FieldGroupOptions`, `FileUploader`, `FileUploaderOptions`, `Page`, `SortSelector`, `SortSelectorOptions` and `GroupBy`; `frappe.ui.form.Form<DT>`, `FormEvents<DT>`, `FormEventHandler`, `StandardFormEvents`, `Controller`, `Control`, `ControlOptions`, every `Control<Fieldtype>` class (`ControlData`, `ControlCode`, `ControlLink`, …), `Footer`, `QuickEntryForm`, `QuickEntryAfterInsert`, `PrintView` and `PrintViewTarget`; and `frappe.views.ListViewSettings<DT>`, `ListView`, `ReportView`, `ListViewSelect`, `PageWrapper`, `QueryReport`, `QueryReportSettings`, `QueryReportColumn` and `QueryReportFilter`. Each is an alias of a named export of `frappe-types`, so compiled TypeScript can import the same types instead (`import type { FormEvents } from "frappe-types"`).
+
+Dialogs take the shape of their values as a type parameter. `primary_action` receives `Partial<TValues>`, because frappe leaves every empty field out of `get_values()`, and it is declared as a method, so a callback that annotates its own parameter is accepted too:
+
+```js
+/** @type {frappe.ui.Dialog<{ percentage: number }>} */
+const d = new frappe.ui.Dialog({
+  fields: [{ fieldname: "percentage", fieldtype: "Percent" }],
+  primary_action(values) {
+    if (values.percentage !== undefined) d.hide(); // values.percentage is number | undefined
+  },
+});
+
+frappe.prompt(
+  [{ fieldname: "tasks", fieldtype: "Small Text" }],
+  /** @param {{ tasks?: string }} values */
+  (values) => void (values.tasks ?? "").split("\n"),
+);
+```
+
+In TypeScript, name it: `new frappe.ui.Dialog<StopTimerValues>({ … })`, `frappe.prompt<{ tasks: string }>(…)`. `get_value(fieldname)` and `set_value(fieldname, value)` are then checked against it too.
 
 Some rules about form events. Each one matches what frappe does at runtime:
 
@@ -191,11 +211,11 @@ frappe-types declares frappe's names and no one else's. An app that hangs its ow
 
 ```ts
 // types/frappe-app.d.ts. A module (it imports), so this merges into the package.
-import type { BaseControl, QuickEntryForm } from "frappe-types";
+import type { ControlData, QuickEntryForm } from "frappe-types";
 
 declare module "frappe-types" {
   interface FrappeUiFormNamespace {
-    ControlFontSelect: typeof BaseControl;
+    ControlFontSelect: typeof ControlData;
     WorkdayQuickEntryForm?: typeof QuickEntryForm;
   }
   interface Frappe {
@@ -206,10 +226,23 @@ declare module "frappe-types" {
 
 The namespaces are `Frappe` (the root), `FrappeUiNamespace` (`frappe.ui`), `FrappeUiFormNamespace` (`frappe.ui.form`), `FrappeViewsNamespace` (`frappe.views`) and `FrappeBoot` (`frappe.boot`). Put the file in the tsconfig's `include`, and pass it to `audit-consumer.mjs --types`, which runs from a clone of this repository (see "Can my app compile against this?" under [Maintaining it across frappe versions](#maintaining-it-across-frappe-versions)).
 
+Each of frappe's controls is its own class, extending the one its file extends (`ControlFloat` extends `ControlInt` extends `ControlData` extends `ControlInput`), with the members its file defines. So a subclass calls `super.make_input()` and reads `this.input_area`, `this.$input` or `this.editor` without a cast. `$input` is an `HTMLElement` on `ControlData`, because subclasses put a `<select>`, `<textarea>` or `<button>` there; the classes that fix the element narrow it (`ControlSelect`, `ControlText`, `ControlInt`, `ControlLink`, `ControlCheck`, `ControlAttach`, `ControlButton`, …):
+
+```js
+const Base = frappe.ui.form.ControlFloat;
+frappe.ui.form.ControlFloat = class extends Base {
+  /** @override */
+  make_input() {
+    super.make_input();
+    this.$input?.on("blur", () => void this.input?.value); // an <input> here
+  }
+};
+```
+
 Two things the presets ask of a desk script that subclasses a frappe class:
 
 - **`/** @override */` on each method that overrides one.** The presets turn on `noImplicitOverride`, which applies to JavaScript through JSDoc.
-- **Narrow a class that only some pages have before extending it.** `frappe.ui.form.PrintView` exists only on the print page, `frappe.ui.SidePanel` only once `side_panel.bundle.js` has been required, and every `frappe.views` class only once its bundle has; they are optional. Take the class into a constant and check it:
+- **Narrow a class that only some pages have before extending it.** `frappe.ui.form.PrintView` exists only on the print page, `frappe.ui.SidePanel` only once `side_panel.bundle.js` has been required, `frappe.ui.FileUploader` only once `file_uploader.bundle.js` has loaded, and every `frappe.views` class only once its bundle has; they are optional. Take the class into a constant and check it:
 
 ```js
 const Base = frappe.ui.form.PrintView;
