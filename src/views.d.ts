@@ -409,19 +409,23 @@ export interface ListViewSettings<DT extends string = string> {
 	primary_action?(): void;
 	/**
 	 * `frappe/public/js/frappe/list/base_list.js:556-558` `this.settings.refresh(this)` — fired after every refresh.
-	 * The view is a {@link ListView} or a {@link ReportView}: the only other
-	 * `BaseList`, `QueryReport` (`frappe/public/js/frappe/views/reports/query_report.js:32`),
-	 * replaces `refresh` without calling this one
-	 * (`frappe/public/js/frappe/views/reports/query_report.js:780`).
+	 * `BaseList#refresh` makes the call, for whichever view of the doctype is
+	 * open: in frappe that is a {@link ListView} (or one of its subclasses) or a
+	 * {@link ReportView} (`QueryReport` replaces `refresh` without calling this
+	 * one, `frappe/public/js/frappe/views/reports/query_report.js:780`), but an
+	 * app's own view built on {@link BaseList} (a registered
+	 * {@link FrappeViewModes} view) reaches it too, since every `BaseList` reads
+	 * `frappe.listview_settings[doctype]` (`frappe/public/js/frappe/list/base_list.js:47`).
+	 * Narrow the view before using a `ListView` member.
 	 */
-	refresh?(view: ListView | ReportView): void;
+	refresh?(view: ListView | ReportView | BaseList): void;
 	/**
 	 * `frappe/public/js/frappe/list/list_view_select.js:172-174` — any truthy
 	 * value offers the Map view on the switcher (otherwise it needs `latitude` and
-	 * `longitude` fields). Only its truthiness is read in v16; by name it is the
-	 * dotted path of a whitelisted method that returns coordinates.
+	 * `longitude` fields). That truthiness test is its only read in v16: nothing
+	 * calls it, so any value is accepted.
 	 */
-	get_coords_method?: string;
+	get_coords_method?: unknown;
 	/**
 	 * `frappe/public/js/frappe/views/gantt/gantt_view.js:250-262` — the HTML of
 	 * a Gantt bar's popup, replacing the title and dates. Called with the bar's
@@ -1336,10 +1340,16 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	 *
 	 * Typed as the full union, not the literal `"List"`, so `ReportView`'s
 	 * `"Report"` (`frappe/public/js/frappe/views/reports/report_view.js:20-22`) remains an assignable override.
+	 * It also takes `"File"`, the name of {@link FileView}, which is not a view
+	 * mode: `ListFactory` routes the File doctype's list to it
+	 * (`frappe/public/js/frappe/list/list_factory.js:16-18`), and its user
+	 * settings are kept under it.
 	 * Declared as the getter it is, so a subclass for an app's own view mode
-	 * can override it with one, as every frappe view does.
+	 * can override it with one, as frappe's views do. In desk JavaScript the
+	 * getter's literal return widens to `string`, so give it
+	 * `@returns {FrappeViewName}`.
 	 */
-	get view_name(): FrappeViewName;
+	get view_name(): FrappeViewName | "File";
 	/** `frappe/public/js/frappe/list/list_view.js:112-114` — a GETTER returning `true`; ReportView returns `false` (`frappe/public/js/frappe/views/reports/report_view.js:24-26`). */
 	readonly show_saved_layout_menu: boolean;
 	/** `frappe/public/js/frappe/list/list_view.js:116-118` — `this.user_settings[this.view_name] || {}`. */
@@ -2775,8 +2785,15 @@ export interface FrappeViewsNamespace {
 	 * `frappe/public/js/frappe/views/calendar/calendar.js:4` — `frappe.provide("frappe.views.calendar")`:
 	 * each doctype's {@link CalendarSettings}, assigned by its `<doctype>_calendar.js`
 	 * (run with the doctype's meta, `frappe/public/js/frappe/model/model.js:255-264`).
-	 * A doctype without one has no entry. `frappe.provide("frappe.views.calendar")`
-	 * returns it typed, and creates it when missing.
+	 * A doctype without one has no entry.
+	 *
+	 * Optional like every member of `frappe.views`, although `calendar.js` is in
+	 * `list.bundle.js` (`frappe/public/js/list.bundle.js:24`), which every desk
+	 * page loads: so frappe's own idiom,
+	 * `frappe.views.calendar["Event"] = {...}`
+	 * (`frappe/desk/doctype/event/event_calendar.js:1`), reports it as possibly
+	 * undefined. Write `frappe.provide("frappe.views.calendar")["Event"] = {...}`
+	 * instead: `provide` returns it typed, and creates it when missing.
 	 */
 	calendar?: Record<string, CalendarSettings | undefined>;
 	/* -- The lazily-loaded views and view helpers. -------------------------
@@ -2810,7 +2827,10 @@ export interface FrappeViewsNamespace {
 	Calendar?: unknown;
 	/** `views/calendar/calendar.js` */
 	CalendarView?: unknown;
-	/** `frappe/public/js/frappe/views/communication.js:11`, in `desk.bundle.js`. See {@link CommunicationComposer}. */
+	/**
+	 * `frappe/public/js/frappe/views/communication.js:11`, in `desk.bundle.js`. See {@link CommunicationComposer}.
+	 * Optional like every member of `frappe.views` (see `ListView`), so narrow it first.
+	 */
 	CommunicationComposer?: typeof CommunicationComposer;
 	/** `views/dashboard/dashboard_view.js` */
 	DashboardView?: unknown;
@@ -3024,6 +3044,8 @@ export interface SidePanel {}
  * their signatures.
  */
 export declare class FileView extends ListView {
+	/** `frappe/public/js/frappe/views/file/file_view.js:8-10` — a getter returning `"File"`. */
+	get view_name(): "File";
 	/**
 	 * Whether files are shown as a grid. Set at module scope when `list.bundle.js`
 	 * loads, from the File user settings
@@ -3050,6 +3072,15 @@ export interface FileView {}
  * (`frappe/public/js/frappe/form/footer/form_timeline.js:560-612`), the error
  * report (`frappe/public/js/frappe/request.js:604-612`), the Inbox's New Email
  * (`frappe/public/js/frappe/views/inbox/inbox_view.js:208`, no options at all).
+ *
+ * The callers forward values that may be missing, and the composer reads each
+ * of them by truthiness, so those options also take `null` or `undefined`: for
+ * a new email the timeline passes `title: null`, `last_email: null`,
+ * `subject: null` and `sender: undefined`
+ * (`frappe/public/js/frappe/form/footer/form_timeline.js:559-573`), and
+ * `frm.email_doc` passes the doc's `email` (or `email_id`, `contact_email`),
+ * which may be absent, and its own `message` argument
+ * (`frappe/public/js/frappe/form/form.js:1480-1488`).
  */
 export interface CommunicationComposerOptions {
 	/** The form the email is about: its doc, files, email field, timeline and `get_email_recipients` hook are read throughout. */
@@ -3057,19 +3088,19 @@ export interface CommunicationComposerOptions {
 	/** The document the email is about; defaults to `frm.doc`, else `{}` (`frappe/public/js/frappe/views/communication.js:14-16`). */
 	doc?: FrappeDoc;
 	/** The dialog title; falls back to `subject`, then "New Email" (`frappe/public/js/frappe/views/communication.js:25`). */
-	title?: string;
+	title?: string | null | undefined;
 	/** `frappe/public/js/frappe/views/communication.js:1133-1192` — when empty it is built from the last email or the form's title. */
-	subject?: string;
+	subject?: string | null | undefined;
 	/** Comma-separated addresses; filled from the last email or the form when empty (`frappe/public/js/frappe/views/communication.js:1136-1191`). */
-	recipients?: string;
+	recipients?: string | null | undefined;
 	/** Comma-separated (`frappe/public/js/frappe/views/communication.js:1117-1128`). */
 	cc?: string;
 	/** Comma-separated (`frappe/public/js/frappe/views/communication.js:1145`, `:1232-1233`). */
 	bcc?: string;
 	/** The From account (`frappe/public/js/frappe/views/communication.js:1235`). */
-	sender?: string;
+	sender?: string | null | undefined;
 	/** The body; when set, no draft or signature is put in its place (`frappe/public/js/frappe/views/communication.js:1270`, `:1856`). */
-	message?: string;
+	message?: string | null | undefined;
 	/** Files offered as attachments besides the form's (`frappe/public/js/frappe/views/communication.js:1474-1486`); uploads are pushed onto it (`:1452`). */
 	attachments?: Array<{ name: string; file_name?: string; file_url?: string; file_size?: number; [field: string]: unknown }>;
 	/** Ticks "Attach Document Print" (`frappe/public/js/frappe/views/communication.js:1615-1617`). */
@@ -3091,7 +3122,7 @@ export interface CommunicationComposerOptions {
 	 * `:1203`, `:1751`); the timeline passes a docinfo communication or the
 	 * Communication form's doc (`frappe/public/js/frappe/form/footer/form_timeline.js:604`).
 	 */
-	last_email?: FrappeDoc & { sender: string; recipients: string; cc?: string | null; bcc?: string | null };
+	last_email?: (FrappeDoc & { sender: string; recipients: string; cc?: string | null; bcc?: string | null }) | null | undefined;
 	[option: string]: unknown;
 }
 
@@ -3109,14 +3140,21 @@ export declare class CommunicationComposer {
 	frm?: Form;
 	/** `frappe/public/js/frappe/views/communication.js:14-16` — the option, else `frm.doc`, else `{}`. */
 	doc: FrappeDoc | Record<string, never>;
-	title?: string;
+	title?: string | null | undefined;
 	/** `frappe/public/js/frappe/views/communication.js:1134` — always a string once the dialog is built. */
 	subject: string;
-	recipients?: string;
-	cc?: string;
-	bcc?: string;
-	sender?: string;
-	message?: string;
+	/**
+	 * The option, else filled in by `setup_subject_and_recipients`
+	 * (`frappe/public/js/frappe/views/communication.js:1136-1191`) from the last
+	 * email or the form's timeline, so it can still be empty.
+	 */
+	recipients?: string | null | undefined;
+	/** The option, or the last email's on a reply-all (`frappe/public/js/frappe/views/communication.js:1143-1144`), which may be `null`. */
+	cc?: string | null | undefined;
+	/** The option, or the last email's on a reply-all (`frappe/public/js/frappe/views/communication.js:1145`), which may be `null`. */
+	bcc?: string | null | undefined;
+	sender?: string | null | undefined;
+	message?: string | null | undefined;
 	attachments?: CommunicationComposerOptions["attachments"];
 	attach_document_print?: boolean;
 	print_format?: string;
@@ -3290,6 +3328,31 @@ export declare class GanttView extends ListView {
 	render(): void;
 	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:150` — empty: the Gantt view has no list header. */
 	render_header(): void;
+	/**
+	 * `frappe/public/js/frappe/views/gantt/gantt_view.js:152-155` — the base
+	 * height, then the result area takes its parent's inline height.
+	 */
+	set_result_height(): void;
+	/**
+	 * `frappe/public/js/frappe/views/gantt/gantt_view.js:157-163` — widens the
+	 * columns of the frappe-gantt instance to fill its container: `false` when
+	 * they already do, `true` after widening them.
+	 */
+	fill_width(gantt: unknown): boolean;
+	/**
+	 * `frappe/public/js/frappe/views/gantt/gantt_view.js:165-188` — scrolls the
+	 * frappe-gantt instance to today, extending its date range when today is
+	 * outside it; in Hour mode, too far away, it switches to Day and scrolls
+	 * once the view has changed. Returns what the call it ends with returns.
+	 */
+	scroll_to_today(gantt: unknown): unknown;
+	/**
+	 * `frappe/public/js/frappe/views/gantt/gantt_view.js:171` — set by
+	 * {@link GanttView.scroll_to_today}, read and cleared by the Gantt's
+	 * `on_view_change` (`frappe/public/js/frappe/views/gantt/gantt_view.js:245-247`).
+	 * `| undefined` so that a desk-JS subclass can set it in a method.
+	 */
+	scroll_to_today_on_view_change?: boolean | undefined;
 	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:190-269`. */
 	render_gantt(): void;
 	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:271-290`. */
