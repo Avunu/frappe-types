@@ -179,7 +179,8 @@ frappe.provide("frappe.query_reports")["Sales Summary"] = report;
 
 ```js
 // project_calendar.js, a doctype's Calendar and Gantt settings. frappe.views.calendar is
-// optional for the same reason, and frappe.provide returns it typed too.
+// optional, like every frappe.views member, so frappe's own `frappe.views.calendar["Event"] = {...}`
+// reports it as possibly undefined. frappe.provide returns it typed too.
 frappe.provide("frappe.views.calendar")["Project"] = {
   field_map: { start: "expected_start_date", end: "expected_end_date", id: "name", title: "project_name" },
   gantt: true,
@@ -289,7 +290,7 @@ if (Base) {
 }
 ```
 
-The same goes for `frappe.views.ListView`, which frappe's own views extend and apps replace. The class is generic (`ListView<TColumn>`, so that `ReportView` can hold datatable columns), but the slot is typed `ListViewConstructor`, a plain constructor of `ListView`, so `frappe.views.ListView = class extends Base { … }` needs no cast. `view_name` is declared as the getter it is, so an app's own view overrides it with a getter. A `listview_settings` `onload` or `refresh` receives the view: a `ListView`, or a `ReportView` on the Report view.
+The same goes for `frappe.views.ListView`, which frappe's own views extend and apps replace. The class is generic (`ListView<TColumn>`, so that `ReportView` can hold datatable columns), but the slot is typed `ListViewConstructor`, a plain constructor of `ListView`, so `frappe.views.ListView = class extends Base { … }` needs no cast. `view_name` is declared as the getter it is, so an app's own view overrides it with a getter. In desk JavaScript the getter's literal return widens to `string`, so annotate it: `/** @override @returns {import("frappe-types").FrappeViewName} */ get view_name() { return "Tasks"; }`. A `listview_settings` `onload` receives the view: a `ListView`, or a `ReportView` on the Report view. `refresh` is called by every `BaseList`, including an app's own view built on it, so it receives a `ListView | ReportView | BaseList`; narrow it (`view instanceof ListView`) before using a list view's members.
 
 The side panel's prototype can be patched the same way: besides its public calls, `frappe.ui.SidePanel` declares the members it renders through (`render_doc`, `set_header`, `make_buttons`, `show_preview`, …) and its `previews` cache of `DocPreview`s, what `frappe.desk.doc_preview.get_preview` returns.
 
