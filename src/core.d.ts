@@ -29,8 +29,11 @@
 // mismatch with the owning group is a five-line fix, not a rewrite.
 // ---------------------------------------------------------------------------
 
-import type { DocField, FrappeCheck, FrappeDoc, IndicatorTuple } from "./model";
+import type { DocField, DocOf, DocTypeName, FrappeCheck, FrappeDoc, IndicatorTuple } from "./model";
 import type { Dialog } from "./ui/form";
+// `frappe._` and the global `__` are one function (translate.js:26), so they
+// share `globals.d.ts`'s type.
+import type { TranslateFunction, TranslationArgs } from "./globals";
 // Type-only import cycles (`./ui/sidebar` and `./utils` both import from here)
 // are legal in `.d.ts` files — no emit, no runtime order. Same shape as
 // `./ui/form` ↔ `./utils` (see the SEAM note in ui/form.d.ts).
@@ -63,17 +66,84 @@ import type {
 export type FrappeDialog = Dialog;
 
 /**
- * The jqXHR returned by `$.ajax` and therefore by {@link FrappeRequest.call}
- * and {@link FrappeCore.call}.
- * Source: `frappe/public/js/frappe/request.js:276` (`return $.ajax(ajax_args)…`).
+ * A callback parameter type that is checked **bivariantly**, the way a method
+ * parameter is, instead of contravariantly as `strictFunctionTypes` checks a
+ * plain function type.
  *
- * SEAM — `JQueryXHR` was imported from `./globals`, which does not (and must
- * not) export it. It is an AMBIENT global from `@types/jquery`
- * (`node_modules/@types/jquery/legacy.d.ts:16` —
- * `interface JQueryXHR extends JQuery.jqXHR {}`), a real dependency listed in
- * this package's `types`, so it is referenced unqualified.
+ * Why it exists: a desk script cannot pass a type argument
+ * (`frappe.call<X>(…)` is TypeScript syntax), so a JSDoc script says what it
+ * expects by annotating the callback, `.then((/** @type {FrappeResponse<X>} *\/ r) => …)`.
+ * Under a plain function type that annotation is an error whenever the
+ * resolved type is wider (`FrappeResponse<unknown>`), which is exactly the
+ * case in JavaScript. Checked bivariantly it is accepted when either type is
+ * assignable to the other, so it narrows `unknown` to what the script says and
+ * still rejects an unrelated annotation (`@type {string}`), and an
+ * unannotated callback is typed from the resolution. The same trade-off as the
+ * annotation-driven `T` of {@link FrappeRealtime.on} and of
+ * {@link FrappeCallOptions.callback}: the server's payload is whatever the
+ * method returned, so the annotation is the caller's claim about it.
  */
-export type FrappeAjaxResult = JQueryXHR;
+export type FrappeBivariantCallback<TArgs extends unknown[], TReturn> = {
+	bivarianceHack(...args: TArgs): TReturn;
+}["bivarianceHack"];
+
+/**
+ * The jqXHR returned by `$.ajax` and therefore by {@link FrappeRequest.call},
+ * {@link FrappeCore.call} and `frm.call`, resolving with the parsed
+ * {@link FrappeResponse}.
+ *
+ * Source: `frappe/public/js/frappe/request.js:276`
+ * (`return $.ajax(ajax_args).done(…)`) with `dataType: opts.dataType || "json"`
+ * (`frappe/public/js/frappe/request.js:257`), so the promise resolves with the
+ * parsed body, the same object the `callback` receives
+ * (`frappe/public/js/frappe/request.js:277-283`). `T` is the type of its
+ * `message`.
+ *
+ * It is `@types/jquery`'s `JQuery.jqXHR` (a real dependency of this package,
+ * referenced unqualified) with one change: `then` takes its callbacks as
+ * {@link FrappeBivariantCallback}s, so a JSDoc script can annotate the response
+ * it expects. `await frappe.call<X>(…)` is a `FrappeResponse<X>`, and so is an
+ * unannotated `.then((r) => …)` argument. `done` / `fail` / `always` are
+ * jQuery's, with `FrappeResponse<T>` as the resolved value.
+ *
+ * Through 16.5.0 this was `JQueryXHR`, `jqXHR<any>`: the resolved value was
+ * `any` and the `T` of `call<T>` was discarded.
+ */
+export interface FrappeAjaxResult<T = unknown> extends JQuery.jqXHR<FrappeResponse<T>> {
+	/**
+	 * jQuery 3's Promises/A+ `then` (`node_modules/@types/jquery/misc.d.ts:2617`).
+	 * `onfulfilled` receives the parsed response, the text status and the jqXHR;
+	 * `onrejected` the jqXHR, the text status and the error text.
+	 */
+	then<TResult1 = FrappeResponse<T>, TResult2 = never>(
+		onfulfilled?: FrappeBivariantCallback<
+			[response: FrappeResponse<T>, textStatus: JQuery.Ajax.SuccessTextStatus, jqXHR: FrappeAjaxResult<T>],
+			TResult1 | PromiseLike<TResult1>
+		> | null,
+		onrejected?: FrappeBivariantCallback<
+			[jqXHR: FrappeAjaxResult<T>, textStatus: JQuery.Ajax.ErrorTextStatus, errorThrown: string],
+			TResult2 | PromiseLike<TResult2>
+		> | null
+	): JQuery.Promise<TResult1 | TResult2>;
+}
+
+/**
+ * The promise `frappe.xcall` returns: a native `Promise` that resolves with
+ * the response's `message` (`frappe/public/js/frappe/request.js:13-28`).
+ *
+ * A plain `Promise<T>` except that `then`'s fulfilment callback is a
+ * {@link FrappeBivariantCallback}, so a JSDoc script can write
+ * `frappe.xcall("app.api.get_rows").then((/** @type {Row[]} *\/ rows) => …)`;
+ * with `Promise<unknown>` that annotation is an error under
+ * `strictFunctionTypes`, and JavaScript cannot pass `xcall<Row[]>`. `await`
+ * and an unannotated callback see `T`.
+ */
+export interface FrappeXcallResult<T = unknown> extends Promise<T> {
+	then<TResult1 = T, TResult2 = never>(
+		onfulfilled?: FrappeBivariantCallback<[value: T], TResult1 | PromiseLike<TResult1>> | null,
+		onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+	): Promise<TResult1 | TResult2>;
+}
 
 /** A jQuery collection. Ambient global from `@types/jquery`; see above. */
 export type FrappeJQuery = JQuery;
@@ -133,7 +203,8 @@ export type FrappeIndicator =
 // ---------------------------------------------------------------------------
 
 /**
- * The `replace` argument of {@link FrappeTranslate}.
+ * The `replace` argument of {@link FrappeTranslate}: {@link TranslationArgs}
+ * (array-like, positional), a string, or `null`.
  *
  * **Positional only.** `frappe._` forwards this to `$.format`
  * (`frappe/public/js/frappe/translate.js:20-22` → `frappe/public/js/frappe/format.js:1-17`),
@@ -144,35 +215,29 @@ export type FrappeIndicator =
  * output. Passing a keyed object is therefore a silent data-corruption bug, and
  * the type excludes it on purpose. frappe's own desk JS never passes one.
  *
+ * A string is ignored (`typeof replace === "object"` is false,
+ * translate.js:20); frappe itself passes `""` as "no replacements"
+ * (`frappe/public/js/frappe/form/grid_row.js:339`).
+ *
  * `{}` (empty braces) is supported and consumes the next positional slot
  * (format.js:8-11).
  */
-export type FrappeTranslateReplace = readonly unknown[] | null;
+export type FrappeTranslateReplace = TranslationArgs | string | null;
 
 /**
- * `window.__` — the desk translation function.
+ * `frappe._`, which is the same function as the global `__`.
  *
  * Source: `frappe/public/js/frappe/translate.js:5` defines
  * `frappe._ = function (txt, replace, context = null)`, and
  * `frappe/public/js/frappe/translate.js:26` aliases `window.__ = frappe._`.
+ * One function, so one type: this is {@link TranslateFunction}, the type of
+ * `__`, whose overloads carry the falsy passthrough (translate.js:6-7), the
+ * ignored string `replace` and the optional `context` (translate.js:12-18).
  *
- * The second overload exists because translate.js:6-7 returns `txt` *unchanged*
- * when it is falsy or not a string — so `__(df.label)` on an optional label
- * really can yield `undefined`, and call sites that interpolate the result into
- * a template literal will render the string `"undefined"`. Declaring a flat
- * `=> string` would hide that.
- *
- * `context` selects a disambiguated message key `` `${txt}:${context}` ``
- * (translate.js:12-14) and falls back to the plain key (translate.js:16-18).
+ * Through 16.5.0 `frappe._` had its own, narrower two-overload type, so
+ * `__(txt, "")` compiled and `frappe._(txt, "")` did not.
  */
-export interface FrappeTranslate {
-	(txt: string, replace?: FrappeTranslateReplace, context?: string | null): string;
-	(
-		txt: string | null | undefined,
-		replace?: FrappeTranslateReplace,
-		context?: string | null
-	): string | null | undefined;
-}
+export type FrappeTranslate = TranslateFunction;
 
 // ---------------------------------------------------------------------------
 // Messages — msgprint / throw / confirm / prompt / warn / alerts / progress
@@ -306,17 +371,109 @@ export type FrappeShowAlertActions = Record<string, (event: unknown) => void>;
 // ---------------------------------------------------------------------------
 
 /**
+ * One message a server-side `frappe.msgprint` / `frappe.throw` / `frappe.toast`
+ * queued: the `out` dict of `frappe/utils/messages.py:46-117`.
+ *
+ * Where a client meets it:
+ *
+ * - `FrappeResponse._server_messages` (API v1, what `frappe.call` and a plain
+ *   `fetch` of `/api/method/<cmd>` get): a JSON array of JSON strings, each one
+ *   of these (`frappe/utils/response.py:200-203`). Decode with
+ *   `JSON.parse(r._server_messages)` and then `JSON.parse` each entry, as
+ *   `frappe/public/js/frappe/request.js:473-478` does.
+ * - `FrappeResponse.messages` (API v2): the same dicts, not encoded
+ *   (`frappe/utils/response.py:215-216`).
+ * - the `"msgprint"` realtime event, for `msgprint(…, realtime=True)`
+ *   (`frappe/utils/messages.py:114-115`, received and shown at
+ *   `frappe/public/js/frappe/socketio_client.js:76`).
+ *
+ * The keys mirror {@link FrappeMsgprintOptions} because the desk hands each
+ * decoded entry to `frappe.msgprint` (request.js:485).
+ */
+export interface FrappeServerMessage {
+	/**
+	 * The text, HTML-cleaned unless the caller allowed dangerous HTML
+	 * (`frappe/utils/messages.py:71-78`). A list for `as_list`, a list of rows for `as_table`.
+	 */
+	message: string | string[] | string[][];
+	/** Always set: the caller's title, else the translated `"Message"` (`frappe/utils/messages.py:90`). */
+	title: string;
+	/** `frappe/utils/messages.py:17,92-96`. `"red"` by default when the message raises. */
+	indicator?: "blue" | "green" | "orange" | "red" | "yellow";
+	/** `frappe/utils/messages.py:98-99`. */
+	is_minimizable?: boolean;
+	/** `frappe/utils/messages.py:101-102` — `1` for `frappe.toast` / `alert=True`: shown as a toast, not a dialog. */
+	alert?: 1;
+	/** `frappe/utils/messages.py:104-106` — `1` when the message came with an exception (`frappe.throw`). */
+	raise_exception?: 1;
+	/** `frappe/utils/messages.py:106` — links the message to its exception; API v2 merges the two (`frappe/utils/response.py:81-88`). */
+	__frappe_exc_id?: string;
+	/**
+	 * `frappe/utils/messages.py:108-109` — the caller's dict, read by the desk as
+	 * {@link FrappeMsgprintPrimaryAction} (`frappe/public/js/frappe/ui/messages.js:229-266`).
+	 * JSON carries no function, so `action` is never set.
+	 */
+	primary_action?: Omit<FrappeMsgprintPrimaryAction, "action">;
+	/** `frappe/utils/messages.py:111-112`. */
+	wide?: boolean;
+	/** `frappe/utils/messages.py:65-67` — set when `message` is a list rendered as one. */
+	as_list?: boolean;
+	/**
+	 * `frappe/utils/messages.py:65-69` — set to the caller's `as_table` (often `false`) for any
+	 * sequence `message`, and a Python `str` is a sequence.
+	 */
+	as_table?: boolean;
+}
+
+/**
+ * One entry of {@link FrappeResponse.errors}, API v2's error report
+ * (`frappe/utils/response.py:54-60`): the exception class name, the traceback
+ * when tracebacks are allowed, and the keys of the {@link FrappeServerMessage}
+ * the exception raised with, merged in without `raise_exception` /
+ * `__frappe_exc_id` (`frappe/utils/response.py:81-88`).
+ */
+export interface FrappeResponseError extends Partial<Omit<FrappeServerMessage, "raise_exception" | "__frappe_exc_id">> {
+	/** `frappe/utils/response.py:55` — `exc_type.__name__`, e.g. `"ValidationError"`. */
+	type: string;
+	/** `frappe/utils/response.py:56-58` — the whole traceback, only when tracebacks are allowed. */
+	exception?: string;
+}
+
+/**
  * The envelope every desk AJAX response is parsed into.
  *
  * Source: `frappe/public/js/frappe/request.js:277-326` (`.done` / `.always`) and
  * `frappe/public/js/frappe/request.js:444-521` (`frappe.request.cleanup`).
  *
+ * It is also the raw JSON body of `/api/method/<cmd>` for any client — a plain
+ * `fetch`, axios, frappe-js-sdk or frappe-react-sdk call that skips
+ * `frappe.call` gets exactly this object (`frappe/api/v1.py:35-41` →
+ * `frappe/handler.py:46-62`, serialised by `frappe/utils/response.py`), so an
+ * SPA can import it from the module entry instead of declaring its own
+ * `{ message: T }`. On an error status the body is this envelope too, with
+ * `exc_type`, `exception` and `_server_messages`.
+ *
  * The index signature is not a shrug: a whitelisted method may return any
  * top-level keys it likes, and hooks add more. `message` is the payload.
  */
 export interface FrappeResponse<T = unknown> {
-	/** Return value of the whitelisted method. What `frappe.xcall` resolves with. */
+	/**
+	 * Return value of the whitelisted method. What `frappe.xcall` resolves with.
+	 * **Absent**, not `null`, when the method returned `None`
+	 * (`frappe/handler.py:56-62` sets it only for a non-`None` value), which is
+	 * why it is optional.
+	 */
 	message?: T;
+	/**
+	 * API v1, on an error: the last line of the traceback
+	 * (`"frappe.exceptions.ValidationError: …"`), sent only when tracebacks are
+	 * allowed (`frappe/utils/response.py:50-52`). The desk splits it to find the
+	 * exception class for its status-code handlers
+	 * (`frappe/public/js/frappe/request.js:341-343`).
+	 */
+	exception?: string;
+	/** API v2, on an error: one {@link FrappeResponseError} (`frappe/utils/response.py:54-60`). */
+	errors?: readonly FrappeResponseError[];
 	/**
 	 * JSON-encoded traceback (`string[]` or `string`). `cleanup` replaces it with
 	 * the parsed value **in place** (request.js:490-501) before `always` runs
@@ -326,12 +483,18 @@ export interface FrappeResponse<T = unknown> {
 	exc?: string;
 	/** Exception class name; keyed into `frappe.request.error_handlers` (request.js:457). */
 	exc_type?: string;
-	/** JSON-encoded array of message payloads; parsed at request.js:473. */
+	/**
+	 * API v1: a JSON array of JSON strings, each a {@link FrappeServerMessage}
+	 * (`frappe/utils/response.py:200-203`); parsed at request.js:473.
+	 */
 	_server_messages?: string;
 	/** JSON-encoded array; logged at request.js:504-517. */
 	_debug_messages?: string;
-	/** v2 API only — request.js:470-471 reads `r.messages` instead. */
-	messages?: readonly unknown[];
+	/**
+	 * API v2 only, the decoded form of `_server_messages`
+	 * (`frappe/utils/response.py:215-216`); request.js:470-471 reads it instead.
+	 */
+	messages?: readonly FrappeServerMessage[];
 	/** Merged into `frappe._link_titles` (request.js:292-297). */
 	_link_titles?: Record<string, string>;
 	/** Merged into `frappe._messages` (request.js:287-289). */
@@ -462,6 +625,7 @@ export interface FrappeRequest {
 	logs: Record<string, Array<{ args: Record<string, unknown>; timestamp: Date }>>;
 	/** request.js:7, 457, 674-677 — global handlers keyed by `exc_type`. */
 	error_handlers: Record<string, Array<(r: FrappeResponse) => void>>;
+	/** request.js:128-363 — the `$.ajax` jqXHR (request.js:276). `frappe.call` returns this. */
 	call(opts: FrappeRequestCallOptions): FrappeAjaxResult;
 	/** request.js:365 — true when an identical request was sent within `threshold` ms. */
 	is_fresh(args: Record<string, unknown>, threshold: number): boolean;
@@ -556,25 +720,43 @@ export interface FrappeDb {
 	 * that is upstream behaviour, not a typo here.
 	 */
 	exists(doctype: string, nameOrFilters: string | FrappeFilters): Promise<boolean>;
-	/** db.js:42 → `frappe.client.get_value` (GET). Payload arrives via `callback`. */
+	/**
+	 * db.js:42 → `frappe.client.get_value` (GET). The payload arrives via
+	 * `callback`, and the returned `frappe.call` jqXHR resolves with the whole
+	 * response, whose `message` is the same payload (db.js:43-55).
+	 */
 	get_value<T = Record<string, unknown>>(
 		doctype: string,
 		filters: string | FrappeFilters,
 		fieldname: string | readonly string[],
 		callback?: (message: T | undefined) => void,
 		parent_doc?: string
-	): FrappeAjaxResult;
+	): FrappeAjaxResult<T>;
 	/** db.js:57 → `frappe.client.get_single_value` (GET). */
 	get_single_value<T = unknown>(doctype: string, field: string): Promise<T | null>;
-	/** db.js:68 → `frappe.client.set_value`. Payload arrives via `callback`. */
+	/**
+	 * db.js:68 → `frappe.client.set_value`. The saved document arrives via
+	 * `callback`, and as the `message` of the response the returned jqXHR
+	 * resolves with (db.js:69-80).
+	 */
 	set_value(
 		doctype: string,
 		docname: string,
 		fieldname: string | Record<string, unknown>,
 		value?: unknown,
 		callback?: (message: FrappeDoc | undefined) => void
-	): FrappeAjaxResult;
-	/** db.js:82 → `frappe.client.get` (GET); also `frappe.model.sync`s the result. */
+	): FrappeAjaxResult<FrappeDoc>;
+	/**
+	 * db.js:82 → `frappe.client.get` (GET); also `frappe.model.sync`s the result.
+	 *
+	 * The doctype names the document type, as in `frappe.ui.form.on`: a doctype
+	 * registered in `FrappeDocTypes` resolves with its document
+	 * ({@link DocOf}), any other with the open `FrappeDoc`. That is what lets a
+	 * desk script, which cannot pass a type argument, write
+	 * `frappe.db.get_doc("Item", name).then((item) => item.item_name)`. The
+	 * second overload keeps the explicit `get_doc<MyDoc>(…)` form.
+	 */
+	get_doc<DT extends string>(doctype: DT, name?: string | null, filters?: FrappeFilters): Promise<DocOf<DT>>;
 	get_doc<T extends FrappeDoc = FrappeDoc>(
 		doctype: string,
 		name?: string | null,
@@ -861,6 +1043,25 @@ export interface FrappeBootSysDefaults {
 	float_precision?: string;
 	currency_precision?: string;
 	currency?: string;
+	/**
+	 * The System Settings number format (`"#,###.##"`, …,
+	 * `frappe/core/doctype/system_settings/system_settings.json:200-203`); read
+	 * by `get_number_format` (`frappe/public/js/frappe/utils/number_format.js:188`).
+	 */
+	number_format?: string;
+	/**
+	 * The System Settings rounding method
+	 * (`frappe/core/doctype/system_settings/system_settings.json:562-565`): `"Banker's Rounding (legacy)"`,
+	 * `"Banker's Rounding"` or `"Commercial Rounding"`; read by `_round`
+	 * (`frappe/public/js/frappe/utils/number_format.js:210`).
+	 */
+	rounding_method?: string;
+	/**
+	 * `"1"` / `"Yes"` makes `get_currency_symbol` return `null`
+	 * (`frappe/public/js/frappe/utils/number_format.js:167-171`). frappe defines
+	 * no field for it; another app's defaults set it (ERPNext's Global Defaults).
+	 */
+	hide_currency_symbol?: string;
 	/** `frappe/defaults.py:116` — `defaults.update(user=user, owner=user)`. */
 	user?: string;
 	owner?: string;
@@ -1307,8 +1508,12 @@ export interface FrappeBoot {
 	};
 	/** `frappe/boot.py:85,477-482` — the compiled print stylesheet. */
 	print_css: string;
-	/** `frappe/boot.py:57-58` — only for a signed-in session. */
-	user_info?: Record<string, unknown>;
+	/**
+	 * `frappe/boot.py:57-58` — only for a signed-in session. The session user's
+	 * entry at boot, then more users as the desk fetches them; see
+	 * {@link FrappeBootUserInfo}. Read it through {@link FrappeCore.user_info}.
+	 */
+	user_info?: Record<string, FrappeBootUserInfo | undefined>;
 	/**
 	 * `frappe/boot.py:91` → `frappe/boot.py:552-557` — the system time zone and
 	 * the user's (the user's own setting, else the system zone), both IANA
@@ -1828,6 +2033,144 @@ export interface FrappeRealtime {
 }
 
 /**
+ * One `frappe.boot.user_info` entry, built by `add_user_info`
+ * (`frappe/utils/__init__.py:1091-1115`, typed `_UserInfo` at
+ * `frappe/utils/__init__.py:1083-1088`) for the session user at boot
+ * (`frappe/boot.py:57-58`, `frappe/boot.py:431-436`), then for the users the
+ * notifications panel and a form's viewers fetch (merged by
+ * `frappe.update_user_info`, `frappe/public/js/frappe/utils/user.js:17-25`,
+ * called at `frappe/public/js/frappe/ui/notifications/notifications.js:284`,
+ * and at `frappe/public/js/frappe/form/form_viewers.js:73-83`).
+ */
+export interface FrappeBootUserInfo {
+	/** `full_name`, else the user id (`frappe/utils/__init__.py:1110`). */
+	fullname: string;
+	/** `User.user_image`, `null` when the user has none. */
+	image: string | null;
+	/** The user id. */
+	name: string;
+	email: string;
+	time_zone: string | null;
+	/** Written onto the entry by {@link FrappeCore.user_info} (`frappe/public/js/frappe/utils/user.js:11`). */
+	abbr?: string;
+	/** Written onto the entry by {@link FrappeCore.user_info} (`frappe/public/js/frappe/utils/user.js:12`). */
+	color?: FrappePaletteColor;
+}
+
+/**
+ * An entry of `frappe.palette` (`frappe/public/js/frappe/utils/common.js:148-158`):
+ * the CSS custom properties of an avatar's background and text colour,
+ * `["--blue-avatar-bg", "--blue-avatar-color"]`.
+ */
+export type FrappePaletteColor = readonly [background: string, color: string];
+
+/**
+ * What `frappe.user_info(uid)` returns (`frappe/public/js/frappe/utils/user.js:1-15`):
+ * the user's {@link FrappeBootUserInfo} entry, or `{ fullname: uid || "Unknown" }`
+ * when there is none (a Guest session, or a user the desk has not fetched),
+ * with `abbr` and `color` set on it either way.
+ */
+export interface FrappeUserInfo extends Partial<Omit<FrappeBootUserInfo, "fullname" | "abbr" | "color">> {
+	fullname: string;
+	/** `frappe.get_abbr(fullname)` (`frappe/public/js/frappe/utils/common.js:175-190`), `"?"` for an empty name. */
+	abbr: string;
+	/** `frappe.get_palette(fullname)` (`frappe/public/js/frappe/utils/common.js:169-173`). */
+	color: FrappePaletteColor;
+}
+
+/**
+ * The separators of one number format, a value of `frappe.number_format_info`
+ * (`frappe/public/js/frappe/utils/number_format.js:77-88`), keyed by the
+ * format (`"#,###.##"`). `get_number_format_info` writes `precision` onto the
+ * entry it returns (`frappe/public/js/frappe/utils/number_format.js:193-206`).
+ */
+export interface FrappeNumberFormatInfo {
+	/** The decimal separator; `""` for a format without decimals (`"#,###"`). */
+	decimal_str: string;
+	/** The group separator. */
+	group_sep: string;
+	/** Digits after the decimal separator; set by `get_number_format_info`. */
+	precision?: number;
+}
+
+/**
+ * `frappe.urllib` — `frappe/public/js/frappe/utils/urllib.js:1-46` (desk bundle).
+ */
+export interface FrappeUrllib {
+	/** `frappe/public/js/frappe/utils/urllib.js:3-10` — the decoded query parameter `name` of the page URL, `""` when absent. Also the global `get_url_arg`. */
+	get_arg(name: string): string;
+	/** `frappe/public/js/frappe/utils/urllib.js:13-27` — every query parameter of the page URL, decoded. Also the global `get_url_dict`. */
+	get_dict(): Record<string, string>;
+	/** `frappe/public/js/frappe/utils/urllib.js:30-35` — `frappe.base_url` or `window.location.origin`, without a trailing slash. */
+	get_base_url(): string;
+	/** `frappe/public/js/frappe/utils/urllib.js:38-45` — `url` unchanged when it starts with `http://` / `https://`, else prefixed with the base URL. */
+	get_full_url(url: string): string;
+}
+
+/**
+ * A template compiled by `frappe.template.compile`
+ * (`frappe/public/js/frappe/microtemplate.js:67-88`): `new Function("obj", …)`
+ * whose body runs `with (obj) { … }` and returns the joined output, so every
+ * key of `data` is a variable inside the template. `with` on `null` or
+ * `undefined` throws.
+ */
+export type FrappeCompiledTemplate = (data: object) => string;
+
+/**
+ * `frappe.template` — frappe's John Resig microtemplate engine
+ * (`frappe/public/js/frappe/microtemplate.js:1-101`). Jinja-like tags are
+ * rewritten to JavaScript (`{{ x }}`, `{% if %}`, `{% for a in b %}`,
+ * `{% else %}`, `{% endif %}`, `{% endfor %}`, microtemplate.js:16-65), and
+ * anything else between `{%` and `%}` runs as JavaScript.
+ */
+export interface FrappeTemplateNamespace {
+	/** microtemplate.js:4, :88 — compiled templates by `name`, or by the template text when unnamed. */
+	compiled: Record<string, FrappeCompiledTemplate | undefined>;
+	/** microtemplate.js:4, :86 — the generated function body by `name`, for debugging. */
+	debug: Record<string, string | undefined>;
+	/**
+	 * microtemplate.js:7-100 — compiles once per key. Returns `undefined` when
+	 * the generated function does not parse: the error is logged
+	 * (microtemplate.js:89-96), not thrown.
+	 */
+	compile(str: string, name?: string): FrappeCompiledTemplate | undefined;
+}
+
+/**
+ * Options of `frappe.render_grid` (`frappe/public/js/frappe/microtemplate.js:121-182`).
+ * The whole object is also the context of the `print_grid` (or `template`) and
+ * `print_template` microtemplates it renders, which is what the index
+ * signature is for: frappe's report views add `filters`, `report`,
+ * `original_data`, `can_use_smaller_font` and so on
+ * (`frappe/public/js/frappe/views/reports/query_report.js:1682-1694`).
+ */
+export interface FrappeRenderGridOptions {
+	/**
+	 * microtemplate.js:123-126 — a legacy SlickGrid. When set, its columns and
+	 * rows replace `columns` and `data`.
+	 */
+	grid?: { getColumns(): unknown[]; getData(): { getItems(): unknown[] } };
+	/** The columns `print_grid.html` renders (`frappe/public/js/frappe/views/reports/print_grid.html:17-31`). */
+	columns?: readonly unknown[];
+	/** The rows `print_grid.html` renders (`frappe/public/js/frappe/views/reports/print_grid.html:36`). */
+	data?: readonly unknown[];
+	title?: string;
+	/** HTML; `null` when the caller has none (`frappe/public/js/frappe/views/reports/query_report.js:1684`). */
+	subtitle?: string | null;
+	/** microtemplate.js:128-134 — `orientation: "Landscape"` turns `landscape` on. */
+	print_settings?: { orientation?: string; [key: string]: unknown } | null;
+	/** microtemplate.js:137-143 — defaults to `true` for more than ten columns. */
+	landscape?: boolean | null;
+	/** microtemplate.js:146-148 — pre-rendered body HTML; otherwise `template` is rendered. */
+	content?: string;
+	/** microtemplate.js:147 — the `frappe.templates` key of the body; `"print_grid"` by default. */
+	template?: string;
+	/** microtemplate.js:154 — defaults to `frappe.boot.lang`. */
+	lang?: string;
+	[key: string]: unknown;
+}
+
+/**
  * The **core slice** of the `frappe` desk global.
  *
  * This is intentionally *not* the whole `Frappe` type. The package author should
@@ -1891,6 +2234,12 @@ export interface FrappeCore {
 	 * boot; `["Guest"]` for a guest (`frappe/public/js/frappe/desk.js:405`).
 	 */
 	user_roles: string[];
+	/**
+	 * `frappe/public/js/frappe/utils/user.js:1-15` — the user's
+	 * {@link FrappeUserInfo}; the session user when `uid` is falsy. Never
+	 * `undefined`: a user without a boot entry gets `{ fullname: uid }`.
+	 */
+	user_info(uid?: string | null): FrappeUserInfo;
 	/** See {@link FrappeDefaults} — `frappe/public/js/frappe/sys_defaults.js:4`, `frappe/public/js/frappe/defaults.js:6`. */
 	defaults: FrappeDefaults;
 	/** See {@link FrappeRealtime} — `frappe/public/js/frappe/socketio_client.js:226`. */
@@ -2030,13 +2379,18 @@ export interface FrappeCore {
 	 * `type` defaults to `"POST"` (request.js:18) and `opts` is spread over the
 	 * generated `frappe.call` options **last** (request.js:25), so it can override
 	 * `callback` / `error` and break the promise. Documented, not prevented.
+	 *
+	 * `T` is what the method returns. A method that returns `None` resolves
+	 * with `undefined` (`message` is absent, `frappe/handler.py:56-62`). From
+	 * JavaScript, annotate the fulfilment callback instead of passing `T`; see
+	 * {@link FrappeXcallResult}.
 	 */
 	xcall<T = unknown>(
 		method: string,
 		params?: Record<string, unknown>,
 		type?: "GET" | "POST" | "PUT" | "DELETE",
 		opts?: Partial<FrappeCallOptions<T>>
-	): Promise<T>;
+	): FrappeXcallResult<T>;
 
 	/**
 	 * The desk AJAX entry point. Source: `frappe/public/js/frappe/request.js:31-126`.
@@ -2050,17 +2404,24 @@ export interface FrappeCore {
 	 *  3. the ordinary object form, which returns the `$.ajax` jqXHR
 	 *     (request.js:276). `frappe.db.get_doc` relies on `.fail` being there
 	 *     (`frappe/public/js/frappe/db.js:94`).
+	 *
+	 * The jqXHR resolves with the parsed {@link FrappeResponse}, whose
+	 * `message` is `T`: `const r = await frappe.call<Row[]>({ … }); r.message`
+	 * is `Row[] | undefined`. JavaScript cannot pass `T`; it is inferred from an
+	 * annotated `callback`, or a `.then` callback may be annotated
+	 * (`.then((/** @type {FrappeResponse<Row[]>} *\/ r) => …)`), see
+	 * {@link FrappeAjaxResult}. Unannotated, `message` is `unknown`.
 	 */
 	call<T = unknown>(
 		method: string,
 		args?: Record<string, unknown>,
 		callback?: (r: FrappeResponse<T>, response_text?: string) => void,
 		headers?: Record<string, string>
-	): FrappeAjaxResult;
+	): FrappeAjaxResult<T>;
 	call<T = unknown>(
 		opts: FrappeCallOptions<T> & { debounce: number }
-	): FrappeAjaxResult | Promise<void>;
-	call<T = unknown>(opts: FrappeCallOptions<T>): FrappeAjaxResult;
+	): FrappeAjaxResult<T> | Promise<void>;
+	call<T = unknown>(opts: FrappeCallOptions<T>): FrappeAjaxResult<T>;
 
 	/**
 	 * `frappe/public/js/frappe/request.js:523-533` — resolves once the in-flight
@@ -2147,10 +2508,19 @@ export interface FrappeCore {
 	 * (messages.js:113). `callback` fires only when `d.get_values()` validates;
 	 * since v16.54.0 that check is the Dialog's own, which hands the values to the
 	 * primary action (`frappe/public/js/frappe/ui/dialog.js:265-267`).
+	 *
+	 * `TValues` is the shape of those values, keyed by fieldname. A required
+	 * field is always there (validation stops the call otherwise); a field left
+	 * empty is ABSENT, not `null` (`frappe/public/js/frappe/ui/field_group.js:157`),
+	 * so declare the optional ones optional. From JavaScript, annotate the
+	 * callback's parameter instead (`(/** @type {{ tasks: string }} *\/ values) => …`);
+	 * the callback is a {@link FrappeBivariantCallback}, so that annotation is
+	 * accepted. Its return value is ignored (messages.js:120-123), so an `async`
+	 * callback is fine.
 	 */
-	prompt(
+	prompt<TValues extends object = Record<string, unknown>>(
 		fields: string | Partial<DocField> | ReadonlyArray<Partial<DocField>>,
-		callback: (values: Record<string, unknown>) => void,
+		callback: FrappeBivariantCallback<[values: TValues], unknown>,
 		title?: string,
 		primary_label?: string
 	): FrappeDialog;
@@ -2265,6 +2635,62 @@ export interface FrappeCore {
 	get_format_helper<T extends FrappeDoc = FrappeDoc>(
 		doc: T
 	): T & { get_formatted(fieldname: string): string | number };
+	/**
+	 * `frappe/public/js/frappe/utils/number_format.js:77-88` — the separators of
+	 * each number format frappe knows, by format. An unknown format falls back
+	 * to `"#,###.##"`'s in `get_number_format_info` (`frappe/public/js/frappe/utils/number_format.js:197-199`).
+	 */
+	number_format_info: Record<string, FrappeNumberFormatInfo | undefined>;
+
+	/** See {@link FrappeUrllib} — `frappe/public/js/frappe/utils/urllib.js:1`. */
+	urllib: FrappeUrllib;
+
+	// -- templates (microtemplate.js) -----------------------------------------
+
+	/** See {@link FrappeTemplateNamespace} — `frappe/public/js/frappe/microtemplate.js:4`. */
+	template: FrappeTemplateNamespace;
+	/**
+	 * `frappe/public/js/frappe/provide.js:27` — HTML templates by name. An app
+	 * bundle's `import "./my_template.html"` fills it at load: frappe's esbuild
+	 * plugin compiles the file to `frappe.templates['my_template'] = \`…\``
+	 * (`frappe/esbuild/frappe-html.js:14-25`), keyed by the file name without
+	 * its extension.
+	 */
+	templates: Record<string, string | undefined>;
+	/**
+	 * `frappe/public/js/frappe/microtemplate.js:103-105` — compiles `str` (cached
+	 * under `name`, or under the text itself) and renders it with `data`.
+	 * Throws when the template does not compile (the compiled function is
+	 * `undefined`).
+	 */
+	render(str: string, data: object, name?: string): string;
+	/**
+	 * `frappe/public/js/frappe/microtemplate.js:106-120` — renders the template
+	 * `frappe.templates[name]`, or `name` itself when it contains a space (so a
+	 * template string can be passed directly). `data` defaults to `{}`. An
+	 * unknown name is a `frappe.throw` ("Template … not found").
+	 */
+	render_template(name: string, data?: object): string;
+	/**
+	 * `frappe/public/js/frappe/microtemplate.js:121-182` — renders rows into the
+	 * `print_grid` template (or `opts.template`), wraps it in `print_template`
+	 * and writes it into a new window for printing. Mutates `opts`.
+	 */
+	render_grid(opts: FrappeRenderGridOptions): void;
+	/**
+	 * `frappe/public/js/frappe/microtemplate.js:183-197` — the tree view's print:
+	 * renders `print_tree` with `opts` (frappe passes `title`, `tree` and
+	 * `print_settings`, `frappe/public/js/frappe/views/treeview.js:809`) into a
+	 * new window. Mutates `opts`.
+	 */
+	render_tree(opts: { title?: string; tree?: unknown; print_settings?: unknown; [key: string]: unknown }): void;
+	/**
+	 * `frappe/public/js/frappe/microtemplate.js:229-291` — posts `html` to
+	 * `frappe.utils.print_format.report_to_pdf` and downloads the PDF as
+	 * `opts.report_name` (default `"report.pdf"`); a failure is shown in a
+	 * msgprint, from the response's server messages when there are any.
+	 */
+	render_pdf(html: string, opts?: { orientation?: string; report_name?: string; [key: string]: unknown }): void;
 }
 
 // ---------------------------------------------------------------------------

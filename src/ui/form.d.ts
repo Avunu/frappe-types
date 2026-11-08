@@ -71,6 +71,12 @@ import type {
 import type { Page } from "../utils";
 
 /**
+ * `frm.call` returns `frappe.call`'s jqXHR (`frappe/public/js/frappe/form/form.js:1981`),
+ * so it shares the request types `core.d.ts` owns. Another type-only cycle.
+ */
+import type { FrappeAjaxResult, FrappeCallOptions, FrappeResponse } from "../core";
+
+/**
  * SEAM — the Grid family is declared once, in `deep-modules.d.ts`, and
  * re-exported from this file further down. See the "Grid / GridRow /
  * GridRowForm / GridPagination — RE-EXPORTED, not redeclared" block for why
@@ -2028,12 +2034,33 @@ export declare class Form<DT extends string = string> {
 	 * rest-tuple signature rather than overloads.
 	 */
 	set_value(...args: FormSetValueArgs<DT>): Promise<unknown>;
-	/** frappe/public/js/frappe/form/form.js:1933-1982. */
-	call(
-		opts: string | Record<string, unknown>,
+	/**
+	 * frappe/public/js/frappe/form/form.js:1933-1982 — `frappe.call` with the
+	 * form filled in, returning what `frappe.call(opts)` returns (:1981): the
+	 * jqXHR resolving with the response, whose `message` is `T`.
+	 *
+	 * - `frm.call("method", args, callback)` runs a method of the document's
+	 *   controller (`doc: this.doc`, :1935-1942), and refreshes the fields when
+	 *   it succeeds (:1973-1978).
+	 * - The object form takes {@link FrappeCallOptions}. Without `doc`, a
+	 *   `method` with no dot is prefixed with the doctype's server module
+	 *   (:1944-1946), and a plain-object `message` is written back: into
+	 *   `child` (a row of this form) when given, else into the document with
+	 *   `set_value` (:1947-1970). `debounce` can make `frappe.call` return a
+	 *   bare `Promise<void>` (`frappe/public/js/frappe/request.js:105-107`).
+	 *
+	 * From JavaScript, annotate the callback or the `.then` callback to say
+	 * what `message` is; see {@link FrappeAjaxResult}.
+	 */
+	call<T = unknown>(
+		method: string,
 		args?: Record<string, unknown>,
-		callback?: (r: unknown) => void
-	): Promise<unknown>;
+		callback?: (r: FrappeResponse<T>) => void
+	): FrappeAjaxResult<T>;
+	call<T = unknown>(
+		opts: FrappeCallOptions<T> & { child?: FrappeDoc; debounce: number }
+	): FrappeAjaxResult<T> | Promise<void>;
+	call<T = unknown>(opts: FrappeCallOptions<T> & { child?: FrappeDoc }): FrappeAjaxResult<T>;
 	/** frappe/public/js/frappe/form/form.js:1984-1986. A raw `fields_dict` lookup, so a miss is `undefined`. */
 	get_field(field: string): LayoutFieldObject | undefined;
 	/** frappe/public/js/frappe/form/form.js:2003-2005. Delegates to `script_manager.trigger`. */
