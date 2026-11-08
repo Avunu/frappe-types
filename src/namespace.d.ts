@@ -234,6 +234,10 @@ declare global {
 				type ControlJSON = ControlJSONClass;
 				/** `frappe.ui.form.ControlLink` — `frappe/public/js/frappe/form/controls/link.js:11`. */
 				type ControlLink = ControlLinkClass;
+				/** `frappe.ui.form.ControlLongInt` — `frappe/public/js/frappe/form/controls/int.js:28`, the same class as `ControlInt`. */
+				type ControlLongInt = ControlIntClass;
+				/** `frappe.ui.form.ControlLongText` — `frappe/public/js/frappe/form/controls/text.js:23`, the same class as `ControlText`. */
+				type ControlLongText = ControlTextClass;
 				/** `frappe.ui.form.ControlMarkdownEditor` — `frappe/public/js/frappe/form/controls/markdown_editor.js:1`. */
 				type ControlMarkdownEditor = ControlMarkdownEditorClass;
 				/** `frappe.ui.form.ControlMultiCheck` — `frappe/public/js/frappe/form/controls/multicheck.js:1`. */
@@ -252,6 +256,8 @@ declare global {
 				type ControlPhone = ControlPhoneClass;
 				/** `frappe.ui.form.ControlRating` — `frappe/public/js/frappe/form/controls/rating.js:1`. */
 				type ControlRating = ControlRatingClass;
+				/** `frappe.ui.form.ControlReadOnly` — `frappe/public/js/frappe/form/controls/data.js:336`, the same class as `ControlData`. */
+				type ControlReadOnly = ControlDataClass;
 				/** `frappe.ui.form.ControlSelect` — `frappe/public/js/frappe/form/controls/select.js:1`. */
 				type ControlSelect = ControlSelectClass;
 				/** `frappe.ui.form.ControlSignature` — `frappe/public/js/frappe/form/controls/signature.js:1`. */

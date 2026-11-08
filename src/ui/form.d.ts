@@ -3493,9 +3493,12 @@ export declare class Form<DT extends string = string> {
 	 * frappe/public/js/frappe/form/form.js:929-972. Confirms "Permanently Submit
 	 * …?", runs `before_submit`, saves with `"Submit"`, then `callback()` and the
 	 * `on_submit` event. The promise resolves with the form only after
-	 * `on_submit` has run (:950-952); it never rejects, and stays pending when
-	 * the user cancels, `before_submit` sets `frappe.validated = false`, or the
-	 * save fails (`on_error` is called instead, :939, :946, :964, :969).
+	 * `on_submit` has run (:950-952). It rejects when the user may not submit:
+	 * `validate_form_action("Submit")` runs inside the promise's executor
+	 * (:932) and calls `frappe.throw` (:1202-1228). Otherwise it never rejects,
+	 * and stays pending when the user cancels, `before_submit` sets
+	 * `frappe.validated = false`, or the save fails (`on_error` is called
+	 * instead, :939, :946, :964, :969).
 	 */
 	savesubmit(
 		btn?: HTMLElement | JQuery | null,
@@ -3743,26 +3746,26 @@ export declare class FormFooter {
 
 /**
  * One timeline entry, as `BaseTimeline#get_timeline_item` renders it
- * (frappe/public/js/frappe/form/footer/base_timeline.js:96-157). `content` and
+ * (frappe/public/js/frappe/form/footer/base_timeline.js:96-155). `content` and
  * `creation` are always read; the rest are optional.
  */
 export interface FormTimelineItem {
-	/** Appended into `.timeline-content` — frappe/public/js/frappe/form/footer/base_timeline.js:145. */
+	/** Appended into `.timeline-content` — frappe/public/js/frappe/form/footer/base_timeline.js:138-139. */
 	content: string | JQuery;
-	/** Sorts the entries and renders the time — frappe/public/js/frappe/form/footer/base_timeline.js:53-55, :146-153. */
+	/** Sorts the entries and renders the time — frappe/public/js/frappe/form/footer/base_timeline.js:53-55, :59-61, :140-148. */
 	creation: string;
 	doctype?: string;
 	name?: string;
-	/** A `frappe.utils.icon` name — frappe/public/js/frappe/form/footer/base_timeline.js:127-133. */
+	/** A `frappe.utils.icon` name — frappe/public/js/frappe/form/footer/base_timeline.js:123-128. */
 	icon?: string;
 	icon_size?: string;
 	icon_class?: string;
 	title?: string;
-	/** HTML used when there is no `icon` — frappe/public/js/frappe/form/footer/base_timeline.js:134-136. */
+	/** HTML used when there is no `icon` — frappe/public/js/frappe/form/footer/base_timeline.js:129-130. */
 	timeline_badge?: string | JQuery;
 	hide_timestamp?: boolean;
 	is_card?: boolean;
-	/** frappe/public/js/frappe/form/footer/base_timeline.js:154-156. */
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:150-152. */
 	id?: string;
 }
 
@@ -3811,7 +3814,7 @@ export declare class FormTimeline {
 	add_timeline_item(item: FormTimelineItem, append_at_the_end?: boolean): JQuery<HTMLElement>;
 	/** frappe/public/js/frappe/form/footer/base_timeline.js:80-82. */
 	add_timeline_items(items: FormTimelineItem[], append_at_the_end?: boolean): void;
-	/** frappe/public/js/frappe/form/footer/base_timeline.js:96-157. */
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:96-155. */
 	get_timeline_item(item: FormTimelineItem): JQuery<HTMLElement>;
 	/** frappe/public/js/frappe/form/footer/form_timeline.js:559 — opens the email composer, as a reply when given a Communication. */
 	compose_mail(communication_doc?: FrappeDoc | null, reply_all?: boolean): void;
@@ -3821,8 +3824,10 @@ export declare class FormTimeline {
  * The jQuery events a form triggers on `document`, with the arguments
  * `trigger` passes: `$(document).trigger("form-refresh", [this])`
  * (frappe/public/js/frappe/form/form.js:670), and the same for `form-load`
- * (:611), `form-unload` (:613) and `form-rename` (:620). Handlers receive the
- * jQuery event first, then these:
+ * (:611), `form-unload` (:613) and `form-rename` (:620). The email composer
+ * adds `form-typing` when it opens on a form and `form-stopped-typing` when it
+ * closes (frappe/public/js/frappe/views/communication.js:48-50, :1213-1215).
+ * Handlers receive the jQuery event first, then these:
  *
  * ```ts
  * $(document).on("form-refresh", (_e: JQuery.TriggeredEvent, ...[frm]: FormDocumentEvents["form-refresh"]) => {});
@@ -3833,6 +3838,8 @@ export interface FormDocumentEvents {
 	"form-unload": [frm: Form];
 	"form-rename": [frm: Form];
 	"form-refresh": [frm: Form];
+	"form-typing": [frm: Form];
+	"form-stopped-typing": [frm: Form];
 }
 
 /**
