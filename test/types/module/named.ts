@@ -82,3 +82,8 @@ export function message_text(m: FrappeServerMessage): string {
 	void text;
 	return typeof m.message === "string" ? m.message : m.title;
 }
+
+// The entry references @types/jquery for the JQuery types its members use, and
+// that package declares `$` and `jQuery` in the same file: they come along, as
+// the README says.
+export const jquery_global: JQueryStatic = $;

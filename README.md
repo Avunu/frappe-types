@@ -24,11 +24,13 @@ npm i -D frappe-types
 frappe.msgprint({ title: __("Saved"), message: __("Done"), indicator: "green" });
 ```
 
-Prefer explicit imports (frappe-ui SPAs, shared libraries, anywhere a floating global is unwelcome)? The same types are exported as named types, with no globals installed:
+Prefer explicit imports (frappe-ui SPAs, shared libraries, anywhere a floating global is unwelcome)? The same types are exported as named types, with no `frappe` globals installed:
 
 ```ts
 import type { DocField, FrappeDoc, ListViewSettings } from "frappe-types";
 ```
+
+The module entry still brings jQuery's types, and with them jQuery's globals. Hundreds of the declarations are typed in terms of `JQuery`, so the entry references `@types/jquery` (a dependency of this package), and that package declares the `JQuery` namespace and the `$` and `jQuery` constants in the same file (`misc.d.ts`): there is no way to load one without the other. So a program that imports from `frappe-types` type-checks `$(…)` and `jQuery(…)` even with `"types": []`. In a page that loads no jQuery (a frappe-ui SPA, say), those calls compile and then throw, so keep them out with a lint rule (`no-restricted-globals` for `$` and `jQuery`). The one other global the entry brings is a type, the `FrappeDocTypes` registry (see [Typing your doctypes](#typing-your-doctypes-frappedoctypes)).
 
 Checking an app's own code? There are [`tsconfig` presets](#tsconfig-presets) for compiled TypeScript (`frappe-types/tsconfig/base.json`) and for the plain JavaScript in doctype, list and report scripts (`frappe-types/tsconfig/desk-js.json`). [JSDoc](#jsdoc-in-desk-scripts) such as `/** @type {frappe.ui.form.FormEvents<"Customer">} */` type-checks in those scripts, `frm.doc` is typed from [your doctypes](#typing-your-doctypes-frappedoctypes), and web form scripts have [their own entry](#web-forms-and-website-pages-frappe-typesweb). See [Checking an app with it](#checking-an-app-with-it).
 
