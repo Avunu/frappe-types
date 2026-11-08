@@ -49,16 +49,20 @@ import type {
 	DataTableRowIndex,
 } from "./datatable";
 import type {
+	ChildDoc,
 	DocField,
 	DocTypeMeta,
 	DocTypeName,
+	FieldType,
+	FrappeDoc,
 	IndicatorTuple,
 	PartialDocField,
 	RegisteredDoc,
 } from "./model";
+import type { Dialog, Form, Grid, Layout } from "./ui/form";
 // IMPORT-NAME FIXES — `Page` is `frappe.ui.Page`, declared in `utils.d.ts` (the
 // fragment that owns `FrappePageRegions`), never in `core.d.ts`.
-import type { Page } from "./utils";
+import type { Page, PageBreadcrumbItem } from "./utils";
 // `charts.d.ts` exports no `Chart`. `ReportView#chart` holds the RESULT of
 // `new frappe.Chart(...)` (frappe/public/js/frappe/views/reports/report_view.js:630), and `FrappeChartConstructor`'s
 // construct signature returns `FrappeBaseChart` — so the instance type is what
@@ -66,21 +70,22 @@ import type { Page } from "./utils";
 // property itself; it is reachable as `Frappe["Chart"]`.)
 import type { FrappeBaseChart } from "./charts";
 import type { JQueryRegion } from "./globals";
+import type { FrappeTabButtons } from "./ui/components";
 
 /* ------------------------------------------------------------------ *
  * 1. Primitives shared by every view
  * ------------------------------------------------------------------ */
 
 /**
- * The ten routable view modes.
+ * The ten view modes frappe itself routes to and labels.
  *
- * `frappe/public/js/frappe/list/base_list.js:1476-1487` — `frappe.views.view_modes = [...]`, and
- * `frappe/public/js/frappe/list/base_list.js:1488` `frappe.views.is_valid = (m) => view_modes.includes(m)`.
- * `frappe/public/js/frappe/list/list_factory.js:42` builds the class name as `frappe.views[view_name + "View"]`
- * (Kanban is the exception, `frappe/public/js/frappe/list/list_factory.js:21-40`: it picks the classic or the v2 engine
- * per board).
+ * `frappe/public/js/frappe/list/base_list.js:1476-1487` — the initial contents of
+ * `frappe.views.view_modes`, and exactly the keys of
+ * `frappe.views.get_view_label_map()` (`frappe/public/js/frappe/list/base_list.js:1462-1473`).
+ * {@link FrappeViewName} is these plus whatever an app registers in
+ * {@link FrappeViewModes}.
  */
-export type FrappeViewName =
+export type FrappeStandardViewName =
 	| "List"
 	| "Report"
 	| "Dashboard"
@@ -91,6 +96,50 @@ export type FrappeViewName =
 	| "Inbox"
 	| "Tree"
 	| "Map";
+
+/**
+ * The registry of view modes: its keys are {@link FrappeViewName}. Seeded with
+ * frappe's ten ({@link FrappeStandardViewName}); the values carry no meaning.
+ *
+ * It is an interface so an app can register its own view. frappe's list of
+ * views is open at runtime: `frappe.views.view_modes` is a plain array
+ * (`frappe/public/js/frappe/list/base_list.js:1476-1487`) that an app pushes
+ * to, `frappe.views.is_valid` and the view switcher read it
+ * (`frappe/public/js/frappe/list/base_list.js:1488`,
+ * `frappe/public/js/frappe/list/list_view_select.js:26`, `:102`), and
+ * `frappe/public/js/frappe/list/list_factory.js:42` builds the class of any
+ * route's view as `frappe.views[view_name + "View"]` (Kanban is the exception,
+ * `frappe/public/js/frappe/list/list_factory.js:21-40`: it picks the classic or
+ * the v2 engine per board). An app that adds a view merges its name in:
+ *
+ * ```ts
+ * declare module "frappe-types" {
+ *   interface FrappeViewModes { Chat: true }
+ * }
+ * ```
+ *
+ * after which `frappe.views.view_modes.push("Chat")`, `label_map["Chat"]` and a
+ * `"Chat"` key in `ListViewSelect#get_views()` type-check without a cast.
+ */
+export interface FrappeViewModes {
+	List: true;
+	Report: true;
+	Dashboard: true;
+	Gantt: true;
+	Kanban: true;
+	Calendar: true;
+	Image: true;
+	Inbox: true;
+	Tree: true;
+	Map: true;
+}
+
+/**
+ * A view mode: one of frappe's ten ({@link FrappeStandardViewName}) or one an
+ * app registered in {@link FrappeViewModes}. The keys of `frappe.views.view_modes`
+ * (`frappe/public/js/frappe/list/base_list.js:1476-1488`).
+ */
+export type FrappeViewName = Extract<keyof FrappeViewModes, string>;
 
 /**
  * A frappe filter, in the 4-tuple wire form.
@@ -245,6 +294,17 @@ export interface BaseListOptions {
 	[option: string]: unknown;
 }
 
+/**
+ * What `ListFactory` passes the constructor of the view a route names: always
+ * the doctype, and the page it made for the view
+ * (`frappe/public/js/frappe/list/list_factory.js:54-57`). The class is
+ * `frappe.views[view_name + "View"]` (`frappe/public/js/frappe/list/list_factory.js:42`),
+ * so an app's own view (see {@link FrappeViewModes}) is constructed with this.
+ */
+export interface ListFactoryViewOptions extends BaseListOptions {
+	doctype: string;
+}
+
 /* ------------------------------------------------------------------ *
  * 2. listview_settings — the per-doctype JS customisation hook
  * ------------------------------------------------------------------ */
@@ -337,12 +397,38 @@ export interface ListViewSettings<DT extends string = string> {
 	hide_name_column?: boolean;
 	/** `frappe/public/js/frappe/list/base_list.js:1164` — omit the standard "ID" filter field. */
 	hide_name_filter?: boolean;
-	/** `frappe/public/js/frappe/list/list_view.js:427` (ListView) and `frappe/public/js/frappe/views/reports/report_view.js:96` (ReportView) — both pass the view. */
-	onload?(view: BaseList): void;
+	/**
+	 * `frappe/public/js/frappe/list/list_view.js:427` (ListView) and
+	 * `frappe/public/js/frappe/views/reports/report_view.js:96` (ReportView) —
+	 * both pass the view, so it is a {@link ListView} (or one of its subclasses:
+	 * FileView, GanttView, …) or a {@link ReportView}, whose `columns` are
+	 * datatable columns instead.
+	 */
+	onload?(view: ListView | ReportView): void;
 	/** `frappe/public/js/frappe/list/list_view.js:352-353`, `frappe/public/js/frappe/list/list_view.js:2288-2289` — replaces "Add {doctype}". Takes NO arguments. */
 	primary_action?(): void;
-	/** `frappe/public/js/frappe/list/base_list.js:556-558` `this.settings.refresh(this)` — fired after every refresh. */
-	refresh?(view: BaseList): void;
+	/**
+	 * `frappe/public/js/frappe/list/base_list.js:556-558` `this.settings.refresh(this)` — fired after every refresh.
+	 * The view is a {@link ListView} or a {@link ReportView}: the only other
+	 * `BaseList`, `QueryReport` (`frappe/public/js/frappe/views/reports/query_report.js:32`),
+	 * replaces `refresh` without calling this one
+	 * (`frappe/public/js/frappe/views/reports/query_report.js:780`).
+	 */
+	refresh?(view: ListView | ReportView): void;
+	/**
+	 * `frappe/public/js/frappe/list/list_view_select.js:172-174` — any truthy
+	 * value offers the Map view on the switcher (otherwise it needs `latitude` and
+	 * `longitude` fields). Only its truthiness is read in v16; by name it is the
+	 * dotted path of a whitelisted method that returns coordinates.
+	 */
+	get_coords_method?: string;
+	/**
+	 * `frappe/public/js/frappe/views/gantt/gantt_view.js:250-262` — the HTML of
+	 * a Gantt bar's popup, replacing the title and dates. Called with the bar's
+	 * task and the row it was built from (`undefined` when the row is gone);
+	 * frappe checks it with `$.isFunction` first.
+	 */
+	gantt_custom_popup_html?(task: GanttViewTask, item: FrappeListDoc | undefined): string;
 	/**
 	 * Extra bundles to `frappe.require` before the first render.
 	 * `frappe/public/js/frappe/list/list_view.js:330-336` reads `this.required_libs` (an instance property that
@@ -588,6 +674,18 @@ export declare class BaseList {
 	/** `frappe/public/js/frappe/list/base_list.js:326-334` — `new frappe.ui.SortSelector({...})`. */
 	sort_selector?: SortSelector;
 	/**
+	 * `frappe/public/js/frappe/list/base_list.js:325` — when truthy,
+	 * `setup_sort_selector` returns before building {@link BaseList.sort_selector}.
+	 * BaseList never sets it; the Dashboard and Kanban views set it to `true`
+	 * (`frappe/public/js/frappe/views/dashboard/dashboard_view.js:23`,
+	 * `frappe/public/js/frappe/views/kanban/kanban_view.js:193`).
+	 *
+	 * `| undefined` because a subclass in desk JavaScript that sets it in a
+	 * method (where frappe's views do) declares it there as possibly undefined,
+	 * which `exactOptionalPropertyTypes` would otherwise reject.
+	 */
+	hide_sort_selector?: boolean | undefined;
+	/**
 	 * `frappe/public/js/frappe/list/base_list.js:214-220` — `new frappe.views.ListViewSelect({...})`, the view switcher
 	 * (only when `desk_settings.view_switcher` is on and the doctype does not
 	 * force its default view). It replaced the old `views_menu` button group,
@@ -676,8 +774,17 @@ export declare class BaseList {
 	setup_main_section(): Promise<unknown>;
 	setup_list_wrapper(): void;
 	setup_filter_area(): Promise<unknown> | void;
+	/** `frappe/public/js/frappe/list/base_list.js:324-335` — does nothing when {@link BaseList.hide_sort_selector} is set. */
 	setup_sort_selector(): void;
-	on_sort_change(...args: unknown[]): void;
+	/**
+	 * `frappe/public/js/frappe/list/base_list.js:337-339` — refreshes. Bound as the
+	 * sort selector's `onchange` (`frappe/public/js/frappe/list/base_list.js:333`),
+	 * which calls it with the new field and order
+	 * (`frappe/public/js/frappe/ui/sort_selector.js:28`, `:34`); BaseList's own
+	 * body ignores them, and ListView's override calls it with none
+	 * (`frappe/public/js/frappe/list/list_view.js:174`).
+	 */
+	on_sort_change(sort_by?: string, sort_order?: string): void;
 	setup_result_container_area(): void;
 	setup_result_area(): void;
 	setup_no_result_area(): void;
@@ -1074,6 +1181,14 @@ export interface ViewSwitcherMenuGroup {
 	options: ViewSwitcherMenuItem[];
 }
 
+/**
+ * {@link ListViewSelect.label_map}: a label for every {@link FrappeStandardViewName}
+ * (`frappe/public/js/frappe/list/base_list.js:1462-1473`), and possibly one for a
+ * view an app registered in {@link FrappeViewModes}.
+ */
+export type ListViewSelectLabelMap = Record<FrappeStandardViewName, string> &
+	Partial<Record<FrappeViewName, string>>;
+
 /** One view in {@link ListViewSelect.get_views}: whether to offer it, and how to switch to it. */
 export interface ListViewSelectView {
 	/** Truthy to offer the view; frappe stores whatever the check returned (`frappe/public/js/frappe/list/list_view_select.js:128-183`). */
@@ -1101,14 +1216,20 @@ export declare class ListViewSelect {
 		page: Page;
 		list_view: ListView;
 		icon_map: Partial<Record<FrappeViewName, string>>;
-		label_map: Record<FrappeViewName, string>;
+		label_map: ListViewSelectLabelMap;
 		[option: string]: unknown;
 	});
 	doctype: string;
 	page: Page;
 	list_view: ListView;
 	icon_map: Partial<Record<FrappeViewName, string>>;
-	label_map: Record<FrappeViewName, string>;
+	/**
+	 * `frappe.views.get_view_label_map()` (`frappe/public/js/frappe/list/base_list.js:219`):
+	 * a label for each of frappe's own views. An app's view has none until the
+	 * app adds it; the switcher then falls back to `__(view)`
+	 * (`frappe/public/js/frappe/list/list_view_select.js:106-109`).
+	 */
+	label_map: ListViewSelectLabelMap;
 	/** `frappe/public/js/frappe/list/list_view_select.js:22-35` — a {@link FrappeViewName} from the route; `"List"` when it names none. */
 	current_view: FrappeViewName;
 	/** `frappe/public/js/frappe/list/list_view_select.js:30` — the board name on a Kanban route. */
@@ -1174,17 +1295,30 @@ export interface ListViewSelect {}
  * an outright TS2416 ("not assignable to the same property in base type").
  * Plain `ListView` still means `ListView<ListColumn>`.
  *
+ * ### Replacing the class
+ * The parameter makes `typeof ListView` a GENERIC constructor, which no
+ * subclass is assignable to. So `frappe.views.ListView` is typed
+ * {@link ListViewConstructor} instead, a plain constructor of `ListView`, and
+ * the frappe idiom of replacing it with a subclass needs no cast:
+ *
+ * ```js
+ * const Base = frappe.views.ListView;
+ * if (Base) frappe.views.ListView = class extends Base { … };
+ * ```
+ *
  * ### Augmenting from a consumer
  * `carbon_frappe` stores its table engine on the instance. Do NOT cast — merge:
  *
  * ```ts
- * declare module "frappe-types/views" {
- *   interface ListView { carbon_table?: CarbonTable }
+ * declare module "frappe-types" {
+ *   interface ListView<TColumn> { carbon_table?: CarbonTable }
  * }
  * ```
  *
  * The empty `export interface ListView {}` below is what makes that legal
- * (class + interface declaration merging).
+ * (class + interface declaration merging). The merged interface repeats the
+ * type parameter (TS2428 otherwise); the module to augment is `"frappe-types"`,
+ * the package's entry, since its `exports` map publishes no `"frappe-types/views"`.
  */
 export declare class ListView<TColumn = ListColumn> extends BaseList {
 	/**
@@ -1202,8 +1336,10 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	 *
 	 * Typed as the full union, not the literal `"List"`, so `ReportView`'s
 	 * `"Report"` (`frappe/public/js/frappe/views/reports/report_view.js:20-22`) remains an assignable override.
+	 * Declared as the getter it is, so a subclass for an app's own view mode
+	 * can override it with one, as every frappe view does.
 	 */
-	readonly view_name: FrappeViewName;
+	get view_name(): FrappeViewName;
 	/** `frappe/public/js/frappe/list/list_view.js:112-114` — a GETTER returning `true`; ReportView returns `false` (`frappe/public/js/frappe/views/reports/report_view.js:24-26`). */
 	readonly show_saved_layout_menu: boolean;
 	/** `frappe/public/js/frappe/list/list_view.js:116-118` — `this.user_settings[this.view_name] || {}`. */
@@ -1331,6 +1467,12 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	show(): void;
 	/** `frappe/public/js/frappe/list/list_view.js:77-82` — routes away and throws instead of returning false. */
 	check_permissions(): void;
+	/**
+	 * `frappe/public/js/frappe/list/list_view.js:171-175` — stores the sort
+	 * selector's new field and order on the view, then refreshes through
+	 * {@link BaseList.on_sort_change}.
+	 */
+	on_sort_change(sort_by: string, sort_order: string): void;
 	/** `frappe/public/js/frappe/list/list_view.js:177-188`. */
 	validate_filters(filters: ListFilterTuple[]): ListFilterTuple[];
 	/** `frappe/public/js/frappe/list/list_view.js:225-241`. */
@@ -1663,6 +1805,27 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 export interface ListView<TColumn = ListColumn> {}
 
 /**
+ * The type of `frappe.views.ListView`: a plain (non-generic) constructor of
+ * {@link ListView} with the class's static member.
+ *
+ * `typeof ListView` constructs `ListView<TColumn>` for any `TColumn`, so a
+ * subclass (`class extends frappe.views.ListView {}`), which constructs only a
+ * `ListView<ListColumn>`, would not be assignable to it. frappe replaces the
+ * class this way itself: every view mode is `class … extends frappe.views.ListView`
+ * (`frappe/public/js/frappe/views/gantt/gantt_view.js:13`,
+ * `frappe/public/js/frappe/views/calendar/calendar.js:7`), and `ListFactory`
+ * falls back to whatever `frappe.views.ListView` holds
+ * (`frappe/public/js/frappe/list/list_factory.js:42-43`).
+ */
+export interface ListViewConstructor {
+	/** `frappe/public/js/frappe/list/list_view.js:24-66`. */
+	new (opts: BaseListOptions): ListView;
+	readonly prototype: ListView;
+	/** `frappe/public/js/frappe/list/list_view.js:7-22`; see {@link ListView.load_last_view}. */
+	load_last_view(): boolean;
+}
+
+/**
  * `this.virtualization_state` — the scroll-window bookkeeping
  * (`frappe/public/js/frappe/list/list_view.js:51-65`). The lazy bundle owns every write
  * (`frappe/public/js/frappe/list/list_view_virtualization.js:14-117`, `frappe/public/js/frappe/list/list_view_virtualization.js:294-421`); declared so a replacement renderer can read
@@ -1839,7 +2002,7 @@ export declare class ReportView extends ListView<DataTableColumn> {
 	static load_last_view(): boolean;
 
 	/** `frappe/public/js/frappe/views/reports/report_view.js:20-22` — a getter returning `"Report"`. */
-	readonly view_name: "Report";
+	get view_name(): "Report";
 	/** `frappe/public/js/frappe/views/reports/report_view.js:24-26` — a getter returning `false`: Report View has no saved-layout menu. */
 	readonly show_saved_layout_menu: false;
 
@@ -2061,7 +2224,7 @@ export interface ReportView {}
 export interface QueryReportColumn extends DataTableColumn {
 	fieldname: string;
 	label?: string;
-	fieldtype?: string;
+	fieldtype?: FieldType;
 	options?: string | string[];
 	/** `frappe/public/js/frappe/views/reports/query_report.js:1170` — set by report scripts; filtered out of the render. */
 	hidden?: boolean;
@@ -2551,7 +2714,14 @@ export declare class ListFactory extends Factory {
  */
 export interface FrappeViewsNamespace {
 	BaseList?: typeof BaseList;
-	ListView?: typeof ListView;
+	/**
+	 * `frappe/public/js/frappe/list/list_view.js:6`. Writable: an app replaces it
+	 * with a subclass to change every list (`ListFactory` reads it at
+	 * `frappe/public/js/frappe/list/list_factory.js:43`). Typed
+	 * {@link ListViewConstructor}, not `typeof ListView`, so a subclass can be
+	 * assigned back.
+	 */
+	ListView?: ListViewConstructor;
 	ReportView?: typeof ReportView;
 	QueryReport?: typeof QueryReport;
 	Container?: typeof Container;
@@ -2566,7 +2736,12 @@ export interface FrappeViewsNamespace {
 	 * placeholder, or nothing — hence the union.
 	 */
 	list_view?: Record<string, ListView | ReportView | Record<string, never> | undefined>;
-	/** `frappe/public/js/frappe/list/base_list.js:1476-1487`. */
+	/**
+	 * `frappe/public/js/frappe/list/base_list.js:1476-1487` — a plain array, seeded with
+	 * {@link FrappeStandardViewName}, that an app pushes its own view onto after
+	 * registering the name in {@link FrappeViewModes}. The switcher lists views in
+	 * this order (`frappe/public/js/frappe/list/list_view_select.js:102`).
+	 */
 	view_modes?: FrappeViewName[];
 	/** `frappe/public/js/frappe/list/base_list.js:1488`. */
 	is_valid?(view_mode: string): boolean;
@@ -2575,8 +2750,8 @@ export interface FrappeViewsNamespace {
 	 * uses. Has no `Inbox` entry. Shared by the list-family and tree switchers.
 	 */
 	view_icon_map?: Partial<Record<FrappeViewName, string>>;
-	/** `frappe/public/js/frappe/list/base_list.js:1462-1473` — the translated label of every view, one entry per {@link FrappeViewName}. */
-	get_view_label_map?(): Record<FrappeViewName, string>;
+	/** `frappe/public/js/frappe/list/base_list.js:1462-1473` — the translated label of each of frappe's own views, one entry per {@link FrappeStandardViewName}. */
+	get_view_label_map?(): Record<FrappeStandardViewName, string>;
 	/**
 	 * `frappe/public/js/frappe/list/list_factory.js:111-121` — whether a Kanban board uses the v2 engine: `false` for no
 	 * board, the cached answer if there is one (`frappe/public/js/frappe/list/list_factory.js:113-115`), otherwise a
@@ -2596,6 +2771,14 @@ export interface FrappeViewsNamespace {
 	 * (`frappe/public/js/frappe/list/list_filter/list_filter.js:15`).
 	 */
 	ListFilter?: new (list_view: BaseList) => ListFilter;
+	/**
+	 * `frappe/public/js/frappe/views/calendar/calendar.js:4` — `frappe.provide("frappe.views.calendar")`:
+	 * each doctype's {@link CalendarSettings}, assigned by its `<doctype>_calendar.js`
+	 * (run with the doctype's meta, `frappe/public/js/frappe/model/model.js:255-264`).
+	 * A doctype without one has no entry. `frappe.provide("frappe.views.calendar")`
+	 * returns it typed, and creates it when missing.
+	 */
+	calendar?: Record<string, CalendarSettings | undefined>;
 	/* -- The lazily-loaded views and view helpers. -------------------------
 	 *
 	 * NO INDEX SIGNATURE (gaps.md §5.4 / §6.14). This interface used to end in
@@ -2627,8 +2810,8 @@ export interface FrappeViewsNamespace {
 	Calendar?: unknown;
 	/** `views/calendar/calendar.js` */
 	CalendarView?: unknown;
-	/** `views/communication.js` */
-	CommunicationComposer?: unknown;
+	/** `frappe/public/js/frappe/views/communication.js:11`, in `desk.bundle.js`. See {@link CommunicationComposer}. */
+	CommunicationComposer?: typeof CommunicationComposer;
 	/** `views/dashboard/dashboard_view.js` */
 	DashboardView?: unknown;
 	/** `frappe/public/js/frappe/views/file/file_view.js:3`, in `list.bundle.js`. See {@link FileView}. */
@@ -2637,8 +2820,11 @@ export interface FrappeViewsNamespace {
 	FormFactory?: unknown;
 	/** `views/image/image_view.js` */
 	GalleryView?: unknown;
-	/** `views/gantt/gantt_view.js` */
-	GanttView?: unknown;
+	/**
+	 * `frappe/public/js/frappe/views/gantt/gantt_view.js:13`, in `list.bundle.js`.
+	 * See {@link GanttView}. Writable: an app replaces it with a subclass.
+	 */
+	GanttView?: typeof GanttView;
 	/** `views/image/image_view.js` */
 	ImageView?: unknown;
 	/** `views/inbox/inbox_view.js` */
@@ -2697,6 +2883,25 @@ export interface FrappeViewsNamespace {
 }
 
 /**
+ * What `frappe.desk.doc_preview.get_preview` returns — the document a
+ * {@link SidePanel} shows. `frappe/desk/doc_preview.py:8-20`: the document after
+ * the read and field-level permission checks, with its link titles set
+ * (`doc.as_dict()`), and the permlevels the user may read
+ * (`doc.get_permlevel_access("read")`). The panel caches it per document in
+ * {@link SidePanel.previews} (`frappe/public/js/frappe/ui/side_panel.js:599`).
+ */
+export interface DocPreview {
+	/** `frappe/desk/doc_preview.py:18`. */
+	doc: FrappeDoc;
+	/**
+	 * `frappe/desk/doc_preview.py:19` — always sent. The panel hides the fields of
+	 * any other permlevel (`frappe/public/js/frappe/ui/side_panel.js:28-33`,
+	 * `:642`); it still reads it as `preview.permlevels || []`.
+	 */
+	permlevels: number[];
+}
+
+/**
  * `frappe.ui.SidePanel` — `frappe/public/js/frappe/ui/side_panel.js:399`, the
  * right-hand drawer that previews a document when a Link cell is clicked in a
  * report (see {@link ReportView.setup_link_side_panel}). **Lazy**: it lives in
@@ -2704,18 +2909,60 @@ export interface FrappeViewsNamespace {
  * `frappe.ui.handle_link_cell_click` loads on the first click
  * (`frappe/public/js/frappe/views/reports/link_side_panel.js:37-39`). Reach the
  * one instance through `frappe.ui.get_side_panel()`.
+ *
+ * Besides the public calls (`open`, `back`, `close`, …) the members the panel
+ * builds and renders through are declared too, because apps wrap them on
+ * `frappe.ui.SidePanel.prototype`: `render_doc`, `set_header`, `make_buttons`
+ * and the {@link SidePanel.previews} cache.
  */
 export declare class SidePanel {
 	/** `frappe/public/js/frappe/ui/side_panel.js:400-413` — builds the drawer and appends it to `<body>`. */
 	constructor();
+	/**
+	 * `frappe/public/js/frappe/ui/side_panel.js:402` — one frm-less `Layout` per
+	 * doctype, created by {@link SidePanel.render_doc} (`:621-635`) and repointed
+	 * at each document of that doctype.
+	 */
+	layouts: Record<string, { layout: Layout; $wrapper: JQuery<HTMLElement> } | undefined>;
+	/**
+	 * `frappe/public/js/frappe/ui/side_panel.js:404` — fetched previews, keyed
+	 * `"<doctype>/<docname>"` (`:568`, `:599`), so Back and a revisit render
+	 * without a fetch. Emptied by {@link SidePanel.close} (`:807`).
+	 */
+	previews: Record<string, DocPreview | undefined>;
+	/** `frappe/public/js/frappe/ui/side_panel.js:611` — the preview on screen; set by {@link SidePanel.show_preview}. */
+	preview?: DocPreview;
+	/**
+	 * `frappe/public/js/frappe/ui/side_panel.js:406` — `[doctype, docname]` of the
+	 * child-row docfield copies a preview seeded (`:676-678`), dropped by
+	 * {@link SidePanel.clear_cached_child_docfields}.
+	 */
+	cached_child_docfields: Array<[doctype: string, docname: string]>;
 	/** `frappe/public/js/frappe/ui/side_panel.js:407` — the documents opened before the current one, for Back. */
 	history: Array<{ doctype: string; docname: string }>;
+	/**
+	 * `frappe/public/js/frappe/ui/side_panel.js:409` — bumped by every render
+	 * (`:564`) and close (`:799`), so a slow fetch cannot paint over newer content.
+	 */
+	token: number;
 	/** `frappe/public/js/frappe/ui/side_panel.js:410` — the document shown, or `null` when closed. */
 	current: { doctype: string; docname: string } | null;
 	/** `frappe/public/js/frappe/ui/side_panel.js:415`. */
 	$panel: JQuery<HTMLElement>;
 	/** `frappe/public/js/frappe/ui/side_panel.js:417`. */
 	$body: JQuery<HTMLElement>;
+	/** `frappe/public/js/frappe/ui/side_panel.js:778` — resolves when the slide-in has ended; set by {@link SidePanel.show}. */
+	slide_done?: Promise<void>;
+	/** `frappe/public/js/frappe/ui/side_panel.js:690-695` — the read-only dialog of the last child row opened. */
+	row_dialog?: Dialog;
+	/** `frappe/public/js/frappe/ui/side_panel.js:414-439` — renders the drawer, its resize handle and buttons, and binds links, route changes and Escape. Called by the constructor. */
+	make(): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:441-462` — the Back button in the header, and "Open in full page" and Close in `.side-panel-actions`. */
+	make_buttons(): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:466-514` — the drag handle, stored in `localStorage`; double-click resets it. */
+	setup_resize(): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:516-526` — the drawer width in pixels, clamped to the CSS minimum and the window. */
+	set_width(width: number): void;
 	/**
 	 * `frappe/public/js/frappe/ui/side_panel.js:528-553` — shows a document.
 	 * Does nothing without both names, alerts instead when the user cannot read
@@ -2725,13 +2972,47 @@ export declare class SidePanel {
 	open(doctype: string, docname: string, opts?: { push?: boolean }): void;
 	/** `frappe/public/js/frappe/ui/side_panel.js:555-560` — the previous document, if any. */
 	back(): void;
-	/** `frappe/public/js/frappe/ui/side_panel.js:516-526` — the drawer width in pixels, clamped to the CSS minimum and the window. */
-	set_width(width: number): void;
+	/**
+	 * `frappe/public/js/frappe/ui/side_panel.js:562-608` — shows
+	 * {@link SidePanel.current}: from {@link SidePanel.previews} when cached,
+	 * otherwise a skeleton while `frappe.desk.doc_preview.get_preview` is fetched
+	 * (20s timeout), then caches and shows the result, or an error state.
+	 * Throws when nothing is current.
+	 */
+	render(): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:610-615` — stores the preview, renders it and its header, and marks the panel ready. */
+	show_preview(doctype: string, docname: string, preview: DocPreview): void;
+	/**
+	 * `frappe/public/js/frappe/ui/side_panel.js:617-648` — renders the preview's
+	 * document read-only in the doctype's {@link SidePanel.layouts} entry
+	 * (creating it on first use), hiding fields outside `preview.permlevels`.
+	 */
+	render_doc(doctype: string, preview: DocPreview): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:651-668` — child-table rows open a read-only dialog instead of the grid form, re-bound after each page of rows. */
+	make_rows_openable(layout: Layout): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:670-684`. */
+	bind_grid_rows(grid: Grid, child_doctype: string): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:686-712` — a child row, read-only, in a large dialog; its links open in the panel. */
+	open_row_dialog(child_doctype: string, row_doc: ChildDoc): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:715-720`. */
+	clear_cached_child_docfields(): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:724-736` — feeds each table field its rows from `doc` and makes its grid static (read-only). */
+	prepare_grids(layout: Layout, doc: FrappeDoc): void;
+	/**
+	 * `frappe/public/js/frappe/ui/side_panel.js:738-748` — the doctype and name
+	 * in the header, and the document's indicator once a preview has loaded
+	 * (`null` while loading, `:575`).
+	 */
+	set_header(doctype: string, docname: string, preview: DocPreview | null): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:752-771` — the skeleton overlay, the rendered document, or the error message. */
+	set_state(state: "loading" | "ready" | "error"): void;
 	/** `frappe/public/js/frappe/ui/side_panel.js:773-779` — slides the drawer in. */
 	show(): void;
+	/** `frappe/public/js/frappe/ui/side_panel.js:781-791` — resolves when the drawer's transition ends, or after 300ms. */
+	after_slide(): Promise<void>;
 	/** `frappe/public/js/frappe/ui/side_panel.js:793-795`. */
 	is_open(): boolean;
-	/** `frappe/public/js/frappe/ui/side_panel.js:797-810` — slides it out and forgets the history. */
+	/** `frappe/public/js/frappe/ui/side_panel.js:797-810` — slides it out and forgets the history and the cached previews. */
 	close(): void;
 }
 export interface SidePanel {}
@@ -2759,6 +3040,388 @@ export declare class FileView extends ListView {
 	static override load_last_view(): boolean;
 }
 export interface FileView {}
+
+/**
+ * The options of {@link CommunicationComposer}. The constructor copies every key
+ * onto the instance (`$.extend(this, opts)`,
+ * `frappe/public/js/frappe/views/communication.js:13`); these are the ones it
+ * reads. frappe's own callers: a form's `frm.email_doc`
+ * (`frappe/public/js/frappe/form/form.js:1480-1488`), the timeline's reply
+ * (`frappe/public/js/frappe/form/footer/form_timeline.js:560-612`), the error
+ * report (`frappe/public/js/frappe/request.js:604-612`), the Inbox's New Email
+ * (`frappe/public/js/frappe/views/inbox/inbox_view.js:208`, no options at all).
+ */
+export interface CommunicationComposerOptions {
+	/** The form the email is about: its doc, files, email field, timeline and `get_email_recipients` hook are read throughout. */
+	frm?: Form;
+	/** The document the email is about; defaults to `frm.doc`, else `{}` (`frappe/public/js/frappe/views/communication.js:14-16`). */
+	doc?: FrappeDoc;
+	/** The dialog title; falls back to `subject`, then "New Email" (`frappe/public/js/frappe/views/communication.js:25`). */
+	title?: string;
+	/** `frappe/public/js/frappe/views/communication.js:1133-1192` — when empty it is built from the last email or the form's title. */
+	subject?: string;
+	/** Comma-separated addresses; filled from the last email or the form when empty (`frappe/public/js/frappe/views/communication.js:1136-1191`). */
+	recipients?: string;
+	/** Comma-separated (`frappe/public/js/frappe/views/communication.js:1117-1128`). */
+	cc?: string;
+	/** Comma-separated (`frappe/public/js/frappe/views/communication.js:1145`, `:1232-1233`). */
+	bcc?: string;
+	/** The From account (`frappe/public/js/frappe/views/communication.js:1235`). */
+	sender?: string;
+	/** The body; when set, no draft or signature is put in its place (`frappe/public/js/frappe/views/communication.js:1270`, `:1856`). */
+	message?: string;
+	/** Files offered as attachments besides the form's (`frappe/public/js/frappe/views/communication.js:1474-1486`); uploads are pushed onto it (`:1452`). */
+	attachments?: Array<{ name: string; file_name?: string; file_url?: string; file_size?: number; [field: string]: unknown }>;
+	/** Ticks "Attach Document Print" (`frappe/public/js/frappe/views/communication.js:1615-1617`). */
+	attach_document_print?: boolean;
+	/** The print format selected; overrides a draft's (`frappe/public/js/frappe/views/communication.js:1287`, `:1413`). */
+	print_format?: string;
+	/** The letter head; `""` selects none, `null`/absent the form's (`frappe/public/js/frappe/views/communication.js:1288`, `:1423-1424`). */
+	letter_head?: string | null;
+	/** An Email Template to offer; defaults to the doctype's `default_email_template` (`frappe/public/js/frappe/views/communication.js:1243`). */
+	email_template?: string;
+	/** A reply to {@link CommunicationComposerOptions.last_email}: its addresses are copied (`frappe/public/js/frappe/views/communication.js:1096-1131`). */
+	is_a_reply?: boolean;
+	/** With a reply, copies the last email's cc and bcc too (`frappe/public/js/frappe/views/communication.js:1108-1110`, `:1143-1146`). */
+	reply_all?: boolean | 0 | 1;
+	/** A forward: the recipients are not filled in (`frappe/public/js/frappe/views/communication.js:1136`, `:1149`). */
+	forward?: boolean;
+	/**
+	 * The Communication being replied to (`frappe/public/js/frappe/views/communication.js:1097-1145`,
+	 * `:1203`, `:1751`); the timeline passes a docinfo communication or the
+	 * Communication form's doc (`frappe/public/js/frappe/form/footer/form_timeline.js:604`).
+	 */
+	last_email?: FrappeDoc & { sender: string; recipients: string; cc?: string | null; bcc?: string | null };
+	[option: string]: unknown;
+}
+
+/**
+ * `frappe.views.CommunicationComposer` —
+ * `frappe/public/js/frappe/views/communication.js:11`, the email dialog
+ * ("New Email", reply, forward). In `desk.bundle.js`
+ * (`frappe/public/js/desk.bundle.js:116`). Constructing one opens the dialog:
+ * the constructor copies the options on, then calls {@link CommunicationComposer.make}
+ * (`frappe/public/js/frappe/views/communication.js:12-19`).
+ */
+export declare class CommunicationComposer {
+	/** `frappe/public/js/frappe/views/communication.js:12-19`. The options may be left out (`frappe/public/js/frappe/views/inbox/inbox_view.js:208`). */
+	constructor(opts?: CommunicationComposerOptions);
+	frm?: Form;
+	/** `frappe/public/js/frappe/views/communication.js:14-16` — the option, else `frm.doc`, else `{}`. */
+	doc: FrappeDoc | Record<string, never>;
+	title?: string;
+	/** `frappe/public/js/frappe/views/communication.js:1134` — always a string once the dialog is built. */
+	subject: string;
+	recipients?: string;
+	cc?: string;
+	bcc?: string;
+	sender?: string;
+	message?: string;
+	attachments?: CommunicationComposerOptions["attachments"];
+	attach_document_print?: boolean;
+	print_format?: string;
+	letter_head?: string | null;
+	email_template?: string;
+	is_a_reply?: boolean;
+	reply_all?: boolean | 0 | 1;
+	forward?: boolean;
+	last_email?: CommunicationComposerOptions["last_email"];
+	/** `frappe/public/js/frappe/views/communication.js:24-40` — the composer's large, minimizable dialog. */
+	dialog: Dialog;
+	/** `frappe/public/js/frappe/views/communication.js:1196`, `:1199` — the form's doctype, or `"Inbox"`; with `key`, where the draft is kept. */
+	doctype?: string;
+	/** `frappe/public/js/frappe/views/communication.js:1197-1208`. */
+	key?: string;
+	/** `frappe/public/js/frappe/views/communication.js:21-51` — builds and shows the dialog. */
+	make(): void;
+	/** `frappe/public/js/frappe/views/communication.js:775-784` — fills the dialog's fields from the options, the draft and the form. */
+	prepare(): void;
+	/** `frappe/public/js/frappe/views/communication.js:1620-1645` — the Send button: reads the values and sends. */
+	send_action(): void;
+	/**
+	 * `frappe/public/js/frappe/views/communication.js:1647-1657` — the dialog's
+	 * values with recipients, cc and bcc joined into strings. `null` only if
+	 * the dialog's `get_values` returned `null`, which this method does not
+	 * guard: it then throws.
+	 */
+	get_values(): Record<string, unknown> | null;
+	/** `frappe/public/js/frappe/views/communication.js:1659-1669` — keeps the body as a draft for the form (in IndexedDB). */
+	save_as_draft(): void;
+	/** `frappe/public/js/frappe/views/communication.js:1681-1684` — drops the draft and the last-edited values. */
+	clear_cache(): void;
+	/** `frappe/public/js/frappe/views/communication.js:1686-1700`. */
+	delete_saved_draft(): void;
+}
+export interface CommunicationComposer {}
+
+/**
+ * The field map of {@link CalendarSettings}: for each key the Calendar and
+ * Gantt views read, the fieldname of the row that holds it. The Calendar view
+ * copies every entry onto each event, `event[key] = row[fieldname]`
+ * (`frappe/public/js/frappe/views/calendar/calendar.js:490-492`), so any
+ * further FullCalendar event property can be mapped too.
+ */
+export interface CalendarFieldMap {
+	/** Calendar default `"name"` (`frappe/public/js/frappe/views/calendar/calendar.js:117`); Gantt default `"name"` (`frappe/public/js/frappe/views/gantt/gantt_view.js:6`). */
+	id?: string;
+	/** Calendar default `"start"`, Gantt default `"start"` (`frappe/public/js/frappe/views/calendar/calendar.js:118`, `frappe/public/js/frappe/views/gantt/gantt_view.js:4`). */
+	start?: string;
+	/** Calendar default `"end"`, Gantt default `"end"` (`frappe/public/js/frappe/views/calendar/calendar.js:119`, `frappe/public/js/frappe/views/gantt/gantt_view.js:5`). */
+	end?: string;
+	/** The event's or bar's label (`frappe/public/js/frappe/views/calendar/calendar.js:458`, `frappe/public/js/frappe/views/gantt/gantt_view.js:106-107`). */
+	title?: string;
+	/**
+	 * Calendar default `"all_day"` (`frappe/public/js/frappe/views/calendar/calendar.js:120`). Not a
+	 * string means the value itself, applied to every event that has none
+	 * (`frappe/public/js/frappe/views/calendar/calendar.js:494-496`), as a custom Calendar View does (`:99`).
+	 */
+	allDay?: string | 0 | 1 | boolean;
+	/** Calendar default `"convert_to_user_tz"`; when unset every event is converted (`frappe/public/js/frappe/views/calendar/calendar.js:121`, `:507`). */
+	convertToUserTz?: string;
+	/** Gantt: the progress fieldname, or a function of the row (`frappe/public/js/frappe/views/gantt/gantt_view.js:96-100`); default `"progress"`. */
+	progress?: string | ((item: FrappeListDoc) => number);
+	/** Gantt: a hex colour field (`frappe/public/js/frappe/views/gantt/gantt_view.js:129-135`); default `"color"`. */
+	color?: string;
+	/** Gantt (`frappe/public/js/frappe/views/gantt/gantt_view.js:136-138`); default `"is_milestone"`. */
+	is_milestone?: string;
+	/** Gantt: the dependencies (`frappe/public/js/frappe/views/gantt/gantt_view.js:126-128`); default `"depends_on_tasks"`. */
+	depends_on?: string;
+	[key: string]: unknown;
+}
+
+/**
+ * `frappe.views.calendar[doctype]` — what a `<doctype>_calendar.js` assigns to
+ * give a doctype its Calendar and Gantt views (frappe's own:
+ * `frappe/desk/doctype/event/event_calendar.js:1`,
+ * `frappe/desk/doctype/todo/todo_calendar.js:4`). Its presence alone offers
+ * both views on the switcher
+ * (`frappe/public/js/frappe/list/list_view_select.js:142-153`).
+ *
+ * The Calendar view merges every key into the options of its
+ * `frappe.views.Calendar` (`Object.assign`,
+ * `frappe/public/js/frappe/views/calendar/calendar.js:75`), so any key is
+ * accepted; these are the ones frappe reads.
+ */
+export interface CalendarSettings {
+	/** See {@link CalendarFieldMap}. The Gantt view adds its defaults under it (`frappe/public/js/frappe/views/gantt/gantt_view.js:22-25`). */
+	field_map?: CalendarFieldMap;
+	/**
+	 * Gantt only. An object is merged over these settings for the Gantt view
+	 * (`frappe/public/js/frappe/views/gantt/gantt_view.js:27-29`); `true` is the
+	 * conventional flag frappe's own ToDo settings set.
+	 */
+	gantt?: boolean | Omit<CalendarSettings, "gantt">;
+	/** Gantt only: sorts the bars, ascending (`frappe/public/js/frappe/views/gantt/gantt_view.js:31-33`). */
+	order_by?: string;
+	/** The whitelisted method that returns the events; default `frappe.desk.calendar.get_events` (`frappe/public/js/frappe/views/calendar/calendar.js:377`). */
+	get_events_method?: string;
+	/** The whitelisted method a drag or resize calls; default `frappe.desk.calendar.update_event` (`frappe/public/js/frappe/views/calendar/calendar.js:635`). */
+	update_event_method?: string;
+	/**
+	 * `frappe/public/js/frappe/views/calendar/calendar.js:611-622` — an event's
+	 * colour: a colour family (`"red"`, `"green"`, …), one of the old names
+	 * `danger` / `success` / `warning` / `default`, or a `#hex`. Falsy is blue.
+	 */
+	get_css_class?(event: Record<string, unknown>): string | null | undefined;
+	/** Extra fields to fetch with each event (`frappe/public/js/frappe/views/calendar/calendar.js:452-462`). */
+	fields?: string[];
+	/** Also use `fields` and `get_css_class` on the doctype's custom Calendar Views (`frappe/public/js/frappe/views/calendar/calendar.js:89-92`). */
+	apply_to_custom_calendar_views?: boolean;
+	/** FullCalendar options, merged over frappe's own (`frappe/public/js/frappe/views/calendar/calendar.js:448-450`). */
+	options?: Record<string, unknown>;
+	[option: string]: unknown;
+}
+
+/**
+ * One bar of a {@link GanttView}, built from a row by `prepare_tasks`
+ * (`frappe/public/js/frappe/views/gantt/gantt_view.js:116-139`) and handed to
+ * frappe-gantt. The values are the row's, through the field map.
+ */
+export interface GanttViewTask {
+	start: unknown;
+	/** The end, or the start when the row has none. */
+	end: unknown;
+	/** The label: the title field, else the doctype's title field with the name, else the name. */
+	name: unknown;
+	id: unknown;
+	doctype: string;
+	progress: unknown;
+	/** `""` when the field map has no `depends_on`. */
+	dependencies: unknown;
+	/** `"color-<hex>"` or `"bar-milestone"`. */
+	custom_class?: string;
+}
+
+/**
+ * `frappe.views.GanttView` — `frappe/public/js/frappe/views/gantt/gantt_view.js:13`,
+ * in `list.bundle.js` (`frappe/public/js/list.bundle.js:23`). It draws the rows
+ * of a doctype with {@link CalendarSettings} as frappe-gantt bars.
+ */
+export declare class GanttView extends ListView {
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:14-16` — a getter returning `"Gantt"`. */
+	get view_name(): "Gantt";
+	/**
+	 * `frappe/public/js/frappe/views/gantt/gantt_view.js:21-29` — the doctype's
+	 * `frappe.views.calendar` entry (or `{}`), with the Gantt defaults merged
+	 * under its `field_map` and a `gantt` object merged over it.
+	 */
+	calendar_settings: CalendarSettings & { field_map: CalendarFieldMap };
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:95` — set by {@link GanttView.prepare_tasks}. */
+	tasks?: GanttViewTask[];
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:82-84` — when the first row has no progress, the bars' progress is read-only. */
+	progress_disabled?: boolean;
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:198` — the frappe-gantt `Gantt` instance (a library this package does not type). */
+	gantt?: unknown;
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:278-288` — the Day / Week / Month switch. */
+	view_mode_group?: FrappeTabButtons;
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:321-326` — a getter: frappe-gantt's CSS and JS. */
+	readonly required_libs: string[];
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:18-41`. */
+	setup_defaults(): Promise<unknown>;
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:42` — empty. */
+	setup_view(): void;
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:44-70` — adds the mapped fields the doctype has. */
+	get_fields(): string[];
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:72-75` — then {@link GanttView.prepare_tasks}. */
+	prepare_data(data: unknown): void;
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:77-142`. */
+	prepare_tasks(): void;
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:144-148` — once `required_libs` have loaded, {@link GanttView.render_gantt}. */
+	render(): void;
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:150` — empty: the Gantt view has no list header. */
+	render_header(): void;
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:190-269`. */
+	render_gantt(): void;
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:271-290`. */
+	setup_view_mode_buttons(): void;
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:292-315` — a `<style>` for the bars' hex colours. */
+	set_colors(): void;
+	/** `frappe/public/js/frappe/views/gantt/gantt_view.js:317-319` — the row whose `name` is `name`. */
+	get_item(name: unknown): FrappeListDoc | undefined;
+}
+export interface GanttView {}
+
+/**
+ * A legacy `frappe.breadcrumbs.add()` payload: the module and doctype of the page,
+ * or a `{label, route}` crumb when `type` is `"Custom"`
+ * (`frappe/public/js/frappe/views/breadcrumbs.js:32-38`, read by `resolve`,
+ * `:133-224`).
+ */
+export interface FrappeBreadcrumbSource {
+	module?: string;
+	doctype?: string;
+	/** `"Custom"` makes it a `{label, route}` crumb (`frappe/public/js/frappe/views/breadcrumbs.js:135-137`). */
+	type?: string;
+	label?: string;
+	route?: string;
+	/** Dashboard crumbs: the document drawn; falls back to the route (`frappe/public/js/frappe/views/breadcrumbs.js:217`). */
+	docname?: string;
+	[key: string]: unknown;
+}
+
+/**
+ * `frappe.breadcrumbs` — `frappe/public/js/frappe/views/breadcrumbs.js:24`, in
+ * `desk.bundle.js` (`frappe/public/js/desk.bundle.js:103`). A compatibility
+ * layer, marked for removal in v17: the trail now belongs to each page
+ * (`page.set_breadcrumbs(items)`, see {@link Page}), and every member forwards
+ * to the page on screen (`frappe/public/js/frappe/views/breadcrumbs.js:4-22`).
+ * The members marked deprecated log a warning, once, naming their replacement
+ * (`frappe/public/js/frappe/views/breadcrumbs.js:262-270`).
+ */
+export interface FrappeBreadcrumbs {
+	/**
+	 * `frappe/public/js/frappe/views/breadcrumbs.js:32-38` — names the page on
+	 * screen: stores the payload under the current route in {@link FrappeBreadcrumbs.all}
+	 * and repaints. `module` may be the whole payload.
+	 */
+	add(module: string | FrappeBreadcrumbSource, doctype?: string, type?: string): void;
+	/** `frappe/public/js/frappe/views/breadcrumbs.js:41-43` — repaints the trail of the page on screen. */
+	update(): void;
+	/**
+	 * `frappe/public/js/frappe/views/breadcrumbs.js:46-49` — `frappe.get_route_str()`.
+	 * @deprecated Use `frappe.get_current_page()`.
+	 */
+	current_page(): string;
+	/**
+	 * `frappe/public/js/frappe/views/breadcrumbs.js:52-58`.
+	 * @deprecated Use `frappe.get_current_page().set_breadcrumbs([])`.
+	 */
+	clear(): void;
+	/**
+	 * `frappe/public/js/frappe/views/breadcrumbs.js:66-72` — `show` means show.
+	 * @deprecated Set `page.show_breadcrumbs`.
+	 */
+	toggle(show: boolean): void;
+	/**
+	 * `frappe/public/js/frappe/views/breadcrumbs.js:78-87`.
+	 * @deprecated The trail is rebuilt from the route.
+	 */
+	rename(doctype: string, old_name: string, new_name: string): void;
+	/**
+	 * `frappe/public/js/frappe/views/breadcrumbs.js:95-98`.
+	 * @deprecated Use `page.set_breadcrumbs(items)`.
+	 */
+	append_breadcrumb_element(route: string, label: string): void;
+	/**
+	 * `frappe/public/js/frappe/views/breadcrumbs.js:100-103`.
+	 * @deprecated Use `page.set_breadcrumbs(items)`.
+	 */
+	set_custom_breadcrumbs(breadcrumbs: { label?: string; route?: string }): void;
+	/**
+	 * `frappe/public/js/frappe/views/breadcrumbs.js:105-108`.
+	 * @deprecated Use `page.set_breadcrumbs(items)`.
+	 */
+	set_list_breadcrumb(breadcrumbs: FrappeBreadcrumbSource): void;
+	/**
+	 * `frappe/public/js/frappe/views/breadcrumbs.js:110-113`.
+	 * @deprecated Use `page.set_breadcrumbs(items)`.
+	 */
+	set_tree_breadcrumb(breadcrumbs: FrappeBreadcrumbSource): void;
+	/**
+	 * `frappe/public/js/frappe/views/breadcrumbs.js:115-118`.
+	 * @deprecated Use `frappe.ui.form.get_breadcrumbs(frm)`.
+	 */
+	set_form_breadcrumb(breadcrumbs: FrappeBreadcrumbSource, view: string): void;
+	/**
+	 * `frappe/public/js/frappe/views/breadcrumbs.js:120-123`.
+	 * @deprecated Use `page.set_breadcrumbs(items)`.
+	 */
+	set_dashboard_breadcrumb(breadcrumbs: FrappeBreadcrumbSource): void;
+	/** `frappe/public/js/frappe/views/breadcrumbs.js:133-156` — the page items for a payload, read against the current route; `[]` for none. */
+	resolve(source: FrappeBreadcrumbSource | null | undefined): PageBreadcrumbItem[];
+	/** `frappe/public/js/frappe/views/breadcrumbs.js:158-162`. */
+	tree_items(source: FrappeBreadcrumbSource): PageBreadcrumbItem[];
+	/** `frappe/public/js/frappe/views/breadcrumbs.js:164-182` — `[]` for a single doctype, and for User unless the user is a System Manager. */
+	list_items(source: FrappeBreadcrumbSource): PageBreadcrumbItem[];
+	/** `frappe/public/js/frappe/views/breadcrumbs.js:184-210` — `view` is the route's view, `"form"` or `"print"`. */
+	form_items(source: FrappeBreadcrumbSource, view: string): PageBreadcrumbItem[];
+	/** `frappe/public/js/frappe/views/breadcrumbs.js:212-224`. */
+	dashboard_items(source: FrappeBreadcrumbSource): PageBreadcrumbItem[];
+	/**
+	 * `frappe/public/js/frappe/views/breadcrumbs.js:232-241` — the payloads by
+	 * route string. Writing the entry of the route on screen hands it to that
+	 * page.
+	 */
+	all: Record<string, FrappeBreadcrumbSource | undefined>;
+	/**
+	 * `frappe/public/js/frappe/views/breadcrumbs.js:247-252` — a getter: the
+	 * crumb list of the page on screen, or a detached `<ol>`.
+	 * @deprecated Use `page.set_breadcrumbs(items)`.
+	 */
+	readonly $breadcrumbs: JQuery<HTMLElement>;
+}
+
+/** The members of `frappe` that the views slice adds to the root. */
+export interface FrappeViewsGlobals {
+	/**
+	 * `frappe/public/js/frappe/desk.js:414` — the one {@link Container}, made at
+	 * desk startup only when the page has a `#body`; frappe itself reads it as
+	 * `frappe.container?.page` (`frappe/public/js/frappe/views/container.js:16`).
+	 */
+	container?: Container;
+	/** `frappe/public/js/frappe/views/breadcrumbs.js:24`. See {@link FrappeBreadcrumbs}. */
+	breadcrumbs: FrappeBreadcrumbs;
+}
 
 /**
  * `frappe.get_list_view(doctype)` — `frappe/public/js/frappe/list/list_view.js:3285-3288`.
