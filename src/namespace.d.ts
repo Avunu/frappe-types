@@ -131,6 +131,7 @@ import type {
 	SortSelectorOptions as SortSelectorOptionsShape,
 } from "./views";
 import type { Page as PageClass } from "./utils";
+import type { FrappeApplication } from "./core";
 import type { FrappeFileUploader, FrappeFileUploaderOptions } from "./ui/components";
 
 declare global {
@@ -149,6 +150,11 @@ declare global {
 		type DataTable = DataTableInstance;
 		/** The options `new frappe.DataTable(wrapper, options)` takes. */
 		type DataTableOptions = DataTableOptionsShape;
+		/**
+		 * `frappe.Application` — `frappe/public/js/frappe/desk.js:28`. The type of
+		 * `frappe.app` once the desk has started. See {@link FrappeApplication}.
+		 */
+		type Application = FrappeApplication;
 
 		namespace ui {
 			/**

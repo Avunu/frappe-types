@@ -41,6 +41,7 @@
  */
 
 import type { FrappeDoc } from "../model";
+import type { FrappeResponse } from "../core";
 import type { Dialog, Form } from "./form";
 
 // ---------------------------------------------------------------------------
@@ -456,9 +457,29 @@ export interface FrappeFileUploaderRestrictions {
 }
 
 /**
+ * The second argument of an uploading `on_success`: the response body parsed
+ * as JSON, or its raw text when it does not parse
+ * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:624-632`). From
+ * frappe's `upload_file` (or the `method` given) it is the
+ * {@link FrappeResponse} envelope, the File document in `message`.
+ */
+export type FrappeFileUploaderResponse = FrappeResponse | string;
+
+/**
+ * A file entry handed to `on_success` with `as_dataurl`, once its `dataurl`
+ * is set (`frappe/public/js/frappe/file_uploader/FileUploader.vue:576-584`).
+ */
+export interface FrappeFileUploaderDataUrlFile extends FrappeFileUploaderFile {
+	/** `frappe.dom.file_to_base64(file.file_obj)` — `frappe/public/js/frappe/file_uploader/FileUploader.vue:578-579`. */
+	dataurl: string;
+}
+
+/**
  * What `new frappe.ui.FileUploader(opts)` takes — the destructured parameter
  * at `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:7-30`. All
- * of it is optional.
+ * of it is optional. Pass `as_dataurl` as a literal and the constructor picks
+ * {@link FrappeFileUploaderUploadOptions} or
+ * {@link FrappeFileUploaderDataUrlOptions}, whose `on_success` is narrower.
  */
 export interface FrappeFileUploaderOptions {
 	/** Render inline into this element instead of a dialog — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:42-46`. */
@@ -466,13 +487,17 @@ export interface FrappeFileUploaderOptions {
 	/** A whitelisted method the upload is posted to as `method` — `frappe/public/js/frappe/file_uploader/FileUploader.vue:725`. */
 	method?: string | null;
 	/**
-	 * Called once per uploaded file with the new File document (`null` when the
-	 * response held none) and the parsed response
+	 * Called once per file. Whatever is uploaded — the files picked, or with
+	 * `as_dataurl` still the Library and Link tabs' file and the Google Drive
+	 * pick (`frappe/public/js/frappe/file_uploader/FileUploader.vue:533-537`,
+	 * :555, :572, :799) — gets the new File document (`null` when the
+	 * response's `message` is not a File) and the
+	 * {@link FrappeFileUploaderResponse}
 	 * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:624-637`). With
-	 * `as_dataurl` it is called with the file entry instead, its `dataurl` set
-	 * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:576-584`).
+	 * `as_dataurl`, a file picked is not uploaded: it gets the file entry
+	 * alone, its `dataurl` set (`frappe/public/js/frappe/file_uploader/FileUploader.vue:576-584`).
 	 */
-	on_success?(file: FrappeDoc | FrappeFileUploaderFile | null, response?: unknown): unknown;
+	on_success?(file: FrappeDoc | FrappeFileUploaderDataUrlFile | null, response?: FrappeFileUploaderResponse): unknown;
 	/** Attach the upload to this document — `frappe/public/js/frappe/file_uploader/FileUploader.vue:722-724`. */
 	doctype?: string | null;
 	docname?: string | null;
@@ -511,6 +536,40 @@ export interface FrappeFileUploaderOptions {
 }
 
 /**
+ * {@link FrappeFileUploaderOptions} that upload (`as_dataurl` left out or
+ * `false`, its default at `frappe/public/js/frappe/file_uploader/FileUploader.vue:258-260`):
+ * `on_success` gets the File document and the response
+ * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:624-637`).
+ */
+export interface FrappeFileUploaderUploadOptions extends Omit<FrappeFileUploaderOptions, "as_dataurl" | "on_success"> {
+	as_dataurl?: false;
+	on_success?(file_doc: FrappeDoc | null, response: FrappeFileUploaderResponse): unknown;
+}
+
+/**
+ * {@link FrappeFileUploaderOptions} that never upload: `as_dataurl: true`
+ * with the Library, Link and Google Drive sources turned off. Each of those
+ * uploads its file whatever `as_dataurl` says
+ * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:533-537`, :547-575,
+ * :797-802), and each shows unless turned off (:69, :98, :153; defaults at
+ * :252-254, :296-298, :308-310). So `on_success` gets only file entries, each
+ * with its `dataurl` set (`frappe/public/js/frappe/file_uploader/FileUploader.vue:576-584`).
+ * An extra source added to `FrappeFileUploader.UploadOptions` gets the
+ * uploader and can still upload through it
+ * (`frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:78-88`).
+ * With `as_dataurl: true` alone, `on_success` is the general one of
+ * {@link FrappeFileUploaderOptions}.
+ */
+export interface FrappeFileUploaderDataUrlOptions
+	extends Omit<FrappeFileUploaderOptions, "as_dataurl" | "on_success" | "disable_file_browser" | "allow_web_link" | "allow_google_drive"> {
+	as_dataurl: true;
+	disable_file_browser: true;
+	allow_web_link: false;
+	allow_google_drive: false;
+	on_success?(file: FrappeFileUploaderDataUrlFile): unknown;
+}
+
+/**
  * One entry of the uploader's file list, as `add_files` builds it
  * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:425-445`) and the
  * upload updates it (:586-746).
@@ -540,10 +599,61 @@ export interface FrappeFileUploaderFile {
 }
 
 /**
+ * A file in the uploader's Library tab, as `make_file_node` builds it from the
+ * File list (`frappe/public/js/frappe/file_uploader/FileBrowser.vue:141-157`).
+ */
+export interface FrappeFileBrowserNode {
+	/** The file name, shortened to 40 characters — `frappe/public/js/frappe/file_uploader/FileBrowser.vue:143`, :145. */
+	label: string;
+	/** `file_name`, else the File's `name` — `frappe/public/js/frappe/file_uploader/FileBrowser.vue:142`, :146. */
+	filename: string;
+	/** The File's `file_url` — `frappe/public/js/frappe/file_uploader/FileBrowser.vue:147`. */
+	file_url: string | null;
+	/** The File's `name`, which the upload sends as `library_file_name` — `frappe/public/js/frappe/file_uploader/FileBrowser.vue:148`, `frappe/public/js/frappe/file_uploader/FileUploader.vue:555-556`. */
+	value: string;
+	/** `true` for a file, `false` for a folder; only a file is ever selected — `frappe/public/js/frappe/file_uploader/FileBrowser.vue:149`, :85-89. */
+	is_leaf: boolean;
+}
+
+/**
+ * The `$refs` of {@link FrappeFileUploaderComponent}: the `ref="…"` elements
+ * and child components of `frappe/public/js/frappe/file_uploader/FileUploader.vue`.
+ * Each is missing until it first renders and `null` while its `v-if` hides
+ * it; a child component's ref is the proxy of what it passes to `defineExpose`.
+ */
+export interface FrappeFileUploaderRefs {
+	/** The hidden file input, under `v-if="!is_dragging"` — `frappe/public/js/frappe/file_uploader/FileUploader.vue:12`, :59-66. */
+	file_input?: HTMLInputElement | null;
+	/** The Library tab, while it is showing — `frappe/public/js/frappe/file_uploader/FileUploader.vue:230-234`. */
+	file_browser?: {
+		/**
+		 * The file clicked last; `{}` until one is
+		 * (`frappe/public/js/frappe/file_uploader/FileBrowser.vue:49`, :85-89, exposed at :165).
+		 */
+		selected_node: FrappeFileBrowserNode | Record<string, never>;
+	} | null;
+	/** The Link tab, while it is showing — `frappe/public/js/frappe/file_uploader/FileUploader.vue:235`. */
+	web_link?: {
+		/** The URL typed so far — `frappe/public/js/frappe/file_uploader/WebLink.vue:26`, exposed at :39. */
+		url: string;
+		/** Shows `error` under the input and focuses it — `frappe/public/js/frappe/file_uploader/WebLink.vue:34-37`. */
+		invalid_input(error: string): void;
+	} | null;
+}
+
+/**
  * The uploader component instance, `FrappeFileUploader#uploader` — what
  * `FileUploader.vue` exposes (`frappe/public/js/frappe/file_uploader/FileUploader.vue:832-840`).
  */
 export interface FrappeFileUploaderComponent {
+	/**
+	 * Vue's template refs of the component. `app.mount` returns the component's
+	 * public proxy (`frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:91`),
+	 * which serves Vue's `$`-members such as `$refs` next to what `defineExpose`
+	 * lists, and frappe reads two of these refs itself, to upload what the
+	 * Library or Link tab holds (`frappe/public/js/frappe/file_uploader/FileUploader.vue:548`, :560).
+	 */
+	readonly $refs: FrappeFileUploaderRefs;
 	files: FrappeFileUploaderFile[];
 	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:425-468 — applies the restrictions, then appends. */
 	add_files(file_array: ArrayLike<File> | Iterable<File>): void;
@@ -592,6 +702,8 @@ export declare class FrappeFileUploader {
 	 * frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:7-144. Opens
 	 * the dialog at once unless `wrapper` is given.
 	 */
+	constructor(opts?: FrappeFileUploaderUploadOptions);
+	constructor(opts: FrappeFileUploaderDataUrlOptions);
 	constructor(opts?: FrappeFileUploaderOptions);
 	/** frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:40. */
 	can_toggle_private: boolean;

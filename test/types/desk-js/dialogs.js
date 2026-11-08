@@ -165,6 +165,49 @@ if (Uploader) {
 	if (uploader.dialog) uploader.dialog.keep_grid_form_open = true;
 	void uploader.uploader.files.map((f) => f.doc?.name);
 	void uploader.upload_files();
+
+	// Uploading, on_success gets the File document and the parsed response.
+	new Uploader({
+		on_success(file_doc, response) {
+			/** @type {import("frappe-types").FrappeDoc | null} */
+			const doc = file_doc;
+			/** @type {import("frappe-types").FrappeResponse | string} */
+			const body = response;
+			// @ts-expect-error without as_dataurl nothing has a dataurl
+			void file_doc?.dataurl.length;
+			void doc, body;
+		},
+	});
+	// With as_dataurl: true and nothing else to upload from, it gets the file
+	// entry, its dataurl set.
+	new Uploader({
+		as_dataurl: true,
+		disable_file_browser: true,
+		allow_web_link: false,
+		allow_google_drive: false,
+		on_success(file) {
+			/** @type {string} */
+			const url = file.dataurl;
+			void url, file.file_obj.name;
+		},
+	});
+	// as_dataurl: true alone: the Library and Link tabs still upload.
+	new Uploader({
+		as_dataurl: true,
+		on_success(file, response) {
+			// @ts-expect-error a Library or Link file arrives as a File document, or null
+			void file.dataurl.length;
+			if (typeof file?.dataurl === "string") void file.dataurl.length;
+			else void response;
+		},
+	});
+
+	// The Library and Link tabs, through Vue's $refs, as frappe reads them.
+	const { file_browser, web_link } = uploader.uploader.$refs;
+	const selected = file_browser?.selected_node;
+	/** @type {string | null | undefined} */
+	const picked = selected && "file_url" in selected ? selected.file_url : web_link?.url;
+	if (web_link && !picked) web_link.invalid_input(__("Please enter a valid URL"));
 }
 
 // The form footer, its comment box and timeline, and frm.events.

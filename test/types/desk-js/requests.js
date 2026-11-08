@@ -151,6 +151,17 @@ function summarise(frm) {
 	const maybe_int = cint(frm.doc.customer, null);
 	// @ts-expect-error an explicit null default can come back
 	/** @type {number} */ const not_null = cint(frm.doc.customer, null);
+	/** @type {number} */
+	const with_default = cint(frm.doc.customer, 5);
+	/** @type {number | null} */ const nullable_default = cint(frm.doc.customer, maybe_int);
+	// @ts-expect-error a default that may be null can come back
+	/** @type {number} */ const nullable_not_null = cint(frm.doc.customer, maybe_int);
+	/** @type {any} */ const untyped_default = frm.doc.customer;
+	// an untyped (`any`) default reads as a number, as before
+	/** @type {number} */ const from_any = cint(frm.doc.customer, untyped_default);
+	// map passes the index as `def`, which is a number: the result stays number[]
+	/** @type {number[]} */
+	const permlevels = ["0", "1", "2"].map(cint);
 	/** @type {boolean} */
 	const open = in_list(["Draft", "To Deliver"], frm.doc.customer);
 	open_url_post("/api/method/app.export", { name: frm.doc.name }, true);
@@ -166,7 +177,7 @@ function summarise(frm) {
 	const blank = is_null(frm.doc.customer);
 	/** @type {"read"} */
 	const right = READ;
-	void total, qty, amount, plain, whole, maybe_int, not_null, open, arg, symbol, places, blank, right;
+	void total, qty, amount, plain, whole, maybe_int, not_null, with_default, nullable_default, nullable_not_null, from_any, permlevels, open, arg, symbol, places, blank, right;
 }
 void summarise;
 

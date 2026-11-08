@@ -162,3 +162,14 @@ export const money: string = format_currency(10, "EUR", 2);
 export const rounded: number = _round(1.005, 2, "Commercial Rounding");
 export const formatted: string = format_currency(10, "EUR", precision("amount"));
 export const helper: typeof format_currency | undefined = window.format_currency;
+// `map` passes the index as cint's `def`: a number, so the result stays number[].
+export const permlevels: number[] = ["0", "1"].map(cint);
+export const whole: number = cint("12", 0);
+export const maybe: number | null = cint("x", null);
+// @ts-expect-error an explicit null default can come back
+export const not_null: number = cint("x", null);
+declare const untyped_default: any;
+// An `any` default reads as a number, as the first of the old overloads did.
+export const from_any: number = cint("x", untyped_default);
+declare const optional_default: number | undefined;
+export const from_optional: number = cint("x", optional_default);

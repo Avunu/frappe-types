@@ -8,7 +8,7 @@
  * import type { Frappe, DocField, ListView } from "frappe-types";
  * ```
  *
- * This file installs **no globals**. It is a plain ES module of named
+ * This file installs **no `frappe` globals**. It is a plain ES module of named
  * re-exports plus the two composite interfaces the fragments could not declare
  * on their own ({@link FrappeUiNamespace} and {@link Frappe}) and the two
  * `frappe.ui` sub-namespaces that hang off them ({@link FrappeUiToolbarNamespace}
@@ -17,10 +17,11 @@
  * `"frappe-types/global"` to your tsconfig's `types` array instead — see
  * `src/global.d.ts`.
  *
- * The one global this entry does bring is a TYPE, not a value: the
- * `FrappeDocTypes` doctype registry (`src/registry.d.ts`, the second reference
- * above). It is global so that this entry and `frappe-types/global` share one
- * registry, which apps fill with `interface FrappeDocTypes { … }`.
+ * The globals this entry's own files bring are TYPES, not values: the
+ * `FrappeDocTypes` doctype registry and its `FrappeChildRow` helper
+ * (`src/registry.d.ts`, the second reference above). They are global so that
+ * this entry and `frappe-types/global` share one registry, which apps fill
+ * with `interface FrappeDocTypes { … }`.
  *
  * `/// <reference types="jquery" />` above is load-bearing, not decorative.
  * Frappe ships jQuery 3.7 and hundreds of these declarations are typed in terms
@@ -29,7 +30,17 @@
  * `@types/jquery`, and without this reference every one of those becomes
  * `TS2304 Cannot find name 'JQuery'` — 175 of them in the first real consumer.
  * The reference makes `@types/jquery` (a hard dependency of this package) ride
- * along, so no second `types` entry is needed.
+ * along, so no second `types` entry is needed. It brings jQuery's VALUE globals
+ * too: `@types/jquery/misc.d.ts` declares the `JQuery` namespace and
+ * `declare const $` / `declare const jQuery` in one script file. Its
+ * `index.d.ts` references `sizzle`, `JQueryStatic.d.ts`, `JQuery.d.ts`,
+ * `misc.d.ts` and `legacy.d.ts`; every one of its own files is `misc.d.ts`
+ * or typed against `misc.d.ts`'s namespace, so no part of the package gives
+ * the types without the globals. The whole of its global surface comes along
+ * (`$`, `jQuery`, the `JQuery` namespace, the legacy `JQuery*` interfaces,
+ * its `Symbol`/`Iterable` augmentations). A program that imports this entry
+ * therefore type-checks `$(…)` even where the page loads no jQuery; the
+ * README says so.
  *
  * Verified against **frappe v16.54.0**. Every declaration cites `file.js:line`
  * (full-path, `frappe/public/js/frappe/…`, wherever this file was re-read for a
@@ -766,11 +777,17 @@ export type {
 	FrappeButtonDressOptions,
 	FrappeButtonFunction,
 	FrappeButtonOptions,
+	FrappeFileBrowserNode,
 	FrappeFileUploaderComponent,
+	FrappeFileUploaderDataUrlFile,
+	FrappeFileUploaderDataUrlOptions,
 	FrappeFileUploaderFile,
 	FrappeFileUploaderOptions,
+	FrappeFileUploaderRefs,
+	FrappeFileUploaderResponse,
 	FrappeFileUploaderRestrictions,
 	FrappeFileUploaderUploadOption,
+	FrappeFileUploaderUploadOptions,
 	FrappeTabButtonOption,
 	FrappeTabButtonPill,
 	FrappeTabButtonsFunction,

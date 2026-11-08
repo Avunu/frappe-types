@@ -73,3 +73,17 @@ export function first_message(body: FrappeResponse<{ ok: boolean }>): string | u
 	const decoded = JSON.parse(entry) as FrappeServerMessage;
 	return typeof decoded.message === "string" ? decoded.message : decoded.title;
 }
+
+// msgprint(None) / frappe.throw(None) send `"message": null`.
+export const empty_message: FrappeServerMessage = { message: null, title: "Message" };
+export function message_text(m: FrappeServerMessage): string {
+	// @ts-expect-error message may be null (or a list), so narrow it first
+	const text: string | string[] | string[][] = m.message;
+	void text;
+	return typeof m.message === "string" ? m.message : m.title;
+}
+
+// The entry references @types/jquery for the JQuery types its members use, and
+// that package declares `$` and `jQuery` in the same file: they come along, as
+// the README says.
+export const jquery_global: JQueryStatic = $;
