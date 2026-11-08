@@ -595,12 +595,17 @@ export declare class BaseControl {
 	get_parsed_value(value: unknown): unknown;
 	/** frappe/public/js/frappe/form/controls/base_control.js:207-209. */
 	set_value(value: unknown, force_set_value?: boolean): Promise<unknown>;
-	/** frappe/public/js/frappe/form/controls/base_control.js:210-213. */
-	parse_validate_and_set_in_model(value: unknown, e?: Event): Promise<unknown>;
-	/** frappe/public/js/frappe/form/controls/base_control.js:214-260. */
+	/**
+	 * frappe/public/js/frappe/form/controls/base_control.js:210-213. `e` is the
+	 * jQuery event that triggered the change (frappe/public/js/frappe/form/controls/data.js:175-181,
+	 * frappe/public/js/frappe/form/controls/rating.js:88), handed on to
+	 * `df.change` / `df.onchange` (see {@link DocField.change}).
+	 */
+	parse_validate_and_set_in_model(value: unknown, e?: JQuery.TriggeredEvent | null): Promise<unknown>;
+	/** frappe/public/js/frappe/form/controls/base_control.js:214-260. `set_value` passes `e` as `null` (:207-208). */
 	validate_and_set_in_model(
 		value: unknown,
-		e?: Event | null,
+		e?: JQuery.TriggeredEvent | null,
 		force_set_value?: boolean
 	): Promise<unknown>;
 	/** frappe/public/js/frappe/form/controls/base_control.js:261-271. */
@@ -1161,7 +1166,7 @@ export declare class ControlComment extends ControlTextEditor {
 	 * (frappe/public/js/frappe/form/controls/comment.js:63-65). The form footer
 	 * passes one that posts the comment (frappe/public/js/frappe/form/footer/footer.js:55-74).
 	 */
-	on_submit?: (comment: string) => unknown | undefined;
+	on_submit?: ((comment: string) => unknown) | undefined;
 	/** frappe/public/js/frappe/form/controls/comment.js:8. */
 	comment_wrapper?: JQuery<HTMLElement> | undefined;
 	/** The Comment button — frappe/public/js/frappe/form/controls/comment.js:37. */
@@ -1298,7 +1303,7 @@ export declare class ControlLink extends ControlData {
 	/** frappe/public/js/frappe/form/controls/link.js:143-148. */
 	translate_and_set_input_value(link_title: string, value: string): void;
 	/** frappe/public/js/frappe/form/controls/link.js:149-157 — `label` records the value's link title. */
-	override parse_validate_and_set_in_model(value: unknown, e?: Event | null, label?: string): Promise<unknown>;
+	override parse_validate_and_set_in_model(value: unknown, e?: JQuery.TriggeredEvent | null, label?: string): Promise<unknown>;
 	/**
 	 * frappe/public/js/frappe/form/controls/link.js:158-160 — `strip_html(value)`.
 	 * `unknown` because `ControlTableMultiSelect` returns rows (frappe/public/js/frappe/form/controls/table_multiselect.js:108).

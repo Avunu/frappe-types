@@ -233,6 +233,13 @@ export interface LinkQueryOptions {
 	filters?: Record<string, unknown> | unknown[];
 	/** Turns translation of the results off — `frappe/public/js/frappe/form/controls/link.js:834-836`. */
 	translate_values?: boolean;
+	/**
+	 * Autocomplete only: merged into the search arguments, its `undefined`
+	 * values dropped (`frappe/public/js/frappe/form/controls/autocomplete.js:194-197`).
+	 * Autocomplete reads nothing else but `query` and `translate_values`
+	 * (:189-202); Link copies every key, `params` included, as is.
+	 */
+	params?: Record<string, unknown>;
 	[arg: string]: unknown;
 }
 
@@ -558,38 +565,65 @@ export interface DocField {
 	/** Grid perm fallback: `frappe/public/js/frappe/form/grid.js:84` `this.control?.perm || this.frm?.perm || this.df.perm`. */
 	perm?: DocPerm[];
 
+	/*
+	 * The runtime hooks below are typed `?: T | undefined`: frappe only tests
+	 * them for truthiness, so an explicit `undefined` (`min_date: cond ? d :
+	 * undefined`) means the same as leaving the key out, as it did when these
+	 * keys fell through to the index signature.
+	 */
+
 	/**
 	 * Called after the control has set its value in the model, with the
-	 * control as `this` and the change event (if any) as the argument:
+	 * control as `this` and the change event as the argument:
 	 * `(me.df.change || me.df.onchange).apply(me, [e])`
 	 * (`frappe/public/js/frappe/form/controls/base_control.js:241-243`). Its
 	 * return value, a promise included, is what the set-value chain waits on
 	 * (:245). The grid wraps it to run per row
 	 * (`frappe/public/js/frappe/form/grid_row.js:1165-1170`).
+	 *
+	 * `e` is the jQuery `change`/`input` event when the user edited the input
+	 * (`frappe/public/js/frappe/form/controls/data.js:175-185`), `null` from
+	 * `set_value` (`frappe/public/js/frappe/form/controls/base_control.js:207-208`)
+	 * and from a Link pick (`frappe/public/js/frappe/form/controls/link.js:296`, :374),
+	 * and absent from the Code and Text Editor controls
+	 * (`frappe/public/js/frappe/form/controls/code.js:99`,
+	 * `frappe/public/js/frappe/form/controls/text_editor.js:384`).
 	 */
-	change?(this: BaseControl, e?: Event | null): unknown;
+	change?: ((this: BaseControl, e?: JQuery.TriggeredEvent | null) => unknown) | undefined;
 	/** The same hook as {@link DocField.change}, used when `change` is unset — `frappe/public/js/frappe/form/controls/base_control.js:241-243`. */
-	onchange?(this: BaseControl, e?: Event | null): unknown;
+	onchange?: ((this: BaseControl, e?: JQuery.TriggeredEvent | null) => unknown) | undefined;
+	/**
+	 * MultiCheck's own hook, called with no argument each time a box is ticked
+	 * or cleared (`frappe/public/js/frappe/form/controls/multicheck.js:108`) and
+	 * after "select all" / "deselect all" (:138). MultiCheck never calls
+	 * {@link DocField.change} for a toggle.
+	 */
+	on_change?: (() => unknown) | undefined;
 	/**
 	 * The query a Link, Dynamic Link or Autocomplete field searches with, read
 	 * after the control's own `get_query`
 	 * (`frappe/public/js/frappe/form/controls/link.js:790-791`,
 	 * `frappe/public/js/frappe/form/controls/autocomplete.js:175`). See
 	 * {@link LinkQuery}.
+	 *
+	 * Autocomplete reads less of the object form than Link does: `query`,
+	 * `params` (merged into the search arguments) and `translate_values`, and
+	 * never `filters` (`frappe/public/js/frappe/form/controls/autocomplete.js:189-202`).
+	 * Pass Autocomplete filters inside `params`.
 	 */
-	get_query?: LinkQuery;
+	get_query?: LinkQuery | undefined;
 	/**
 	 * Dynamic Link: returns the doctype to link to, in place of reading the field
 	 * `options` names — `frappe/public/js/frappe/form/controls/dynamic_link.js:4-5`.
 	 */
-	get_options?(control: ControlDynamicLink): string | undefined;
+	get_options?: ((control: ControlDynamicLink) => string | undefined) | undefined;
 	/**
 	 * Replaces `BaseControl#get_status`: called with the control
 	 * (`frappe/public/js/frappe/form/controls/base_control.js:49-51`).
 	 */
-	get_status?(control: BaseControl): DisplayStatus;
+	get_status?: ((control: BaseControl) => DisplayStatus) | undefined;
 	/** Link: hides the "Create a new …" and advanced-search rows — `frappe/public/js/frappe/form/controls/link.js:502`. Web forms set it (`frappe/public/js/frappe/web_form/webform_script.js:75`, :92). */
-	only_select?: FrappeCheckLoose;
+	only_select?: FrappeCheckLoose | undefined;
 	/**
 	 * Set to `true` on every web form field (`frappe/public/js/frappe/web_form/webform_script.js:61`, :77):
 	 * the control then decides its status as in a dialog
@@ -597,17 +631,17 @@ export interface DocField {
 	 * the grid (`frappe/public/js/frappe/form/grid.js:674`). Only its truthiness
 	 * is read, so {@link FrappeCheckLoose}, as on `GridDocField`.
 	 */
-	is_web_form?: FrappeCheckLoose;
+	is_web_form?: FrappeCheckLoose | undefined;
 	/** Date / Date Range: the datepicker's `minDate` — `frappe/public/js/frappe/form/controls/date.js:72`, `frappe/public/js/frappe/form/controls/date_range.js:22`. */
-	min_date?: Date;
+	min_date?: Date | undefined;
 	/** Date / Date Range: the datepicker's `maxDate` — `frappe/public/js/frappe/form/controls/date.js:73`, `frappe/public/js/frappe/form/controls/date_range.js:23`. */
-	max_date?: Date;
+	max_date?: Date | undefined;
 	/**
 	 * Button outside a form: called on click
 	 * (`frappe/public/js/frappe/form/controls/button.js:48-50`). On a form the
 	 * button triggers the form event named after the field instead.
 	 */
-	click?(): unknown;
+	click?: (() => unknown) | undefined;
 
 	/**
 	 * Frappe documents are open bags: Custom Fields, Property Setters and app
