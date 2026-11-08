@@ -51,3 +51,19 @@ frappe.web_form.doc.web_form_name = frappe.web_form.name;
 
 // @ts-expect-error doc_type is the target doctype's name, a string
 void (frappe.web_form.doc_type * 2);
+
+// A custom save that honours frappe's web form save guard (esign_webforms
+// declared window.saving itself).
+function save_signed() {
+	if (window.saving) return false;
+	window.saving = true;
+	frappe.call({
+		method: "app.api.accept",
+		args: { data: frappe.web_form.doc },
+		always: () => {
+			window.saving = false;
+		},
+	});
+	return false;
+}
+void save_signed;
