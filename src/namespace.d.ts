@@ -42,6 +42,52 @@
 import type { DocFieldName, DocFieldValue, DocOf, DocTypeName, FormDocTypeOf } from "./model";
 import type {
 	BaseControl,
+	ControlAttach as ControlAttachClass,
+	ControlAttachImage as ControlAttachImageClass,
+	ControlAttachmentGallery as ControlAttachmentGalleryClass,
+	ControlAutocomplete as ControlAutocompleteClass,
+	ControlBarcode as ControlBarcodeClass,
+	ControlButton as ControlButtonClass,
+	ControlCheck as ControlCheckClass,
+	ControlCode as ControlCodeClass,
+	ControlColor as ControlColorClass,
+	ControlComment as ControlCommentClass,
+	ControlCurrency as ControlCurrencyClass,
+	ControlData as ControlDataClass,
+	ControlDate as ControlDateClass,
+	ControlDateRange as ControlDateRangeClass,
+	ControlDatetime as ControlDatetimeClass,
+	ControlDuration as ControlDurationClass,
+	ControlDynamicLink as ControlDynamicLinkClass,
+	ControlFloat as ControlFloatClass,
+	ControlGeolocation as ControlGeolocationClass,
+	ControlHTML as ControlHTMLClass,
+	ControlHTMLEditor as ControlHTMLEditorClass,
+	ControlHeading as ControlHeadingClass,
+	ControlIcon as ControlIconClass,
+	ControlImage as ControlImageClass,
+	ControlInput as ControlInputClass,
+	ControlInt as ControlIntClass,
+	ControlJSON as ControlJSONClass,
+	ControlLink as ControlLinkClass,
+	ControlMarkdownEditor as ControlMarkdownEditorClass,
+	ControlMultiCheck as ControlMultiCheckClass,
+	ControlMultiSelect as ControlMultiSelectClass,
+	ControlMultiSelectList as ControlMultiSelectListClass,
+	ControlMultiSelectPills as ControlMultiSelectPillsClass,
+	ControlPassword as ControlPasswordClass,
+	ControlPercent as ControlPercentClass,
+	ControlPhone as ControlPhoneClass,
+	ControlRating as ControlRatingClass,
+	ControlSelect as ControlSelectClass,
+	ControlSignature as ControlSignatureClass,
+	ControlSmallText as ControlSmallTextClass,
+	ControlSwitch as ControlSwitchClass,
+	ControlTable as ControlTableClass,
+	ControlTableMultiSelect as ControlTableMultiSelectClass,
+	ControlText as ControlTextClass,
+	ControlTextEditor as ControlTextEditorClass,
+	ControlTime as ControlTimeClass,
 	ControlOptions as ControlOptionsShape,
 	Dialog as DialogClass,
 	DialogOptions as DialogOptionsShape,
@@ -50,6 +96,7 @@ import type {
 	FormController,
 	FormEventHandler as FormEventHandlerType,
 	FormEvents as FormEventsType,
+	FormFooter,
 	LayoutOptions,
 	PrintView as PrintViewClass,
 	PrintViewTarget as PrintViewTargetShape,
@@ -73,6 +120,7 @@ import type {
 	SortSelectorOptions as SortSelectorOptionsShape,
 } from "./views";
 import type { Page as PageClass } from "./utils";
+import type { FrappeFileUploader, FrappeFileUploaderOptions } from "./ui/components";
 
 declare global {
 	namespace frappe {
@@ -88,12 +136,15 @@ declare global {
 		type FieldValue<DT extends string, F extends string> = DocFieldValue<DT, F>;
 
 		namespace ui {
-			/** `frappe.ui.Dialog` — `frappe/public/js/frappe/ui/dialog.js:10`. */
-			type Dialog = DialogClass;
+			/**
+			 * `frappe.ui.Dialog` — `frappe/public/js/frappe/ui/dialog.js:10`. `TValues`
+			 * types the values its primary action receives.
+			 */
+			type Dialog<TValues extends object = Record<string, unknown>> = DialogClass<TValues>;
 			/** The options `new frappe.ui.Dialog(...)` takes. */
-			type DialogOptions = DialogOptionsShape;
+			type DialogOptions<TValues extends object = Record<string, unknown>> = DialogOptionsShape<TValues>;
 			/** `frappe.ui.FieldGroup` — `frappe/public/js/frappe/ui/field_group.js:5`. */
-			type FieldGroup = FieldGroupClass;
+			type FieldGroup<TValues extends object = Record<string, unknown>> = FieldGroupClass<TValues>;
 			/** The options `new frappe.ui.FieldGroup(...)` takes. */
 			type FieldGroupOptions = LayoutOptions;
 			/** `frappe.ui.Page` — `frappe/public/js/frappe/ui/page.js:51`. */
@@ -104,6 +155,10 @@ declare global {
 			type SortSelectorOptions = SortSelectorOptionsShape;
 			/** `frappe.ui.GroupBy` — `frappe/public/js/frappe/ui/group_by/group_by.js:3`. */
 			type GroupBy = GroupByClass;
+			/** `frappe.ui.FileUploader` — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:5`. */
+			type FileUploader = FrappeFileUploader;
+			/** The options `new frappe.ui.FileUploader(...)` takes. */
+			type FileUploaderOptions = FrappeFileUploaderOptions;
 
 			namespace form {
 				/** `frappe.ui.form.Form` — `frappe/public/js/frappe/form/form.js:64`. */
@@ -123,6 +178,100 @@ declare global {
 				type Control = BaseControl;
 				/** The options `frappe.ui.form.make_control` and every Control constructor take. */
 				type ControlOptions = ControlOptionsShape;
+				/** `frappe.ui.form.ControlAttach` — `frappe/public/js/frappe/form/controls/attach.js:1`. */
+				type ControlAttach = ControlAttachClass;
+				/** `frappe.ui.form.ControlAttachImage` — `frappe/public/js/frappe/form/controls/attach_image.js:1`. */
+				type ControlAttachImage = ControlAttachImageClass;
+				/** `frappe.ui.form.ControlAttachmentGallery` — `frappe/public/js/frappe/form/controls/attachment_gallery.js:1`. */
+				type ControlAttachmentGallery = ControlAttachmentGalleryClass;
+				/** `frappe.ui.form.ControlAutocomplete` — `frappe/public/js/frappe/form/controls/autocomplete.js:3`. */
+				type ControlAutocomplete = ControlAutocompleteClass;
+				/** `frappe.ui.form.ControlBarcode` — `frappe/public/js/frappe/form/controls/barcode.js:3`. */
+				type ControlBarcode = ControlBarcodeClass;
+				/** `frappe.ui.form.ControlButton` — `frappe/public/js/frappe/form/controls/button.js:1`. */
+				type ControlButton = ControlButtonClass;
+				/** `frappe.ui.form.ControlCheck` — `frappe/public/js/frappe/form/controls/check.js:1`. */
+				type ControlCheck = ControlCheckClass;
+				/** `frappe.ui.form.ControlCode` — `frappe/public/js/frappe/form/controls/code.js:1`. */
+				type ControlCode = ControlCodeClass;
+				/** `frappe.ui.form.ControlColor` — `frappe/public/js/frappe/form/controls/color.js:3`. */
+				type ControlColor = ControlColorClass;
+				/** `frappe.ui.form.ControlComment` — `frappe/public/js/frappe/form/controls/comment.js:6`. */
+				type ControlComment = ControlCommentClass;
+				/** `frappe.ui.form.ControlCurrency` — `frappe/public/js/frappe/form/controls/currency.js:1`. */
+				type ControlCurrency = ControlCurrencyClass;
+				/** `frappe.ui.form.ControlData` — `frappe/public/js/frappe/form/controls/data.js:3`. */
+				type ControlData = ControlDataClass;
+				/** `frappe.ui.form.ControlDate` — `frappe/public/js/frappe/form/controls/date.js:1`. */
+				type ControlDate = ControlDateClass;
+				/** `frappe.ui.form.ControlDateRange` — `frappe/public/js/frappe/form/controls/date_range.js:1`. */
+				type ControlDateRange = ControlDateRangeClass;
+				/** `frappe.ui.form.ControlDatetime` — `frappe/public/js/frappe/form/controls/datetime.js:1`. */
+				type ControlDatetime = ControlDatetimeClass;
+				/** `frappe.ui.form.ControlDuration` — `frappe/public/js/frappe/form/controls/duration.js:1`. */
+				type ControlDuration = ControlDurationClass;
+				/** `frappe.ui.form.ControlDynamicLink` — `frappe/public/js/frappe/form/controls/dynamic_link.js:1`. */
+				type ControlDynamicLink = ControlDynamicLinkClass;
+				/** `frappe.ui.form.ControlFloat` — `frappe/public/js/frappe/form/controls/float.js:1`. */
+				type ControlFloat = ControlFloatClass;
+				/** `frappe.ui.form.ControlGeolocation` — `frappe/public/js/frappe/form/controls/geolocation.js:3`. */
+				type ControlGeolocation = ControlGeolocationClass;
+				/** `frappe.ui.form.ControlHTML` — `frappe/public/js/frappe/form/controls/html.js:1`. */
+				type ControlHTML = ControlHTMLClass;
+				/** `frappe.ui.form.ControlHTMLEditor` — `frappe/public/js/frappe/form/controls/html_editor.js:1`. */
+				type ControlHTMLEditor = ControlHTMLEditorClass;
+				/** `frappe.ui.form.ControlHeading` — `frappe/public/js/frappe/form/controls/heading.js:1`. */
+				type ControlHeading = ControlHeadingClass;
+				/** `frappe.ui.form.ControlIcon` — `frappe/public/js/frappe/form/controls/icon.js:3`. */
+				type ControlIcon = ControlIconClass;
+				/** `frappe.ui.form.ControlImage` — `frappe/public/js/frappe/form/controls/image.js:1`. */
+				type ControlImage = ControlImageClass;
+				/** `frappe.ui.form.ControlInput` — `frappe/public/js/frappe/form/controls/base_input.js:2`. */
+				type ControlInput = ControlInputClass;
+				/** `frappe.ui.form.ControlInt` — `frappe/public/js/frappe/form/controls/int.js:1`. */
+				type ControlInt = ControlIntClass;
+				/** `frappe.ui.form.ControlJSON` — `frappe/public/js/frappe/form/controls/json.js:1`. */
+				type ControlJSON = ControlJSONClass;
+				/** `frappe.ui.form.ControlLink` — `frappe/public/js/frappe/form/controls/link.js:11`. */
+				type ControlLink = ControlLinkClass;
+				/** `frappe.ui.form.ControlMarkdownEditor` — `frappe/public/js/frappe/form/controls/markdown_editor.js:1`. */
+				type ControlMarkdownEditor = ControlMarkdownEditorClass;
+				/** `frappe.ui.form.ControlMultiCheck` — `frappe/public/js/frappe/form/controls/multicheck.js:1`. */
+				type ControlMultiCheck = ControlMultiCheckClass;
+				/** `frappe.ui.form.ControlMultiSelect` — `frappe/public/js/frappe/form/controls/multiselect.js:3`. */
+				type ControlMultiSelect = ControlMultiSelectClass;
+				/** `frappe.ui.form.ControlMultiSelectList` — `frappe/public/js/frappe/form/controls/multiselect_list.js:1`. */
+				type ControlMultiSelectList = ControlMultiSelectListClass;
+				/** `frappe.ui.form.ControlMultiSelectPills` — `frappe/public/js/frappe/form/controls/multiselect_pills.js:3`. */
+				type ControlMultiSelectPills = ControlMultiSelectPillsClass;
+				/** `frappe.ui.form.ControlPassword` — `frappe/public/js/frappe/form/controls/password.js:1`. */
+				type ControlPassword = ControlPasswordClass;
+				/** `frappe.ui.form.ControlPercent` — `frappe/public/js/frappe/form/controls/percent.js:1`. */
+				type ControlPercent = ControlPercentClass;
+				/** `frappe.ui.form.ControlPhone` — `frappe/public/js/frappe/form/controls/phone.js:4`. */
+				type ControlPhone = ControlPhoneClass;
+				/** `frappe.ui.form.ControlRating` — `frappe/public/js/frappe/form/controls/rating.js:1`. */
+				type ControlRating = ControlRatingClass;
+				/** `frappe.ui.form.ControlSelect` — `frappe/public/js/frappe/form/controls/select.js:1`. */
+				type ControlSelect = ControlSelectClass;
+				/** `frappe.ui.form.ControlSignature` — `frappe/public/js/frappe/form/controls/signature.js:1`. */
+				type ControlSignature = ControlSignatureClass;
+				/** `frappe.ui.form.ControlSmallText` — `frappe/public/js/frappe/form/controls/text.js:24`. */
+				type ControlSmallText = ControlSmallTextClass;
+				/** `frappe.ui.form.ControlSwitch` — `frappe/public/js/frappe/form/controls/switch.js:5`. */
+				type ControlSwitch = ControlSwitchClass;
+				/** `frappe.ui.form.ControlTable` — `frappe/public/js/frappe/form/controls/table.js:3`. */
+				type ControlTable = ControlTableClass;
+				/** `frappe.ui.form.ControlTableMultiSelect` — `frappe/public/js/frappe/form/controls/table_multiselect.js:1`. */
+				type ControlTableMultiSelect = ControlTableMultiSelectClass;
+				/** `frappe.ui.form.ControlText` — `frappe/public/js/frappe/form/controls/text.js:1`. */
+				type ControlText = ControlTextClass;
+				/** `frappe.ui.form.ControlTextEditor` — `frappe/public/js/frappe/form/controls/text_editor.js:185`. */
+				type ControlTextEditor = ControlTextEditorClass;
+				/** `frappe.ui.form.ControlTime` — `frappe/public/js/frappe/form/controls/time.js:1`. */
+				type ControlTime = ControlTimeClass;
+				/** `frappe.ui.form.Footer` — `frappe/public/js/frappe/form/footer/footer.js:4`. */
+				type Footer = FormFooter;
 				/** `frappe.ui.form.QuickEntryForm` — `frappe/public/js/frappe/form/quick_entry.js:36`. */
 				type QuickEntryForm = QuickEntryFormClass;
 				/** The `after_insert` callback of a quick entry dialog. */

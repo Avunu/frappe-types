@@ -73,6 +73,7 @@ export type {
 	DocField,
 	DocFieldFormatter,
 	DocFieldMap,
+	DocFieldObjectOptions,
 	DocFieldName,
 	DocFieldValue,
 	DocInfo,
@@ -102,10 +103,14 @@ export type {
 	FrappeModelMetaGlobals,
 	FrappeModelNamespace,
 	FrappeModelUserSettings,
+	FrappePermNamespace,
+	FrappeWorkflowNamespace,
 	GridDataRow,
 	GridMetaContract,
 	IndicatorTuple,
 	LayoutFieldType,
+	LinkQuery,
+	LinkQueryOptions,
 	Locals,
 	LocalsDocStore,
 	MappedDocGuard,
@@ -213,12 +218,58 @@ export type {
 export {
 	BaseControl,
 	Column,
+	ControlAttach,
+	ControlAttachImage,
+	ControlAttachmentGallery,
+	ControlAutocomplete,
+	ControlBarcode,
+	ControlButton,
+	ControlCheck,
+	ControlCode,
+	ControlColor,
+	ControlComment,
+	ControlCurrency,
+	ControlData,
+	ControlDate,
+	ControlDateRange,
+	ControlDatetime,
+	ControlDuration,
+	ControlDynamicLink,
+	ControlFloat,
+	ControlGeolocation,
+	ControlHTML,
+	ControlHTMLEditor,
+	ControlHeading,
+	ControlIcon,
+	ControlImage,
 	ControlInput,
+	ControlInt,
+	ControlJSON,
+	ControlLink,
+	ControlMarkdownEditor,
+	ControlMultiCheck,
+	ControlMultiSelect,
+	ControlMultiSelectList,
+	ControlMultiSelectPills,
+	ControlPassword,
+	ControlPercent,
+	ControlPhone,
+	ControlRating,
+	ControlSelect,
+	ControlSignature,
+	ControlSmallText,
+	ControlSwitch,
 	ControlTable,
+	ControlTableMultiSelect,
+	ControlText,
+	ControlTextEditor,
+	ControlTime,
 	Dialog,
 	FieldGroup,
 	Form,
 	FormController,
+	FormFooter,
+	FormTimeline,
 	Layout,
 	PrintView,
 	QuickEntryForm,
@@ -230,8 +281,11 @@ export {
 } from "./ui/form";
 
 export type {
+	ControlCodeAceEditor,
+	ControlCodeAceSession,
 	ControlElementClass,
 	ControlHostElement,
+	ControlTextEditorQuill,
 	ControlOptions,
 	CurFrm,
 	Dashboard,
@@ -242,9 +296,11 @@ export type {
 	DisplayStatus,
 	EditableTitleClass,
 	FormEventHandler,
+	FormDocumentEvents,
 	FormEventHandlerRegistry,
 	FormEvents,
 	FormSetValueInput,
+	FormTimelineItem,
 	FormatterFn,
 	Formatters,
 	FrappeUiFormNamespace,
@@ -671,7 +727,7 @@ export type {
 // ---------------------------------------------------------------------------
 // ./ui/components — `frappe.ui.badge`, `frappe.ui.button`, `frappe.ui.tab_buttons` (the Espresso helpers).
 // ---------------------------------------------------------------------------
-export { FrappeTabButtons } from "./ui/components";
+export { FrappeFileUploader, FrappeTabButtons } from "./ui/components";
 export type {
 	FrappeBadgeFunction,
 	FrappeBadgeLegacyTheme,
@@ -680,6 +736,11 @@ export type {
 	FrappeButtonDressOptions,
 	FrappeButtonFunction,
 	FrappeButtonOptions,
+	FrappeFileUploaderComponent,
+	FrappeFileUploaderFile,
+	FrappeFileUploaderOptions,
+	FrappeFileUploaderRestrictions,
+	FrappeFileUploaderUploadOption,
 	FrappeTabButtonOption,
 	FrappeTabButtonPill,
 	FrappeTabButtonsFunction,
@@ -720,6 +781,7 @@ import type { FrappeChartConstructor, FrappeRealtimeChart } from "./charts";
 import type {
 	FrappeBadgeFunction,
 	FrappeButtonFunction,
+	FrappeFileUploader,
 	FrappeTabButtons,
 	FrappeTabButtonsFunction,
 } from "./ui/components";
@@ -996,7 +1058,7 @@ export interface FrappeUiKeysNamespace {
  * ### Deliberately NOT an open `[key: string]: unknown`
  *
  * `frappe.ui` carries ~85 further classes and helpers at v16.50.0 (`Slides`,
- * `Tree`, `FileUploader`, `FilterGroup`, `Tags`, the Espresso `tooltip` /
+ * `Tree`, `FilterGroup`, `Tags`, the Espresso `tooltip` /
  * `dropdown` / `popover` / `toast`, …), most of which this package has not
  * verified. Adding an index signature would type every one of them —
  * **and every typo** — as `unknown`, which is worse than a missing member: it
@@ -1007,7 +1069,7 @@ export interface FrappeUiKeysNamespace {
  * ```ts
  * declare module "frappe-types" {
  *   interface FrappeUiNamespace {
- *     FileUploader: new (opts: { doctype: string }) => { show(): void };
+ *     Slides: new (opts: MySlidesOptions) => MySlides; // your declaration of frappe's class
  *   }
  * }
  * ```
@@ -1116,6 +1178,13 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	split_view_enabled: () => boolean;
 	/** frappe/public/js/frappe/ui/side_panel.js:399. Lazy, from `side_panel.bundle.js`. See {@link SidePanel}. */
 	SidePanel?: typeof SidePanel;
+	/**
+	 * frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:180. Lazy:
+	 * the desk requires `file_uploader.bundle.js` at start-up without waiting
+	 * for it (frappe/public/js/frappe/upload.js:4-10), so narrow it before `new`.
+	 * See {@link FrappeFileUploader}.
+	 */
+	FileUploader?: typeof FrappeFileUploader;
 	/**
 	 * frappe/public/js/frappe/ui/side_panel.js:814-819 — the one {@link SidePanel},
 	 * created on the first call. Lazy, from `side_panel.bundle.js`: load it with
