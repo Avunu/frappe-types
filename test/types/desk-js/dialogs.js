@@ -178,13 +178,27 @@ if (Uploader) {
 			void doc, body;
 		},
 	});
-	// With as_dataurl: true it gets the file entry, its dataurl set.
+	// With as_dataurl: true and nothing else to upload from, it gets the file
+	// entry, its dataurl set.
 	new Uploader({
 		as_dataurl: true,
+		disable_file_browser: true,
+		allow_web_link: false,
+		allow_google_drive: false,
 		on_success(file) {
 			/** @type {string} */
 			const url = file.dataurl;
 			void url, file.file_obj.name;
+		},
+	});
+	// as_dataurl: true alone: the Library and Link tabs still upload.
+	new Uploader({
+		as_dataurl: true,
+		on_success(file, response) {
+			// @ts-expect-error a Library or Link file arrives as a File document, or null
+			void file.dataurl.length;
+			if (typeof file?.dataurl === "string") void file.dataurl.length;
+			else void response;
 		},
 	});
 

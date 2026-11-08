@@ -17,7 +17,7 @@ import type {
 	FrappeFileUploaderFile,
 	FrappeFileUploaderOptions,
 	FrappeFileUploaderResponse,
-	FrappeFileUploaderSuccessArgs,
+	DocFieldObjectOptions,
 	LinkQuery,
 } from "frappe-types";
 
@@ -194,20 +194,54 @@ export function open_uploader(): void {
 			void file_doc?.name;
 		},
 	});
+	// as_dataurl: true with the Library, Link and Google Drive sources off:
+	// nothing is uploaded, so only data-URL file entries arrive.
 	new Uploader({
 		as_dataurl: true,
-		on_success: (file: FrappeFileUploaderDataUrlFile) => void file.dataurl.length,
+		disable_file_browser: true,
+		allow_web_link: false,
+		allow_google_drive: false,
+		on_success: (file) => void file.dataurl.length,
 	});
-	// An options object built elsewhere, as_dataurl unknown: either argument list.
+	new Uploader({
+		as_dataurl: true,
+		disable_file_browser: true,
+		allow_web_link: false,
+		allow_google_drive: false,
+		on_success: (file: FrappeFileUploaderDataUrlFile) => void file.file_obj.name,
+	});
+	// as_dataurl: true alone: a Library or Link file is still uploaded.
+	new Uploader({
+		as_dataurl: true,
+		on_success(file, response) {
+			// @ts-expect-error the Library or Link tab hands a File document, or null
+			void file.dataurl.length;
+			if (typeof file?.dataurl === "string") void file.dataurl.length;
+			else if (response !== undefined && typeof response !== "string") void response.message;
+		},
+	});
+	// An options object built elsewhere, as_dataurl unknown: either argument list,
+	// with unannotated parameters.
 	const options: FrappeFileUploaderOptions = {
-		on_success(...args: FrappeFileUploaderSuccessArgs) {
-			const [first] = args;
-			if (first && "dataurl" in first) void first.dataurl;
+		on_success(file) {
+			if (file && "dataurl" in file) void file.dataurl;
 		},
 	};
 	new Uploader(options);
-	// @ts-expect-error with as_dataurl: true there is no response argument
-	new Uploader({ as_dataurl: true, on_success: (_file: FrappeFileUploaderDataUrlFile, _r: string) => undefined });
+	const flag = Math.random() > 0.5;
+	new Uploader({ as_dataurl: flag, on_success: (file, response) => void [file?.name, response] });
+	// An Attach field's options are the uploader's.
+	const attach_options: DocFieldObjectOptions = { disable_file_browser: true, on_success(file) { void file?.name; } };
+	new frappe.ui.Dialog({
+		title: "Attach",
+		fields: [{ fieldtype: "Attach", fieldname: "file", label: "File", options: attach_options }],
+	});
+	new frappe.ui.Dialog({
+		title: "Attach",
+		fields: [{ fieldtype: "Attach", fieldname: "file", label: "File", options: { on_success(file, response) { void [file, response]; } } }],
+	});
+	// @ts-expect-error the response is the parsed body or its text, never a number
+	new Uploader({ as_dataurl: true, on_success: (_file: FrappeFileUploaderDataUrlFile, _r: number) => undefined });
 	const { file_browser, web_link } = dialog.uploader.$refs;
 	const node = file_browser?.selected_node;
 	const url = (node && "file_url" in node ? node.file_url : null) ?? web_link?.url;

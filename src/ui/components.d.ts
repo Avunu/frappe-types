@@ -475,33 +475,29 @@ export interface FrappeFileUploaderDataUrlFile extends FrappeFileUploaderFile {
 }
 
 /**
- * The arguments `on_success` is called with. Uploading, once per file: the
- * new File document (`null` when the response held none, i.e. its `message`
- * is not a File) and the {@link FrappeFileUploaderResponse}
- * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:624-637`). With
- * `as_dataurl` nothing is uploaded and it gets the file entry alone
- * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:576-584`). Pass
- * `as_dataurl` as a literal and the constructor picks the matching one
- * ({@link FrappeFileUploaderUploadOptions}, {@link FrappeFileUploaderDataUrlOptions}).
- */
-export type FrappeFileUploaderSuccessArgs =
-	| [file_doc: FrappeDoc | null, response: FrappeFileUploaderResponse]
-	| [file: FrappeFileUploaderDataUrlFile];
-
-/**
  * What `new frappe.ui.FileUploader(opts)` takes — the destructured parameter
  * at `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:7-30`. All
- * of it is optional. `on_success` gets either argument list here, since
- * `as_dataurl` may be either; {@link FrappeFileUploaderUploadOptions} and
- * {@link FrappeFileUploaderDataUrlOptions} fix it.
+ * of it is optional. Pass `as_dataurl` as a literal and the constructor picks
+ * {@link FrappeFileUploaderUploadOptions} or
+ * {@link FrappeFileUploaderDataUrlOptions}, whose `on_success` is narrower.
  */
 export interface FrappeFileUploaderOptions {
 	/** Render inline into this element instead of a dialog — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:42-46`. */
 	wrapper?: HTMLElement | JQuery;
 	/** A whitelisted method the upload is posted to as `method` — `frappe/public/js/frappe/file_uploader/FileUploader.vue:725`. */
 	method?: string | null;
-	/** See {@link FrappeFileUploaderSuccessArgs}. */
-	on_success?(...args: FrappeFileUploaderSuccessArgs): unknown;
+	/**
+	 * Called once per file. Whatever is uploaded — the files picked, or with
+	 * `as_dataurl` still the Library and Link tabs' file and the Google Drive
+	 * pick (`frappe/public/js/frappe/file_uploader/FileUploader.vue:533-537`,
+	 * :555, :572, :799) — gets the new File document (`null` when the
+	 * response's `message` is not a File) and the
+	 * {@link FrappeFileUploaderResponse}
+	 * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:624-637`). With
+	 * `as_dataurl`, a file picked is not uploaded: it gets the file entry
+	 * alone, its `dataurl` set (`frappe/public/js/frappe/file_uploader/FileUploader.vue:576-584`).
+	 */
+	on_success?(file: FrappeDoc | FrappeFileUploaderDataUrlFile | null, response?: FrappeFileUploaderResponse): unknown;
 	/** Attach the upload to this document — `frappe/public/js/frappe/file_uploader/FileUploader.vue:722-724`. */
 	doctype?: string | null;
 	docname?: string | null;
@@ -551,12 +547,25 @@ export interface FrappeFileUploaderUploadOptions extends Omit<FrappeFileUploader
 }
 
 /**
- * {@link FrappeFileUploaderOptions} with `as_dataurl: true`: nothing is
- * uploaded, and `on_success` gets each file entry with its `dataurl` set
- * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:536-538`, :576-584).
+ * {@link FrappeFileUploaderOptions} that never upload: `as_dataurl: true`
+ * with the Library, Link and Google Drive sources turned off. Each of those
+ * uploads its file whatever `as_dataurl` says
+ * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:533-537`, :547-575,
+ * :797-802), and each shows unless turned off (:69, :98, :153; defaults at
+ * :252-254, :296-298, :308-310). So `on_success` gets only file entries, each
+ * with its `dataurl` set (`frappe/public/js/frappe/file_uploader/FileUploader.vue:576-584`).
+ * An extra source added to `FrappeFileUploader.UploadOptions` gets the
+ * uploader and can still upload through it
+ * (`frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:78-88`).
+ * With `as_dataurl: true` alone, `on_success` is the general one of
+ * {@link FrappeFileUploaderOptions}.
  */
-export interface FrappeFileUploaderDataUrlOptions extends Omit<FrappeFileUploaderOptions, "as_dataurl" | "on_success"> {
+export interface FrappeFileUploaderDataUrlOptions
+	extends Omit<FrappeFileUploaderOptions, "as_dataurl" | "on_success" | "disable_file_browser" | "allow_web_link" | "allow_google_drive"> {
 	as_dataurl: true;
+	disable_file_browser: true;
+	allow_web_link: false;
+	allow_google_drive: false;
 	on_success?(file: FrappeFileUploaderDataUrlFile): unknown;
 }
 

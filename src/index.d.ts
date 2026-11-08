@@ -780,7 +780,6 @@ export type {
 	FrappeFileUploaderRefs,
 	FrappeFileUploaderResponse,
 	FrappeFileUploaderRestrictions,
-	FrappeFileUploaderSuccessArgs,
 	FrappeFileUploaderUploadOption,
 	FrappeFileUploaderUploadOptions,
 	FrappeTabButtonOption,
