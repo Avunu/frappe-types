@@ -168,3 +168,8 @@ export const whole: number = cint("12", 0);
 export const maybe: number | null = cint("x", null);
 // @ts-expect-error an explicit null default can come back
 export const not_null: number = cint("x", null);
+declare const untyped_default: any;
+// An `any` default reads as a number, as the first of the old overloads did.
+export const from_any: number = cint("x", untyped_default);
+declare const optional_default: number | undefined;
+export const from_optional: number = cint("x", optional_default);

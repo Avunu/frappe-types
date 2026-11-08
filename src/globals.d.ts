@@ -1072,9 +1072,14 @@ export interface DeskHelperGlobals {
 	 * (`values.map(cint)`, where `map` passes the index as `def`) sees only an
 	 * overloaded function's LAST signature, so with a `number | null` overload
 	 * last `values.map(cint)` came out `(number | null)[]`. Here `def` is
-	 * inferred as `number` there, and the result is `number`.
+	 * inferred as `number` there, and the result is `number`. A `def` typed
+	 * `any` (an untyped JS value, say) also gives `number`, as the first of
+	 * the two overloads did, rather than spreading `null` through such code.
 	 */
-	cint: <Def extends number | null | undefined = undefined>(v: unknown, def?: Def) => number | (null extends Def ? null : never);
+	cint: <Def extends number | null | undefined = undefined>(
+		v: unknown,
+		def?: Def,
+	) => number | (0 extends 1 & Def ? never : null extends Def ? null : never);
 	/** `frappe/public/js/frappe/utils/datatype.js:20-29` — upper-cases the first letter of each space-separated word. */
 	toTitle: (str: string) => string;
 	/**
