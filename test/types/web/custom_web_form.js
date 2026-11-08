@@ -21,6 +21,19 @@ class ConsentWebForm extends WebForm {
 	}
 
 	/** @override */
+	refresh() {
+		super.refresh();
+	}
+
+	/**
+	 * @override
+	 * @param {Record<string, unknown>} values
+	 */
+	set_values(values) {
+		return super.set_values(values);
+	}
+
+	/** @override */
 	save() {
 		if (window.saving) return false;
 		if (!this.allow_incomplete && !this.validate_section()) return false;

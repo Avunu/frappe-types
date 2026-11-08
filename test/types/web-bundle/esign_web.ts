@@ -16,6 +16,8 @@ import type { FrappeDocBase, FrappeResponse } from "frappe-types";
 import type { WebFormDoc, WebFormSaveResult } from "frappe-types/web";
 import WebForm from "frappe/public/js/frappe/web_form/web_form";
 import WebFormList from "frappe/public/js/frappe/web_form/web_form_list";
+import WebFormJs from "frappe/public/js/frappe/web_form/web_form.js";
+import WebFormListJs from "frappe/public/js/frappe/web_form/web_form_list.js";
 
 /** What the app's accept endpoint returns. */
 interface SavedDoc {
@@ -34,6 +36,20 @@ class EsignWebForm extends WebForm {
 		} else {
 			super.handle_success(data);
 		}
+	}
+
+	// Methods WebForm inherits from FieldGroup and Layout are methods too, so a
+	// subclass overrides them like its own.
+	override refresh(): void {
+		super.refresh();
+	}
+
+	override set_values(values: Record<string, unknown>): Promise<void[]> {
+		return super.set_values(values);
+	}
+
+	override get_field(fieldname: string) {
+		return super.get_field(fieldname);
 	}
 
 	handle_redirect(): void {
@@ -167,3 +183,25 @@ frappe.web_form.handle_success(null);
 const enabled: 0 | 1 | undefined = frappe.web_form_doc.esign_enabled;
 const on_controller: 0 | 1 | undefined = frappe.web_form.esign_enabled;
 void [enabled, on_controller];
+
+// The `.js` spelling of the class modules is the same module.
+const same_form: typeof WebForm = WebFormJs;
+const same_list: typeof WebFormList = WebFormListJs;
+void [same_form, same_list];
+
+// The controller keeps its own doc, parent, page_breaks and is_new, so it is
+// not a FieldGroup.
+// @ts-expect-error a WebForm is not substitutable for FieldGroup
+const fg: import("frappe-types").FieldGroup = frappe.web_form;
+void fg;
+frappe.web_form.page_breaks.each((_i, el) => void el.dataset);
+
+// A list view column carries all four keys, unset ones as undefined.
+declare const lc: import("frappe-types/web").WebFormListColumn;
+const view_col: import("frappe-types/web").WebFormListViewColumn = {
+	label: lc.label,
+	fieldname: lc.fieldname,
+	fieldtype: lc.fieldtype,
+	options: lc.options,
+};
+void view_col;

@@ -77,9 +77,16 @@ export interface WebFormListColumn {
 /**
  * A column as `WebFormList#get_list_view_fields` keeps it: the four fields of a
  * {@link WebFormListColumn}, nothing else
- * (`frappe/public/js/frappe/web_form/web_form_list.js:101-108`).
+ * (`frappe/public/js/frappe/web_form/web_form_list.js:101-108`). All four keys
+ * are always written, so they are present; the three optional fields of the
+ * row are `undefined` when the row left them unset.
  */
-export type WebFormListViewColumn = Pick<WebFormListColumn, "fieldname" | "label" | "fieldtype" | "options">;
+export interface WebFormListViewColumn {
+	fieldname: string;
+	label: string | undefined;
+	fieldtype: string | undefined;
+	options: string | undefined;
+}
 
 /**
  * `frappe.web_form_doc` — the Web Form document as the page template embeds it
@@ -197,14 +204,33 @@ export interface WebFormOptions {
  * (`export default class WebForm extends frappe.ui.FieldGroup`), which
  * installs itself as `frappe.web_form` in its constructor (:9).
  *
- * The instance type of the {@link WebForm} value. That value is declared as a
- * constructor rather than a `class` because the controller is not a
- * well-behaved `FieldGroup` subclass: its `doc` is `reference_doc || {}`
- * (`frappe/public/js/frappe/web_form/webform_script.js:44`) — possibly empty,
- * never a document from `locals` — its `parent` must be a jQuery object, its
- * `page_breaks` is a jQuery set rather than an array, and `is_new` stops being
- * a method on `/new`. A `class` could not change those inherited types; this
- * interface `Omit`s and replaces them. Subclassing works all the same:
+ * The instance type of the {@link WebForm} value.
+ *
+ * ## Not substitutable for `FieldGroup`
+ *
+ * The controller changes four members it inherits, so it is not a
+ * well-behaved `FieldGroup` subclass:
+ *
+ * - its `doc` is `reference_doc || {}`
+ *   (`frappe/public/js/frappe/web_form/webform_script.js:44`), possibly empty
+ *   and never a document from `locals`;
+ * - its `parent` must be a jQuery object;
+ * - its `page_breaks` is a jQuery set rather than an array;
+ * - `is_new` stops being a method on `/new`.
+ *
+ * An `extends` clause only lets a member be narrowed, so this interface fails
+ * TypeScript's check that it extends `FieldGroup` correctly (`TS2430`), and the
+ * one-line `@ts-expect-error` below acknowledges exactly that. TypeScript still
+ * types the four members as declared here, and every other member is
+ * `FieldGroup`'s own declaration, so an inherited METHOD stays a method that a
+ * subclass can override. (`Omit<FieldGroup, …>`, the alternative, is a mapped
+ * type: it turns every inherited method into a property, and overriding one
+ * with a method is then `TS2425`.) As a result a `WebForm` is not assignable
+ * where a `FieldGroup` is expected, which is true of the runtime object too.
+ *
+ * The value is declared as a constructor ({@link WebFormConstructor}) rather
+ * than a `class`, because a `class` cannot carry the four changed members at
+ * all. Subclassing works as with a class, inherited methods included:
  *
  * ```ts
  * import WebForm from "frappe/public/js/frappe/web_form/web_form";
@@ -212,6 +238,9 @@ export interface WebFormOptions {
  * class MyWebForm extends WebForm {
  *   override handle_success(data: WebFormSaveResult): void {
  *     super.handle_success(data);
+ *   }
+ *   override refresh(): void {
+ *     super.refresh();
  *   }
  * }
  * ```
@@ -225,9 +254,8 @@ export interface WebFormOptions {
  * Members assigned by `make()` (`page_breaks`, the step buttons) are declared
  * as they are after it.
  */
-export interface WebForm
-	extends Omit<FieldGroup, "doc" | "is_new" | "parent" | "page_breaks">,
-		Omit<WebFormDocFields, "web_form_fields" | "is_new"> {
+// @ts-expect-error TS2430, by design: see "Not substitutable for `FieldGroup`" above.
+export interface WebForm extends FieldGroup, Omit<WebFormDocFields, "web_form_fields" | "is_new"> {
 	/** The Web Form's other fields, copied from {@link WebFormDoc} like the named ones. */
 	[field: string]: unknown;
 	/**
@@ -386,8 +414,9 @@ export interface WebForm
 }
 
 /**
- * The type of the {@link WebForm} value: what a subclass `extends`. See the
- * note on the {@link WebForm} interface for why it is not a `class`.
+ * The type of the {@link WebForm} value: what a subclass `extends`. See
+ * "Not substitutable for `FieldGroup`" on the {@link WebForm} interface for
+ * why it is not a `class`.
  */
 export interface WebFormConstructor {
 	new (opts: WebFormOptions): WebForm;
@@ -467,9 +496,12 @@ export interface WebFormListRowEvents {
  * action and fetches the filter fields, whose arrival triggers the first
  * `refresh()` (:37-83). Nothing has to be called on the result.
  *
- * Members that `refresh()` and the fetch assign (`rows`, `web_list_start`,
- * `page_length`) are declared as they are once the first refresh started —
- * which is before any overridden method that reads them runs.
+ * Members that `refresh()` assigns (`rows`, `web_list_start`, `page_length`,
+ * :15-17) are declared as they are once the first refresh started. That is
+ * before every method runs EXCEPT `make_actions` and `make_filters`, which
+ * the constructor calls first (:10-11), while the first `refresh()` waits for
+ * the filter fields to arrive (:82): an override of either of those two finds
+ * the three undefined.
  */
 export declare class WebFormList {
 	constructor(opts: WebFormListOptions);

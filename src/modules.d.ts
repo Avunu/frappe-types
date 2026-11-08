@@ -27,6 +27,11 @@
  *   frappe/public/js/frappe/form/grid
  *     → <apps>/frappe + /frappe/public/js/frappe/form/grid.js
  *
+ * esbuild resolves the same path with its `.js` extension too. The two web
+ * form modules are declared in both spellings; the grid modules only without
+ * the extension, as carbon_frappe writes them; the side-effect bundles only
+ * with it, as frappe's web_form.bundle.js writes them.
+ *
  * Ship this file by `/// <reference path="./modules.d.ts" />` from
  * `global.d.ts` (and as the `./modules` subpath of the package's `exports`
  * map), because nothing imports it.
@@ -87,8 +92,17 @@ declare module "frappe/public/js/frappe/web_form/web_form" {
 	// frappe/public/js/frappe/web_form/web_form.js:5 —
 	// `export default class WebForm extends frappe.ui.FieldGroup {`. No named
 	// exports. Declared as a constructor value merged with the instance
-	// interface; see the note on `WebForm` in web_form.d.ts for why it is not a
-	// `class`. `class MyForm extends WebForm {}` works either way.
+	// interface; see "Not substitutable for `FieldGroup`" on `WebForm` in
+	// web_form.d.ts for why it is not a `class`. `class MyForm extends WebForm {}`
+	// and `override` of any method, inherited ones included, work as with a class.
+	import { WebForm } from "frappe-types/deep-modules";
+	export default WebForm;
+}
+
+declare module "frappe/public/js/frappe/web_form/web_form.js" {
+	// The same module spelled with its extension, which esbuild resolves through
+	// `nodePaths` just the same (frappe/esbuild/esbuild.js:92-97) and which is
+	// how frappe/public/js/web_form.bundle.js:1-7 spells its own imports.
 	import { WebForm } from "frappe-types/deep-modules";
 	export default WebForm;
 }
@@ -97,6 +111,12 @@ declare module "frappe/public/js/frappe/web_form/web_form_list" {
 	// frappe/public/js/frappe/web_form/web_form_list.js:5 —
 	// `export default class WebFormList {`. No named exports; the module also
 	// defines `frappe.ui.WebFormListRow` (:391) as a side effect.
+	import { WebFormList } from "frappe-types/deep-modules";
+	export default WebFormList;
+}
+
+declare module "frappe/public/js/frappe/web_form/web_form_list.js" {
+	// The same module spelled with its extension; see `web_form.js` above.
 	import { WebFormList } from "frappe-types/deep-modules";
 	export default WebFormList;
 }
