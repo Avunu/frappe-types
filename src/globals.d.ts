@@ -122,23 +122,6 @@ export interface TranslateFunction {
 	): string | null | undefined;
 }
 
-/**
- * The string-in, string-out call of {@link TranslateFunction}, as a plain
- * function type.
- *
- * `__` itself is assignable to it, and so is a stand-in that only handles
- * strings, such as the identity fallback a bundle uses before boot or in
- * Node (`(txt) => txt`), which cannot implement `TranslateFunction`'s falsy
- * passthrough overloads. Type a parameter or a variable that holds "the
- * translator" with this, instead of declaring a local copy of `__`.
- * Source: `frappe/public/js/frappe/translate.js:5-24`.
- */
-export type TranslateStringFunction = (
-	txt: string,
-	replace?: TranslationArgs | string | null,
-	context?: string | null
-) => string;
-
 // =============================================================================
 // 2. `locals` — the client-side document cache
 // =============================================================================
@@ -1083,9 +1066,12 @@ export interface DeskHelperGlobals {
 	 * `frappe/public/js/frappe/utils/datatype.js:9-17` — `true`/`false` → 1/0;
 	 * otherwise strips leading zeros and `parseInt`s the string form. On NaN
 	 * returns `def`, or `0` when `def` is `undefined` (an explicit `null` IS
-	 * returned).
+	 * returned, hence the second overload).
 	 */
-	cint: (v: unknown, def?: number | null) => number;
+	cint: {
+		(v: unknown, def?: number): number;
+		(v: unknown, def: number | null | undefined): number | null;
+	};
 	/** `frappe/public/js/frappe/utils/datatype.js:20-29` — upper-cases the first letter of each space-separated word. */
 	toTitle: (str: string) => string;
 	/**
@@ -1148,16 +1134,21 @@ export interface DeskHelperGlobals {
 	 * `flt`) as a string in `format`. With no `format` the system format is
 	 * used and `decimals` defaults to the Float precision (else 3,
 	 * `frappe/public/js/frappe/utils/number_format.js:91-94`); otherwise to the format's own decimals.
+	 * A string `decimals` (what `precision()` can return) works: it only meets
+	 * `== null`, `flt` (which `cint`s it) and `toFixed`, which coerces it
+	 * (`frappe/public/js/frappe/utils/number_format.js:98-107`).
 	 */
-	format_number: (v: unknown, format?: string | null, decimals?: number | null) => string;
+	format_number: (v: unknown, format?: string | null, decimals?: number | string | null) => string;
 	/**
 	 * `frappe/public/js/frappe/utils/number_format.js:145-163` — `v` in the
 	 * currency's number format, with its symbol on the left, or on the right
 	 * when the Currency says so. `currency` defaults to the system currency;
 	 * an `undefined` `decimals` (only `undefined`) becomes the system currency
-	 * precision. Plain HTML-free text.
+	 * precision — itself a System Settings string, passed on to `format_number`
+	 * (`frappe/public/js/frappe/utils/number_format.js:151-157`), so a string
+	 * `decimals` such as `precision("amount")` is accepted. Plain HTML-free text.
 	 */
-	format_currency: (v: unknown, currency?: string | null, decimals?: number | null) => string;
+	format_currency: (v: unknown, currency?: string | null, decimals?: number | string | null) => string;
 	/**
 	 * `frappe/public/js/frappe/utils/number_format.js:318-322` —
 	 * `format_currency(v, format)`, the second argument passed as the CURRENCY.
