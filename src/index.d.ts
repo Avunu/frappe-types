@@ -291,10 +291,12 @@ export type {
 	Dashboard,
 	DependsOnExpression,
 	DialogActions,
+	DialogConstructor,
 	DialogOptions,
 	DialogSize,
 	DisplayStatus,
 	EditableTitleClass,
+	FieldGroupConstructor,
 	FormEventHandler,
 	FormDocumentEvents,
 	FormEventHandlerRegistry,
@@ -787,7 +789,7 @@ import type {
 } from "./ui/components";
 import type { DataTable, FrappeDataTableNamespace } from "./datatable";
 import type { FrappeModelMetaGlobals } from "./model";
-import type { Dialog, FieldGroup, FrappeUiFormNamespace } from "./ui/form";
+import type { Dialog, DialogConstructor, FieldGroupConstructor, FrappeUiFormNamespace } from "./ui/form";
 import type { FrappeNotifications } from "./ui/notifications";
 import type {
 	FrappeArrangementEditor,
@@ -1077,10 +1079,10 @@ export interface FrappeUiKeysNamespace {
 export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice {
 	/** frappe/public/js/frappe/form/form.js:1 — `frappe.provide("frappe.ui.form")` (also `frappe/public/js/frappe/provide.js:25`). */
 	form: FrappeUiFormNamespace;
-	/** frappe/public/js/frappe/ui/dialog.js:10. */
-	Dialog: typeof Dialog;
+	/** frappe/public/js/frappe/ui/dialog.js:10. See {@link DialogConstructor} for naming the values type. */
+	Dialog: DialogConstructor;
 	/** frappe/public/js/frappe/ui/field_group.js:5 — `Dialog`'s base class. */
-	FieldGroup: typeof FieldGroup;
+	FieldGroup: FieldGroupConstructor;
 	/**
 	 * frappe/public/js/frappe/ui/dialog.js:8 — the modal stack. `show()` pushes onto
 	 * it and the hide handler pops it, and `window.cur_dialog` is always its top

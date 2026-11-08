@@ -2694,7 +2694,9 @@ export declare class FieldGroup<TValues extends object = Record<string, unknown>
 	 * entirely for null-ish values (:157), so the result is a partial map:
 	 * `Partial<TValues>`, where `TValues` is the class's type parameter, the
 	 * values keyed by fieldname. It defaults to `Record<string, unknown>`;
-	 * name it to type the values: `new frappe.ui.FieldGroup<{ qty: number }>(…)`.
+	 * name it on the variable to type the values:
+	 * `const g: frappe.ui.FieldGroup<{ qty: number }> = new frappe.ui.FieldGroup(…)`
+	 * (see {@link FieldGroupConstructor}).
 	 */
 	override get_values: (
 		ignore_errors?: boolean,
@@ -2737,6 +2739,16 @@ export declare class FieldGroup<TValues extends object = Record<string, unknown>
 	): void;
 	/** frappe/public/js/frappe/ui/field_group.js:289-291 — `this.doc.__islocal`; throws when there is no `doc`. */
 	is_new(): boolean | undefined;
+}
+
+/**
+ * The type of `frappe.ui.FieldGroup` itself (frappe/public/js/frappe/ui/field_group.js:5).
+ * See {@link DialogConstructor}: its one construct signature is not generic
+ * for the same reason, so annotate the variable to name `TValues`.
+ */
+export interface FieldGroupConstructor {
+	new (opts?: LayoutOptions): FieldGroup;
+	readonly prototype: FieldGroup;
 }
 
 /**
@@ -2829,6 +2841,39 @@ export interface DialogOptions<TValues extends object = Record<string, unknown>>
 }
 
 /**
+ * The type of `frappe.ui.Dialog` itself — frappe/public/js/frappe/ui/dialog.js:10-31.
+ *
+ * It has one construct signature, and it is not generic, on purpose. A dialog
+ * whose options refer to the dialog being built is the usual frappe pattern:
+ *
+ * ```js
+ * const d = new frappe.ui.Dialog({
+ *   fields: [{ fieldname: "a", fieldtype: "Data", onchange: () => d.get_value("a") }],
+ *   primary_action: () => d.hide(),
+ * });
+ * ```
+ *
+ * TypeScript can give `d` a type without checking the options first only
+ * when the construct signature is single and not generic; a generic or
+ * overloaded one turns that code into TS7022 ("'d' implicitly has type
+ * 'any'"). So `new frappe.ui.Dialog(…)` is a `Dialog<Record<string, unknown>>`,
+ * and the values type is named on the variable, which that instance is
+ * assignable to:
+ *
+ * ```ts
+ * const d: frappe.ui.Dialog<{ qty: number }> = new frappe.ui.Dialog({ … });
+ * d.get_value("qty"); // number | null | undefined
+ * ```
+ *
+ * `primary_action` is a method, so its `values` parameter can name the same
+ * shape (`primary_action(values: { qty?: number }) { … }`).
+ */
+export interface DialogConstructor {
+	new (opts?: DialogOptions): Dialog;
+	readonly prototype: Dialog;
+}
+
+/**
  * `frappe.ui.Dialog` — frappe/public/js/frappe/ui/dialog.js:10
  * (`frappe.ui.Dialog = class Dialog extends frappe.ui.FieldGroup`, a class
  * EXPRESSION, so this declaration is the only way to name the type).
@@ -2868,10 +2913,9 @@ export interface DialogOptions<TValues extends object = Record<string, unknown>>
  */
 export declare class Dialog<TValues extends object = Record<string, unknown>> extends FieldGroup<TValues> {
 	/**
-	 * frappe/public/js/frappe/ui/dialog.js:11-31. `TValues` types the values
-	 * `primary_action` and `get_values()` receive (see {@link FieldGroup.get_values});
-	 * name it as `new frappe.ui.Dialog<{ qty: number }>({ … })`, or annotate the
-	 * variable the dialog is assigned to.
+	 * frappe/public/js/frappe/ui/dialog.js:11-31. `frappe.ui.Dialog` itself is
+	 * typed {@link DialogConstructor}, whose one construct signature is not
+	 * generic; see there for how to name `TValues`.
 	 */
 	constructor(opts?: DialogOptions<TValues>);
 

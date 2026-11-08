@@ -71,11 +71,17 @@ interface StopTimerValues {
 	description: string;
 	billing_hrs: number;
 }
+declare function seed_billable_time(d: frappe.ui.Dialog<StopTimerValues>): void;
 export function stop_timer(): void {
-	const d = new frappe.ui.Dialog<StopTimerValues>({
+	// Name the values type on the variable; the dialog's own fields and actions
+	// may then refer to it in any form.
+	const d: frappe.ui.Dialog<StopTimerValues> = new frappe.ui.Dialog({
 		title: __("Stop Timer"),
-		fields: [{ fieldname: "billing_hrs", fieldtype: "Float", label: __("Billing Hours") }],
-		primary_action: async (values) => {
+		fields: [
+			{ fieldname: "billing_hrs", fieldtype: "Float", label: __("Billing Hours") },
+			{ fieldname: "billable", fieldtype: "Check", onchange: () => seed_billable_time(d) },
+		],
+		primary_action: async (values: Partial<StopTimerValues>) => {
 			const hours: number | undefined = values.billing_hrs;
 			const activity: string | undefined = values.activity_type;
 			void hours, activity;
@@ -95,14 +101,11 @@ new frappe.ui.Dialog({
 	},
 });
 
-// frappe.prompt, typed by its values.
-frappe.prompt<{ tasks: string }>(
-	[{ fieldname: "tasks", fieldtype: "Small Text" }],
-	async (values) => {
-		const lines = (values.tasks ?? "").split("\n");
-		void lines;
-	},
-);
+// frappe.prompt, typed by the callback's parameter.
+frappe.prompt([{ fieldname: "tasks", fieldtype: "Small Text" }], async (values: { tasks?: string }) => {
+	const lines = (values.tasks ?? "").split("\n");
+	void lines;
+});
 
 // Field definitions: query, change hook, dynamic link hook.
 const project_query: LinkQuery = (doc) => ({ filters: { project: doc?.["project"] ?? null } });
@@ -153,10 +156,16 @@ export function failed(files: FrappeFileUploaderFile[]): string[] {
 export function negatives(frm: Form): void {
 	// @ts-expect-error the footer is created only when the timeline is shown
 	frm.footer.refresh();
-	const d = new frappe.ui.Dialog<StopTimerValues>({});
+	const d: frappe.ui.Dialog<StopTimerValues> = new frappe.ui.Dialog({});
 	// @ts-expect-error a value of the wrong type for the field
 	void d.set_value("billing_hrs", "two");
 	// @ts-expect-error values are Partial: a field left empty is missing
 	const required: number = d.get_values()!.billing_hrs;
 	void required;
+	// @ts-expect-error the prompt's values are keyed by fieldname, never a bare value
+	frappe.prompt([{ fieldname: "tasks", fieldtype: "Data" }], (values: string) => values);
+	// @ts-expect-error frappe.prompt takes no type argument; annotate the callback's parameter
+	frappe.prompt<{ tasks: string }>([{ fieldname: "tasks", fieldtype: "Data" }], (values) => values);
+	// @ts-expect-error frappe.ui.Dialog takes no type argument; annotate the variable
+	void new frappe.ui.Dialog<StopTimerValues>({});
 }

@@ -36,20 +36,22 @@ const merge = new frappe.ui.Dialog({
 	},
 });
 
-// Or type the whole dialog through the variable it is assigned to.
+// Or type the whole dialog through the variable it is assigned to: get_value,
+// set_value and get_values are then checked against the values type.
 /** @type {frappe.ui.Dialog<{ percentage: number }>} */
 const discount = new frappe.ui.Dialog({
 	fields: [{ fieldname: "percentage", fieldtype: "Percent" }],
+	/** @param {{ percentage?: number }} values */
 	primary_action(values) {
 		/** @type {number | undefined} */
 		const pct = values.percentage;
 		void pct;
-		/** @type {number | null | undefined} */
-		const same = this.get_value("percentage");
-		void same;
+		discount.hide();
 	},
 });
-void discount;
+/** @type {number | null | undefined} */
+const same = discount.get_value("percentage");
+void same;
 
 // frappe.prompt infers the values type from the callback's parameter.
 frappe.prompt(

@@ -179,16 +179,18 @@ frappe.provide("frappe.query_reports")["Sales Summary"] = report;
 
 The namespace provides `frappe.Doc<DT>`, `frappe.ListDoc<DT>`, `frappe.DocType`, `frappe.FieldName<DT>` and `frappe.FieldValue<DT, F>`. It also provides `frappe.ui.Dialog<TValues>`, `DialogOptions<TValues>`, `FieldGroup<TValues>`, `FieldGroupOptions`, `FileUploader`, `FileUploaderOptions`, `Page`, `SortSelector`, `SortSelectorOptions` and `GroupBy`; `frappe.ui.form.Form<DT>`, `FormEvents<DT>`, `FormEventHandler`, `StandardFormEvents`, `Controller`, `Control`, `ControlOptions`, every `Control<Fieldtype>` class (`ControlData`, `ControlCode`, `ControlLink`, …), `Footer`, `QuickEntryForm`, `QuickEntryAfterInsert`, `PrintView` and `PrintViewTarget`; and `frappe.views.ListViewSettings<DT>`, `ListView`, `ReportView`, `ListViewSelect`, `PageWrapper`, `QueryReport`, `QueryReportSettings`, `QueryReportColumn` and `QueryReportFilter`. Each is an alias of a named export of `frappe-types`, so compiled TypeScript can import the same types instead (`import type { FormEvents } from "frappe-types"`).
 
-Dialogs take the shape of their values as a type parameter. `primary_action` receives `Partial<TValues>`, because frappe leaves every empty field out of `get_values()`, and it is declared as a method, so a callback that annotates its own parameter is accepted too:
+Dialogs carry the shape of their values as a type parameter, `frappe.ui.Dialog<TValues>`. Name it on the variable, not on `new`: the constructor takes no type argument, so a dialog whose fields or actions refer to the dialog itself (`onchange() { d.get_value("a"); }`, `primary_action: () => d.hide()`) type-checks without an annotation. `get_value(fieldname)`, `set_value(fieldname, value)` and `get_values()` are then checked against `TValues`. `primary_action` receives `Partial<TValues>`, because frappe leaves every empty field out of `get_values()`, and it is declared as a method, so it can annotate its own parameter:
 
 ```js
 /** @type {frappe.ui.Dialog<{ percentage: number }>} */
 const d = new frappe.ui.Dialog({
   fields: [{ fieldname: "percentage", fieldtype: "Percent" }],
+  /** @param {{ percentage?: number }} values */
   primary_action(values) {
-    if (values.percentage !== undefined) d.hide(); // values.percentage is number | undefined
+    if (values.percentage !== undefined) d.hide();
   },
 });
+d.get_value("percentage"); // number | null | undefined
 
 frappe.prompt(
   [{ fieldname: "tasks", fieldtype: "Small Text" }],
@@ -197,7 +199,7 @@ frappe.prompt(
 );
 ```
 
-In TypeScript, name it: `new frappe.ui.Dialog<StopTimerValues>({ … })`, `frappe.prompt<{ tasks: string }>(…)`. `get_value(fieldname)` and `set_value(fieldname, value)` are then checked against it too.
+In TypeScript: `const d: frappe.ui.Dialog<StopTimerValues> = new frappe.ui.Dialog({ … })`. On TypeScript 5.x, a field hook that returns a value and refers to the dialog (`get_query: () => ({ filters: { x: d.get_value("y") } })`, `get_data`, an expression-bodied `primary_action: () => d.hide()`) still needs that annotation, even `/** @type {frappe.ui.Dialog} */`; TypeScript 7 does not.
 
 Some rules about form events. Each one matches what frappe does at runtime:
 

@@ -146,10 +146,11 @@ type Translate = (source: string, replace?: readonly string[]) => string;
 export const fallback: Translate = (txt) => txt;
 export const real: Translate = __;
 
-// frappe.prompt with a values type.
-frappe.prompt<{ subject: string; due?: string }>(
+// frappe.prompt with a values type, named on the callback's parameter: a
+// required field is always there, an empty one is absent.
+frappe.prompt(
 	[{ fieldname: "subject", fieldtype: "Data", label: "Subject", reqd: 1 }],
-	(values) => {
+	(values: { subject: string; due?: string }) => {
 		const subject: string = values.subject;
 		const due: string | undefined = values.due;
 		void subject, due;

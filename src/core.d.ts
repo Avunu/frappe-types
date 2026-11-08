@@ -2619,18 +2619,20 @@ export interface FrappeCore {
 	 * since v16.54.0 that check is the Dialog's own, which hands the values to the
 	 * primary action (`frappe/public/js/frappe/ui/dialog.js:265-267`).
 	 *
-	 * `TValues` is the shape of those values, keyed by fieldname. A required
-	 * field is always there (validation stops the call otherwise); a field left
-	 * empty is ABSENT, not `null` (`frappe/public/js/frappe/ui/field_group.js:157`),
-	 * so declare the optional ones optional. From JavaScript, annotate the
-	 * callback's parameter instead (`(/** @type {{ tasks: string }} *\/ values) => …`);
-	 * the callback is a {@link FrappeBivariantCallback}, so that annotation is
-	 * accepted. Its return value is ignored (messages.js:120-123), so an `async`
-	 * callback is fine.
+	 * To type those values, annotate the callback's parameter, keyed by
+	 * fieldname. A required field is always there (validation stops the call
+	 * otherwise); a field left empty is ABSENT, not `null`
+	 * (`frappe/public/js/frappe/ui/field_group.js:157`), so declare the optional
+	 * ones optional: `(values: { subject: string; due?: string }) => …`, or from
+	 * JavaScript `(/** @type {{ tasks: string }} *\/ values) => …`. The callback
+	 * is a {@link FrappeBivariantCallback}, so that annotation is accepted. Not
+	 * generic, for the reason given on `DialogConstructor`: a prompt whose
+	 * fields refer to the returned dialog must still type-check. Its return
+	 * value is ignored (messages.js:120-123), so an `async` callback is fine.
 	 */
-	prompt<TValues extends object = Record<string, unknown>>(
+	prompt(
 		fields: string | Partial<DocField> | ReadonlyArray<Partial<DocField>>,
-		callback: FrappeBivariantCallback<[values: TValues], unknown>,
+		callback: FrappeBivariantCallback<[values: Record<string, unknown>], unknown>,
 		title?: string,
 		primary_label?: string
 	): FrappeDialog;
