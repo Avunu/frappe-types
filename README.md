@@ -241,6 +241,8 @@ frappe.ui.form.ControlFloat = class extends Base {
 };
 ```
 
+Reading `frappe.ui.form.ControlX` gives that exact class. Assigning to it takes any control class, because `make_control` only calls `new` on whatever the slot holds, so an app may register a replacement that extends some other control (`frappe.ui.form.ControlSignature = class extends frappe.ui.form.ControlData { … }`). `frappe.ui.FileUploader` likewise takes any class that accepts the uploader's options.
+
 Two things the presets ask of a desk script that subclasses a frappe class:
 
 - **`/** @override */` on each method that overrides one.** The presets turn on `noImplicitOverride`, which applies to JavaScript through JSDoc.

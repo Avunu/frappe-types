@@ -784,6 +784,7 @@ import type {
 	FrappeBadgeFunction,
 	FrappeButtonFunction,
 	FrappeFileUploader,
+	FrappeFileUploaderOptions,
 	FrappeTabButtons,
 	FrappeTabButtonsFunction,
 } from "./ui/components";
@@ -1185,8 +1186,18 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	 * the desk requires `file_uploader.bundle.js` at start-up without waiting
 	 * for it (frappe/public/js/frappe/upload.js:4-10), so narrow it before `new`.
 	 * See {@link FrappeFileUploader}.
+	 *
+	 * Writing it takes any class that accepts the options: frappe only `new`s
+	 * it (frappe/public/js/frappe/form/controls/attach.js:58, :72,
+	 * frappe/public/js/frappe/form/sidebar/attachments.js:663,
+	 * frappe/public/js/frappe/form/grid.js:1631) and reads nothing off the
+	 * instance outside the bundle. The static `UploadOptions` is read only
+	 * through the class's own `this.constructor`
+	 * (frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:78), so a
+	 * replacement need not have it either.
 	 */
-	FileUploader?: typeof FrappeFileUploader;
+	get FileUploader(): typeof FrappeFileUploader | undefined;
+	set FileUploader(value: new (opts?: FrappeFileUploaderOptions) => unknown);
 	/**
 	 * frappe/public/js/frappe/ui/side_panel.js:814-819 — the one {@link SidePanel},
 	 * created on the first call. Lazy, from `side_panel.bundle.js`: load it with

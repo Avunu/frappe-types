@@ -4097,54 +4097,109 @@ export interface FrappeUiFormNamespace {
 	}>;
 	/* -- Control classes, by fieldtype name (`controls/*.js`). Each is its own
 	 * class, ending at `frappe.ui.form.Control` = BaseControl; this is the
-	 * registry `make_control` reads (frappe/public/js/frappe/form/controls/control.js:48). -------------------- */
-	ControlAttach: typeof ControlAttach;
-	ControlAttachImage: typeof ControlAttachImage;
-	ControlAttachmentGallery: typeof ControlAttachmentGallery;
-	ControlAutocomplete: typeof ControlAutocomplete;
-	ControlBarcode: typeof ControlBarcode;
-	ControlButton: typeof ControlButton;
-	ControlCheck: typeof ControlCheck;
-	ControlCode: typeof ControlCode;
-	ControlColor: typeof ControlColor;
-	ControlComment: typeof ControlComment;
-	ControlCurrency: typeof ControlCurrency;
-	ControlData: typeof ControlData;
-	ControlDate: typeof ControlDate;
-	ControlDateRange: typeof ControlDateRange;
-	ControlDatetime: typeof ControlDatetime;
-	ControlDuration: typeof ControlDuration;
-	ControlDynamicLink: typeof ControlDynamicLink;
-	ControlFloat: typeof ControlFloat;
-	ControlGeolocation: typeof ControlGeolocation;
-	ControlHTML: typeof ControlHTML;
-	ControlHTMLEditor: typeof ControlHTMLEditor;
-	ControlHeading: typeof ControlHeading;
-	ControlIcon: typeof ControlIcon;
-	ControlImage: typeof ControlImage;
-	ControlInt: typeof ControlInt;
-	ControlJSON: typeof ControlJSON;
-	ControlLink: typeof ControlLink;
-	ControlLongInt: typeof ControlInt;
-	ControlLongText: typeof ControlText;
-	ControlMarkdownEditor: typeof ControlMarkdownEditor;
-	ControlMultiCheck: typeof ControlMultiCheck;
-	ControlMultiSelect: typeof ControlMultiSelect;
-	ControlMultiSelectList: typeof ControlMultiSelectList;
-	ControlMultiSelectPills: typeof ControlMultiSelectPills;
-	ControlPassword: typeof ControlPassword;
-	ControlPercent: typeof ControlPercent;
-	ControlPhone: typeof ControlPhone;
-	ControlRating: typeof ControlRating;
-	ControlReadOnly: typeof ControlData;
-	ControlSelect: typeof ControlSelect;
-	ControlSignature: typeof ControlSignature;
-	ControlSmallText: typeof ControlSmallText;
-	ControlSwitch: typeof ControlSwitch;
-	ControlTableMultiSelect: typeof ControlTableMultiSelect;
-	ControlText: typeof ControlText;
-	ControlTextEditor: typeof ControlTextEditor;
-	ControlTime: typeof ControlTime;
+	 * registry `make_control` reads (frappe/public/js/frappe/form/controls/control.js:48).
+	 *
+	 * Each slot is a get/set pair. Reading it gives the precise class, so
+	 * `class extends frappe.ui.form.ControlData` sees every member and static
+	 * that file defines. Writing it takes any control class: `make_control`
+	 * only calls `new frappe.ui.form["Control" + fieldtype](opts)`
+	 * (frappe/public/js/frappe/form/controls/control.js:48-55), so an app may
+	 * register a replacement that does not descend from the class it replaces.
+	 * -------------------- */
+	get ControlAttach(): typeof ControlAttach;
+	set ControlAttach(value: typeof BaseControl);
+	get ControlAttachImage(): typeof ControlAttachImage;
+	set ControlAttachImage(value: typeof BaseControl);
+	get ControlAttachmentGallery(): typeof ControlAttachmentGallery;
+	set ControlAttachmentGallery(value: typeof BaseControl);
+	get ControlAutocomplete(): typeof ControlAutocomplete;
+	set ControlAutocomplete(value: typeof BaseControl);
+	get ControlBarcode(): typeof ControlBarcode;
+	set ControlBarcode(value: typeof BaseControl);
+	get ControlButton(): typeof ControlButton;
+	set ControlButton(value: typeof BaseControl);
+	get ControlCheck(): typeof ControlCheck;
+	set ControlCheck(value: typeof BaseControl);
+	get ControlCode(): typeof ControlCode;
+	set ControlCode(value: typeof BaseControl);
+	get ControlColor(): typeof ControlColor;
+	set ControlColor(value: typeof BaseControl);
+	get ControlComment(): typeof ControlComment;
+	set ControlComment(value: typeof BaseControl);
+	get ControlCurrency(): typeof ControlCurrency;
+	set ControlCurrency(value: typeof BaseControl);
+	get ControlData(): typeof ControlData;
+	set ControlData(value: typeof BaseControl);
+	get ControlDate(): typeof ControlDate;
+	set ControlDate(value: typeof BaseControl);
+	get ControlDateRange(): typeof ControlDateRange;
+	set ControlDateRange(value: typeof BaseControl);
+	get ControlDatetime(): typeof ControlDatetime;
+	set ControlDatetime(value: typeof BaseControl);
+	get ControlDuration(): typeof ControlDuration;
+	set ControlDuration(value: typeof BaseControl);
+	get ControlDynamicLink(): typeof ControlDynamicLink;
+	set ControlDynamicLink(value: typeof BaseControl);
+	get ControlFloat(): typeof ControlFloat;
+	set ControlFloat(value: typeof BaseControl);
+	get ControlGeolocation(): typeof ControlGeolocation;
+	set ControlGeolocation(value: typeof BaseControl);
+	get ControlHTML(): typeof ControlHTML;
+	set ControlHTML(value: typeof BaseControl);
+	get ControlHTMLEditor(): typeof ControlHTMLEditor;
+	set ControlHTMLEditor(value: typeof BaseControl);
+	get ControlHeading(): typeof ControlHeading;
+	set ControlHeading(value: typeof BaseControl);
+	get ControlIcon(): typeof ControlIcon;
+	set ControlIcon(value: typeof BaseControl);
+	get ControlImage(): typeof ControlImage;
+	set ControlImage(value: typeof BaseControl);
+	get ControlInt(): typeof ControlInt;
+	set ControlInt(value: typeof BaseControl);
+	get ControlJSON(): typeof ControlJSON;
+	set ControlJSON(value: typeof BaseControl);
+	get ControlLink(): typeof ControlLink;
+	set ControlLink(value: typeof BaseControl);
+	get ControlLongInt(): typeof ControlInt;
+	set ControlLongInt(value: typeof BaseControl);
+	get ControlLongText(): typeof ControlText;
+	set ControlLongText(value: typeof BaseControl);
+	get ControlMarkdownEditor(): typeof ControlMarkdownEditor;
+	set ControlMarkdownEditor(value: typeof BaseControl);
+	get ControlMultiCheck(): typeof ControlMultiCheck;
+	set ControlMultiCheck(value: typeof BaseControl);
+	get ControlMultiSelect(): typeof ControlMultiSelect;
+	set ControlMultiSelect(value: typeof BaseControl);
+	get ControlMultiSelectList(): typeof ControlMultiSelectList;
+	set ControlMultiSelectList(value: typeof BaseControl);
+	get ControlMultiSelectPills(): typeof ControlMultiSelectPills;
+	set ControlMultiSelectPills(value: typeof BaseControl);
+	get ControlPassword(): typeof ControlPassword;
+	set ControlPassword(value: typeof BaseControl);
+	get ControlPercent(): typeof ControlPercent;
+	set ControlPercent(value: typeof BaseControl);
+	get ControlPhone(): typeof ControlPhone;
+	set ControlPhone(value: typeof BaseControl);
+	get ControlRating(): typeof ControlRating;
+	set ControlRating(value: typeof BaseControl);
+	get ControlReadOnly(): typeof ControlData;
+	set ControlReadOnly(value: typeof BaseControl);
+	get ControlSelect(): typeof ControlSelect;
+	set ControlSelect(value: typeof BaseControl);
+	get ControlSignature(): typeof ControlSignature;
+	set ControlSignature(value: typeof BaseControl);
+	get ControlSmallText(): typeof ControlSmallText;
+	set ControlSmallText(value: typeof BaseControl);
+	get ControlSwitch(): typeof ControlSwitch;
+	set ControlSwitch(value: typeof BaseControl);
+	get ControlTableMultiSelect(): typeof ControlTableMultiSelect;
+	set ControlTableMultiSelect(value: typeof BaseControl);
+	get ControlText(): typeof ControlText;
+	set ControlText(value: typeof BaseControl);
+	get ControlTextEditor(): typeof ControlTextEditor;
+	set ControlTextEditor(value: typeof BaseControl);
+	get ControlTime(): typeof ControlTime;
+	set ControlTime(value: typeof BaseControl);
 
 	/* -- Everything else frappe assigns onto the namespace. The NAMES are
 	 * source-verified; the SHAPES are not declared by this package, so they
