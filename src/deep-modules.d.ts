@@ -1684,3 +1684,16 @@ export interface FrappeNodeUtils {
 		options?: Record<string, unknown>
 	): RedisClientLike;
 }
+
+/* ===========================================================================
+ * The web form classes
+ * =========================================================================*/
+
+// `WebForm` and `WebFormList` are the other two ES-module default exports an
+// app subclasses by deep import (frappe/public/js/frappe/web_form/web_form.js:5,
+// frappe/public/js/frappe/web_form/web_form_list.js:5). They are declared in
+// `web_form.d.ts`, beside the web form's page data, and re-exported here only so
+// the ambient `declare module "frappe/public/js/frappe/web_form/…"` blocks in
+// `modules.d.ts` can reach them through the `frappe-types/deep-modules` subpath
+// the way they reach `Grid`. `web.d.ts` re-exports their types for web scripts.
+export { WebForm, WebFormList } from "./web_form";

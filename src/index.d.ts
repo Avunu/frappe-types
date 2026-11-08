@@ -94,6 +94,7 @@ export type {
 	FormFieldName,
 	FormSetValueArgs,
 	FormatterOptions,
+	FrappeAllowedDocs,
 	FrappeCheck,
 	FrappeCheckLoose,
 	FrappeDoc,
@@ -103,6 +104,7 @@ export type {
 	FrappeModelMetaGlobals,
 	FrappeModelNamespace,
 	FrappeModelUserSettings,
+	FrappePermMatchRule,
 	FrappePermNamespace,
 	FrappeWorkflowNamespace,
 	GridDataRow,
@@ -124,6 +126,8 @@ export type {
 	RegisteredDoc,
 	SelectOption,
 	TableFieldType,
+	WorkflowDoc,
+	WorkflowDocumentState,
 	WorkflowTransition,
 } from "./model";
 
@@ -398,6 +402,7 @@ export type {
 	DeskThemeMode,
 	FrappeAppLogoSource,
 	FrappeBrowserInfo,
+	FrappeContactsLastDoc,
 	FrappeContactsNamespace,
 	FrappeDebouncedFunction,
 	FrappeDesktopIconRecord,
@@ -768,6 +773,27 @@ export type {
 	FrappeTabButtonsOptions,
 	FrappeTooltipOptions,
 } from "./ui/components";
+
+// ---------------------------------------------------------------------------
+// ./web_form — the web form controller and list (deep-imported classes) and the
+// web form page data. Types only here: the globals a web form page adds are in
+// `frappe-types/web`.
+// ---------------------------------------------------------------------------
+export type {
+	WebForm,
+	WebFormConstructor,
+	WebFormDoc,
+	WebFormDocFields,
+	WebFormEvents,
+	WebFormList,
+	WebFormListColumn,
+	WebFormListOptions,
+	WebFormListRow,
+	WebFormListRowEvents,
+	WebFormListViewColumn,
+	WebFormOptions,
+	WebFormSaveResult,
+} from "./web_form";
 
 // ===========================================================================
 // The composites the per-namespace fragments could not declare on their own

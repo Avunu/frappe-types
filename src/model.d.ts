@@ -16,7 +16,8 @@
  * - `frappe/public/js/frappe/model/sync.js`         (locals population, docinfo)
  * - `frappe/public/js/frappe/model/create_new.js`   (new doc / child rows)
  * - `frappe/public/js/frappe/model/user_settings.js`
- * - `frappe/public/js/frappe/model/perm.js`         (`frappe.perm`: the `Permission` array)
+ * - `frappe/public/js/frappe/model/perm.js`         (`frappe.perm` and the `Permission` array)
+ * - `frappe/public/js/frappe/model/workflow.js`     (`frappe.workflow`)
  * - `frappe/public/js/frappe/model/indicator.js`    (`frappe.get_indicator`)
  * - `frappe/public/js/frappe/provide.js`            (`locals` bootstrap)
  * - `frappe/core/doctype/docfield/docfield.json`    (authoritative DocField list)
@@ -2446,133 +2447,393 @@ export interface FrappeModelMetaGlobals {
 	get_user_settings(doctype: string, key: "GridView"): Partial<Record<string, GridViewColumn[]>>;
 	get_user_settings(doctype: string, key?: string): Record<string, unknown>;
 
-	/** `frappe.perm` — `frappe/public/js/frappe/model/perm.js:4`, filled at :19-348. */
+	/**
+	 * `frappe.perm` — see {@link FrappePermNamespace}; `frappe/public/js/frappe/model/perm.js:4,19`.
+	 * In the desk bundle (`frappe/public/js/desk.bundle.js:81`) and the website
+	 * bundle (`frappe/public/js/frappe-web.bundle.js:43`) alike; both run it at
+	 * load, before any app script, so it is not optional.
+	 */
 	perm: FrappePermNamespace;
-	/** `frappe.workflow` — `frappe/public/js/frappe/model/workflow.js:6-97`. */
+	/**
+	 * `frappe.workflow` — see {@link FrappeWorkflowNamespace}; `frappe/public/js/frappe/model/workflow.js:4-6`.
+	 * In the desk bundle only (`frappe/public/js/desk.bundle.js:82`). A website
+	 * page has none; `frappe-types/web` does not subtract it (see the
+	 * over-approximation note in `src/web.d.ts`).
+	 */
 	workflow: FrappeWorkflowNamespace;
 }
 
+// ---------------------------------------------------------------------------
+// frappe.perm and frappe.workflow
+// ---------------------------------------------------------------------------
+
+/*
+ * The desk's client-side answers to "may this user do that to this document?"
+ * and "which workflow state is it in?": `frappe/public/js/frappe/model/perm.js`
+ * and `frappe/public/js/frappe/model/workflow.js`.
+ *
+ * The evaluated permission array these functions return is the package's one
+ * {@link Permission} type, the same one `Form#perm` and `BaseControl#perm`
+ * hold. `Grid#perm` may instead be the field's stored {@link DocPerm} rows;
+ * {@link FrappePermNamespace.get_field_display_status} and
+ * {@link FrappePermNamespace.is_visible}, which read only the `read` and
+ * `write` of the entry at `df.permlevel`, accept either.
+ *
+ * The seven upper-case window constants `perm.js` assigns for backward
+ * compatibility (`READ`, `WRITE`, … — `frappe/public/js/frappe/model/perm.js:9-17`)
+ * are bare globals, declared with the other window helpers in `global.d.ts`.
+ */
+
+// ---------------------------------------------------------------------------
+// frappe.perm
+// ---------------------------------------------------------------------------
+
 /**
- * `frappe.perm` — `frappe/public/js/frappe/model/perm.js:19-348`, the
- * client-side permission evaluator. Its results are {@link Permission} arrays,
- * indexed by permlevel.
+ * One entry of {@link FrappePermNamespace.get_match_rules}: either the user's User
+ * Permissions, keyed by the LABEL of the link field they restrict
+ * (`frappe/public/js/frappe/model/perm.js:208-222`), or the owner rule
+ * `{ Owner: user }` (`:226-228`). Display data for the list sidebar, not
+ * filters.
+ */
+export type FrappePermMatchRule = Record<string, string[]> | { Owner: string };
+
+/**
+ * What {@link FrappePermNamespace.filter_allowed_docs_for_doctype} returns when asked for
+ * the default doc — `frappe/public/js/frappe/model/perm.js:335-343`.
+ */
+export interface FrappeAllowedDocs {
+	/** The permitted document names (`frappe/public/js/frappe/model/perm.js:333`). */
+	allowed_records: string[];
+	/** The first permission marked `is_default`, or `undefined` when none is (`frappe/public/js/frappe/model/perm.js:336-342`). */
+	default_doc: string | undefined;
+}
+
+/**
+ * `frappe.perm` — `frappe.provide("frappe.perm")` then `$.extend`
+ * (`frappe/public/js/frappe/model/perm.js:4,19`). Every member is an arrow
+ * function or a plain value, so they can be passed around detached.
+ *
+ * The answers are only as good as the DocType meta in `locals`: without it,
+ * {@link FrappePermNamespace.get_perm} falls back to the lists in `frappe.boot.user`
+ * and returns a degraded, uncached result (see {@link Permission}). Load the
+ * meta first (`frappe.model.with_doctype`) when that matters.
  */
 export interface FrappePermNamespace {
-	/** The fixed rights, in order — `frappe/public/js/frappe/model/perm.js:20-35`. */
-	rights: string[];
-	/** The per-doctype cache `get_perm` fills — `frappe/public/js/frappe/model/perm.js:37`, :69-73. */
-	doctype_perm: Record<string, Permission[]>;
-	/** `frappe/public/js/frappe/model/perm.js:43-48` — {@link FrappePermNamespace.rights} plus the doctype's custom permission types. */
-	get_rights(doctype?: string | null): string[];
-	/** `frappe/public/js/frappe/model/perm.js:50-53` — `ptype` defaults to `"read"`, `permlevel` to 0. */
-	has_perm(doctype: string, permlevel?: number, ptype?: string, doc?: FrappeDoc | ChildDoc | null): boolean;
 	/**
-	 * `frappe/public/js/frappe/model/perm.js:55-76`. With a saved `doc`, evaluated
-	 * fresh for it (ownership and User Permissions applied); otherwise the
-	 * doctype's cached array.
+	 * The fourteen standard rights, in this order: `select`, `read`, `write`,
+	 * `create`, `delete`, `submit`, `cancel`, `amend`, `report`, `import`,
+	 * `export`, `print`, `email`, `share`
+	 * (`frappe/public/js/frappe/model/perm.js:20-35`). A plain mutable array;
+	 * a doctype's custom rights are added by {@link FrappePermNamespace.get_rights}, not
+	 * here.
 	 */
-	get_perm(doctype: string, doc?: FrappeDoc | ChildDoc | null): Permission[];
-	/** `frappe/public/js/frappe/model/perm.js:78-157` — the uncached evaluation behind `get_perm`. */
-	_get_perm(doctype: string, doc?: FrappeDoc | ChildDoc | null): Permission[];
-	/** `frappe/public/js/frappe/model/perm.js:159-196` — the role permissions of `meta`, by permlevel. */
+	rights: string[];
+	/**
+	 * `frappe/public/js/frappe/model/perm.js:37` — the per-doctype cache
+	 * {@link FrappePermNamespace.get_perm} fills (`:63-73`). Only a result computed with
+	 * the meta loaded is cached, and a doctype not yet asked about has no entry.
+	 */
+	doctype_perm: Record<string, Permission[] | undefined>;
+	/**
+	 * `frappe/public/js/frappe/model/perm.js:43-48` — {@link FrappePermNamespace.rights}
+	 * plus the custom permission types `frappe.boot.doctype_ptype_map` lists for
+	 * `doctype`. Returns the `rights` array ITSELF (not a copy) when there are
+	 * none, or when `doctype` is falsy.
+	 */
+	get_rights(doctype?: string | null): string[];
+	/**
+	 * `frappe/public/js/frappe/model/perm.js:50-53` — whether
+	 * {@link FrappePermNamespace.get_perm}`(doctype, doc)` grants `ptype` at `permlevel`.
+	 * `permlevel` defaults to `0` and `ptype` to `"read"`; `ptype` may be a
+	 * custom permission type. A permlevel with no entry is `false`.
+	 */
+	has_perm(doctype: string, permlevel?: number, ptype?: string, doc?: FrappeDoc | null): boolean;
+	/**
+	 * `frappe/public/js/frappe/model/perm.js:55-76` — the evaluated permission
+	 * array, indexed by permlevel. With a saved `doc` (one without `__islocal`)
+	 * it is recomputed for that document — ownership, User Permissions and
+	 * shares applied (`:59-61`); otherwise it is the doctype's cached array, or
+	 * a freshly computed one that is cached only if the meta is loaded
+	 * (`:63-73`). The array may be sparse; see {@link Permission}.
+	 */
+	get_perm(doctype: string, doc?: FrappeDoc | null): Permission[];
+	/**
+	 * `frappe/public/js/frappe/model/perm.js:78-157` — the uncached computation
+	 * behind {@link FrappePermNamespace.get_perm}. Administrator always gets `read`
+	 * (`:84-86`); with no meta in `locals` only the `frappe.boot.user` lists are
+	 * consulted (`:88-108`); with a `doc` its docinfo permissions, the
+	 * `if_owner` narrowing and the document's shares are applied (`:112-149`).
+	 */
+	_get_perm(doctype: string, doc?: FrappeDoc | null): Permission[];
+	/**
+	 * `frappe/public/js/frappe/model/perm.js:159-196` — the rights the user's
+	 * roles grant through the meta's DocPerm rows, one entry per permlevel
+	 * that has a row. Reads `meta.name` and `meta.permissions` only.
+	 */
 	get_role_permissions(meta: DocTypeMeta): Permission[];
-	/** `frappe/public/js/frappe/model/perm.js:198-230` — the User Permission and owner rules, for the list view's filter area. */
-	get_match_rules(doctype: string, ptype?: string): Array<Record<string, unknown>>;
+	/**
+	 * `frappe/public/js/frappe/model/perm.js:198-230` — the restrictions on the
+	 * user's READ access to `doctype`: the User Permissions on each link field,
+	 * and `{ Owner: user }` when read is granted only through `if_owner`. See
+	 * {@link FrappePermMatchRule}. `ptype` is accepted and defaulted to
+	 * `"read"` (`:201`), then never used: the rules are the same for any value.
+	 */
+	get_match_rules(doctype: string, ptype?: string): FrappePermMatchRule[];
 	/**
 	 * `frappe/public/js/frappe/model/perm.js:232-308` — `"Write"`, `"Read"` or
-	 * `"None"` for one field. `perm` defaults to the document's; `explain` logs
-	 * each step to the console.
+	 * `"None"` for `df`, the status a form control renders with.
+	 *
+	 * - With no `perm` but a `doc`, `perm` is
+	 *   {@link FrappePermNamespace.get_perm}`(doc.doctype, doc)` (`:235-237`).
+	 * - With neither, only `df`'s own `hidden`, `hidden_due_to_dependency`,
+	 *   `read_only` and `is_virtual` decide (`:239-243`).
+	 * - Otherwise the permlevel's `write` and `read` decide (`:245-256`), then
+	 *   `hidden` and `hidden_due_to_dependency`, and, only with a `doc`,
+	 *   submission (`docstatus > 0` makes it read-only unless
+	 *   `allow_on_submit`), `read_only` and `set_only_once` (`:258-307`).
+	 *
+	 * A workflow step sits between them (`:284-293`) but changes nothing: it can
+	 * only set `"Read"` when the status is already `"Read"`. It still reads the
+	 * GLOBAL `cur_frm`, whatever `doc` is.
+	 *
+	 * **Mutates `df`**: a falsy `df.permlevel` is set to `0` (`:245`).
+	 * `explain` logs each step to the console.
 	 */
 	get_field_display_status(
 		df: DocField,
-		doc?: FrappeDoc | ChildDoc | null,
-		perm?: Permission[] | null,
+		doc?: FrappeDoc | null,
+		perm?: readonly (Permission | DocPerm)[] | null,
 		explain?: boolean,
 	): DisplayStatus;
-	/** `frappe/public/js/frappe/model/perm.js:310-319` — `df` may be a fieldname, looked up on `doc`'s doctype. */
-	is_visible(df: DocField | string, doc: FrappeDoc | ChildDoc, perm?: Permission[] | null): boolean;
-	/** `frappe/public/js/frappe/model/perm.js:321-324` — the names of the permitted documents. */
-	get_allowed_docs_for_doctype(user_permissions: FrappeUserPermissionValue[] | null | undefined, doctype: string): string[];
 	/**
-	 * `frappe/public/js/frappe/model/perm.js:326-347`. The permitted documents
-	 * that apply to `doctype`; with `with_default_doc` (the default) also the
-	 * default one.
+	 * `frappe/public/js/frappe/model/perm.js:310-319` —
+	 * {@link FrappePermNamespace.get_field_display_status} is not `"None"`. A fieldname
+	 * is looked up with `frappe.meta.get_docfield` on `doc`'s doctype
+	 * (`:311-314`), so it needs a `doc`; a DocField is passed on with `doc` as
+	 * is, which may then be absent.
+	 */
+	is_visible(df: string, doc: FrappeDoc, perm?: readonly (Permission | DocPerm)[] | null): boolean;
+	is_visible(df: DocField, doc?: FrappeDoc | null, perm?: readonly (Permission | DocPerm)[] | null): boolean;
+	is_visible(df: DocField | string, doc: FrappeDoc, perm?: readonly (Permission | DocPerm)[] | null): boolean;
+	/**
+	 * `frappe/public/js/frappe/model/perm.js:321-324` — the `doc` of each User
+	 * Permission that applies to `doctype` (its `applicable_for` is `doctype`,
+	 * or empty).
+	 */
+	get_allowed_docs_for_doctype(
+		user_permissions: readonly FrappeUserPermissionValue[] | null | undefined,
+		doctype: string,
+	): string[];
+	/**
+	 * `frappe/public/js/frappe/model/perm.js:326-347` — the User Permissions
+	 * that apply to `doctype`, as an {@link FrappeAllowedDocs} (the default:
+	 * `with_default_doc` is `true`) or, with `false`, as the bare list of names.
 	 */
 	filter_allowed_docs_for_doctype(
-		user_permissions: FrappeUserPermissionValue[] | null | undefined,
+		user_permissions: readonly FrappeUserPermissionValue[] | null | undefined,
+		doctype: string,
+		with_default_doc?: true,
+	): FrappeAllowedDocs;
+	filter_allowed_docs_for_doctype(
+		user_permissions: readonly FrappeUserPermissionValue[] | null | undefined,
 		doctype: string,
 		with_default_doc: false,
 	): string[];
 	filter_allowed_docs_for_doctype(
-		user_permissions: FrappeUserPermissionValue[] | null | undefined,
+		user_permissions: readonly FrappeUserPermissionValue[] | null | undefined,
 		doctype: string,
-		with_default_doc?: true,
-	): { allowed_records: string[]; default_doc: string | undefined };
+		with_default_doc: boolean,
+	): FrappeAllowedDocs | string[];
+}
+
+// ---------------------------------------------------------------------------
+// frappe.workflow
+// ---------------------------------------------------------------------------
+
+/**
+ * One `states` row of a Workflow document — the Workflow Document State
+ * doctype (`frappe/workflow/doctype/workflow_document_state/workflow_document_state.json`).
+ * Only the fields `workflow.js` reads are described; the rest are typed from
+ * that doctype.
+ */
+export interface WorkflowDocumentState extends ChildDoc {
+	/** The state's name, a Workflow State (reqd). */
+	state: string;
+	/**
+	 * The docstatus a document in this state has — a Select of `"0"`, `"1"`,
+	 * `"2"` (default `"0"`), so a STRING; `get_default_state` compares it
+	 * through `cint` (`frappe/public/js/frappe/model/workflow.js:32`).
+	 */
+	doc_status: "0" | "1" | "2";
+	/** A field the transition into this state sets; collected by `get_update_fields` (`frappe/public/js/frappe/model/workflow.js:72-79`). */
+	update_field?: string | null;
+	/** The value {@link WorkflowDocumentState.update_field} is set to. */
+	update_value?: string | null;
+	/** The one role that may edit a document in this state (reqd, `frappe/workflow/doctype/workflow_document_state/workflow_document_state.json:60-69`); read by `get_document_state_roles` (`frappe/public/js/frappe/model/workflow.js:48`). */
+	allow_edit: string;
+	message?: string | null;
+	next_action_email_template?: string | null;
+	is_optional_state?: FrappeCheck;
+	workflow_builder_id?: string | null;
+	/** Collected into `frappe.workflow.avoid_status_override` (`frappe/public/js/frappe/model/workflow.js:15-17`). */
+	avoid_status_override?: FrappeCheck;
+	send_email?: FrappeCheck;
+	evaluate_as_expression?: FrappeCheck;
 }
 
 /**
- * `frappe.workflow` — `frappe/public/js/frappe/model/workflow.js:6-97`. Reads
- * the doctype's Workflow document from `locals` (loaded with its meta) and
- * caches what it finds; `setup` runs on first use.
+ * One `transitions` row of a Workflow document — the Workflow Transition
+ * doctype (`frappe/workflow/doctype/workflow_transition/workflow_transition.json`).
+ * `state`, `action`, `next_state` and `allowed` are required Links
+ * (`frappe/workflow/doctype/workflow_transition/workflow_transition.json:23-62`).
+ * Also the element of what `frappe.workflow.get_transitions` resolves with,
+ * which the server builds with `transition.as_dict()`
+ * (`frappe/model/workflow.py:72-78`).
+ */
+export interface WorkflowTransition extends ChildDoc {
+	/** The state the transition leaves (reqd). */
+	state: string;
+	/** The Workflow Action Master name shown on the button (reqd). */
+	action: string;
+	/** The state the transition enters (reqd). */
+	next_state: string;
+	/** The role allowed to make it (reqd). */
+	allowed: string;
+	/** Default `1`. */
+	allow_self_approval?: FrappeCheck;
+	/** A Python expression, evaluated server-side. */
+	condition?: string | null;
+	workflow_builder_id?: string | null;
+	send_email_to_creator?: FrappeCheck;
+	transition_tasks?: string | null;
+}
+
+/**
+ * A Workflow document as `frappe.workflow` holds it: the active workflow of a
+ * doctype, which the form meta ships as `__workflow_docs`
+ * (`frappe/desk/form/meta.py:213-222`) and `frappe.model.sync` puts into
+ * `locals` (`frappe/public/js/frappe/model/meta.js:24`), whence
+ * `frappe.get_list("Workflow", …)` reads it
+ * (`frappe/public/js/frappe/model/workflow.js:11`). Fields from
+ * `frappe/workflow/doctype/workflow/workflow.json`.
+ */
+export interface WorkflowDoc extends FrappeDoc {
+	workflow_name: string;
+	/** The doctype the workflow governs. */
+	document_type: string;
+	is_active?: FrappeCheck;
+	override_status?: FrappeCheck;
+	send_email_alert?: FrappeCheck;
+	enable_action_confirmation?: FrappeCheck;
+	/** The document field holding the state (reqd, default `"workflow_state"`). */
+	workflow_state_field: string;
+	states: WorkflowDocumentState[];
+	transitions: WorkflowTransition[];
+	/** The workflow builder's layout, a JSON string. */
+	workflow_data?: string | null;
+}
+
+/**
+ * `frappe.workflow` — an object literal assigned over the provided namespace
+ * (`frappe/public/js/frappe/model/workflow.js:4-97`).
+ *
+ * Everything is answered from the Workflow document in `locals`, so the
+ * doctype's meta must have been loaded (it brings the workflow along). The
+ * functions that read `workflows[doctype]` directly — `get_default_state`,
+ * `get_document_state_roles`, `is_self_approval_enabled`, `get_update_fields`,
+ * `get_all_transitions`, `get_all_transition_actions` and `get_state` —
+ * **throw** for a doctype with no workflow, since that entry is then
+ * `undefined`. Check {@link FrappeWorkflowNamespace.get_state_fieldname} first.
+ *
+ * `get_state` and `get_all_transition_actions` use `this`
+ * (`frappe/public/js/frappe/model/workflow.js:81`, `:92`), so call them on
+ * `frappe.workflow`, not detached.
  */
 export interface FrappeWorkflowNamespace {
-	/** The workflow state field per doctype, `null` when it has no workflow — `frappe/public/js/frappe/model/workflow.js:7`, :14, :19. */
-	state_fields: Record<string, string | null>;
-	/** The active Workflow document per doctype — `frappe/public/js/frappe/model/workflow.js:8`, :13. */
-	workflows: Record<string, FrappeDoc>;
-	/** The states whose `avoid_status_override` is set, per doctype — `frappe/public/js/frappe/model/workflow.js:9`, :15-17. */
-	avoid_status_override: Record<string, string[]>;
-	/** `frappe/public/js/frappe/model/workflow.js:10-21`. */
+	/**
+	 * `frappe/public/js/frappe/model/workflow.js:7` — doctype → its workflow's
+	 * state field, `null` once {@link FrappeWorkflowNamespace.setup} found no workflow
+	 * (`:19`), and no entry before it ran.
+	 */
+	state_fields: Record<string, string | null | undefined>;
+	/** `frappe/public/js/frappe/model/workflow.js:8,13` — doctype → its Workflow document. */
+	workflows: Record<string, WorkflowDoc | undefined>;
+	/**
+	 * `frappe/public/js/frappe/model/workflow.js:9,15-17` — doctype → the states
+	 * whose `avoid_status_override` is set.
+	 */
+	avoid_status_override: Record<string, string[] | undefined>;
+	/**
+	 * `frappe/public/js/frappe/model/workflow.js:10-21` — reads the doctype's
+	 * Workflow from `locals` and fills the three maps above. Runs again on
+	 * every call; most of the functions below call it first.
+	 */
 	setup(doctype: string): void;
-	/** `frappe/public/js/frappe/model/workflow.js:22-27` — `null` when the doctype has no workflow. */
-	get_state_fieldname(doctype: string): string | null | undefined;
+	/**
+	 * `frappe/public/js/frappe/model/workflow.js:22-27` — the field holding the
+	 * workflow state, or `null` when the doctype has no workflow. Sets up on
+	 * first use.
+	 */
+	get_state_fieldname(doctype: string): string | null;
 	/**
 	 * `frappe/public/js/frappe/model/workflow.js:28-38` — the first state whose
-	 * `doc_status` is `docstatus`, else `null`. Throws when the doctype has no
-	 * workflow (it reads `workflows[doctype].states`, :31).
+	 * `doc_status` equals `docstatus` (compared through `cint`, so a missing
+	 * docstatus means `0`), or `null` when none does. **Throws** when the
+	 * doctype has no workflow.
 	 */
-	get_default_state(doctype: string, docstatus: number | string | null | undefined): string | null;
+	get_default_state(doctype: string, docstatus?: number | string | null): string | null;
 	/**
-	 * `frappe/public/js/frappe/model/workflow.js:39-42` — `frappe.model.workflow.get_transitions`
-	 * on the server, which returns the Workflow Transition rows (`as_dict()`) the
-	 * user may take from the document's state, `[]` for an unsaved document
-	 * (`frappe/model/workflow.py:43-78`).
+	 * `frappe/public/js/frappe/model/workflow.js:39-42` — the transitions the
+	 * user may take from `doc`'s current state, from the server
+	 * (`frappe.model.workflow.get_transitions`, `frappe/model/workflow.py:45-78`),
+	 * which reloads the document from the database and keeps the transitions
+	 * whose role the user has and whose condition holds. Rejects when the
+	 * document has no workflow state (`frappe/model/workflow.py:63-67`).
 	 */
 	get_transitions(doc: FrappeDoc): Promise<WorkflowTransition[]>;
 	/**
-	 * `frappe/public/js/frappe/model/workflow.js:43-49` — the `allow_edit` role of
-	 * each matching state row, a required Link to Role
-	 * (`frappe/workflow/doctype/workflow_document_state/workflow_document_state.json:60-68`).
+	 * `frappe/public/js/frappe/model/workflow.js:43-49` — the `allow_edit` role
+	 * of each `states` row named `state` (one role per row; a state may have
+	 * several rows). **Throws** when the doctype has no workflow.
 	 */
 	get_document_state_roles(doctype: string, state: string): string[];
-	/** `frappe/public/js/frappe/model/workflow.js:50-52` — the Workflow's `allow_self_approval`. */
+	/**
+	 * `frappe/public/js/frappe/model/workflow.js:50-52` — reads
+	 * `allow_self_approval` off the Workflow DOCUMENT, where the Workflow
+	 * doctype has no such field (it is a {@link WorkflowTransition}
+	 * field), so it is `undefined` unless a customisation adds one. Typed as
+	 * what it reads. **Throws** when the doctype has no workflow.
+	 */
 	is_self_approval_enabled(doctype: string): unknown;
-	/** `frappe/public/js/frappe/model/workflow.js:53-71` — whether the current state lets none of the user's roles edit. */
+	/**
+	 * `frappe/public/js/frappe/model/workflow.js:53-71` — `true` when the
+	 * document `locals[doctype][name]` is saved, has a workflow state, and
+	 * none of the user's roles may edit it in that state. `false` for a
+	 * doctype without a workflow, a document not in `locals`, or an unsaved one.
+	 * **Throws** when the doctype has a workflow but no document of it was ever
+	 * loaded, because `locals[doctype]` is then undefined (:56); only syncing
+	 * or creating a document creates that map
+	 * (`frappe/public/js/frappe/model/sync.js:121`,
+	 * `frappe/public/js/frappe/model/create_new.js:10`), loading the meta does not.
+	 */
 	is_read_only(doctype: string, name: string): boolean;
-	/** `frappe/public/js/frappe/model/workflow.js:72-79` — each state's `update_field`. */
-	get_update_fields(doctype: string): unknown[];
-	/** `frappe/public/js/frappe/model/workflow.js:80-87` — the document's state, else the default for its docstatus. */
-	get_state(doc: FrappeDoc): unknown;
-	/** `frappe/public/js/frappe/model/workflow.js:88-90` — the Workflow's transition rows. */
+	/**
+	 * `frappe/public/js/frappe/model/workflow.js:72-79` — the `update_field`
+	 * of each of the workflow's states, in state order, with `null` and
+	 * `undefined` dropped (`$.map`). Not a distinct set: `$.unique` is jQuery
+	 * 3.7's `uniqueSort`, written for DOM nodes; on strings it keeps the order
+	 * and removes only ADJACENT duplicates, and its pass stops at the first
+	 * empty string. **Throws** when the doctype has no workflow.
+	 */
+	get_update_fields(doctype: string): string[];
+	/**
+	 * `frappe/public/js/frappe/model/workflow.js:80-87` — `doc`'s workflow
+	 * state, falling back to {@link FrappeWorkflowNamespace.get_default_state} for its
+	 * docstatus. **Throws** when the doctype has no workflow.
+	 */
+	get_state(doc: FrappeDoc): string | null;
+	/** `frappe/public/js/frappe/model/workflow.js:88-90` — every transition of the workflow. **Throws** when the doctype has none. */
 	get_all_transitions(doctype: string): WorkflowTransition[];
-	/** `frappe/public/js/frappe/model/workflow.js:91-96` — each transition's `action`. */
+	/** `frappe/public/js/frappe/model/workflow.js:91-96` — the `action` of every transition, duplicates kept. **Throws** when the doctype has no workflow. */
 	get_all_transition_actions(doctype: string): string[];
-}
-
-/**
- * A Workflow Transition row, as {@link FrappeWorkflowNamespace.get_transitions}
- * and {@link FrappeWorkflowNamespace.get_all_transitions} return it. The four
- * Links are required fields
- * (`frappe/workflow/doctype/workflow_transition/workflow_transition.json:22-60`);
- * the rest of the row stays open, as on every {@link ChildDoc}.
- */
-export interface WorkflowTransition extends ChildDoc {
-	/** The state the transition leaves — a Workflow State. */
-	state: string;
-	/** The button label — a Workflow Action Master. */
-	action: string;
-	/** The state the transition enters — a Workflow State. */
-	next_state: string;
-	/** The Role that may take the transition. */
-	allowed: string;
 }

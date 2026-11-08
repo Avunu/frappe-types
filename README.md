@@ -52,7 +52,7 @@ Each frappe major lives on its own branch (`version-16`, `version-15`), mirrorin
 
 ## What this is, and what it is not
 
-**It is** the browser-side desk API: `frappe.call`, the `frappe.ui.form.*` class hierarchy, the `frappe.views.*` list/report views, `frappe.model` / `frappe.meta` and the `DocField` / doc shapes, `frappe.utils` / `frappe.dom` / `frappe.router`, `frappe.DataTable`, `frappe.Chart`, the `__()` translator, and ambient declarations for the deep imports desk apps rely on (`import Grid from "frappe/public/js/frappe/form/grid"`).
+**It is** the browser-side desk API: `frappe.call`, the `frappe.ui.form.*` class hierarchy, the `frappe.views.*` list/report views, `frappe.model` / `frappe.meta` and the `DocField` / doc shapes, `frappe.perm` / `frappe.workflow` / `frappe.contacts`, `frappe.utils` / `frappe.dom` / `frappe.router`, `frappe.DataTable`, `frappe.Chart`, the `__()` translator, and ambient declarations for the deep imports desk apps rely on (`import Grid from "frappe/public/js/frappe/form/grid"`, `import WebForm from "frappe/public/js/frappe/web_form/web_form"`), frappe's side-effect bundles and its `.html` microtemplates.
 
 **It is not** types for frappe's Python API or for the [frappe-ui](https://github.com/frappe/frappe-ui) component library, nor a hand-written model of your own doctypes — generate those from your app's doctype JSON with the bundled [`frappe-types gen-registry`](#generating-the-registry-frappe-types-gen-registry). The [`FrappeDocTypes` registry](#typing-your-doctypes-frappedoctypes) is where they plug in. That generator targets desk scripts; for the module-scoped DocType interfaces a frappe-ui SPA imports, [see below](#relation-to-frappefrappe-types-and-frappe-ui-frappetypes) (the desk API types themselves still work in an SPA through the import entry above).
 
@@ -239,7 +239,7 @@ declare module "frappe-types" {
 }
 ```
 
-The namespaces are `Frappe` (the root), `FrappeUiNamespace` (`frappe.ui`), `FrappeUiFormNamespace` (`frappe.ui.form`), `FrappeViewsNamespace` (`frappe.views`) and `FrappeBoot` (`frappe.boot`). Put the file in the tsconfig's `include`, and pass it to `audit-consumer.mjs --types`, which runs from a clone of this repository (see "Can my app compile against this?" under [Maintaining it across frappe versions](#maintaining-it-across-frappe-versions)).
+The namespaces are `Frappe` (the root), `FrappeUiNamespace` (`frappe.ui`), `FrappeUiFormNamespace` (`frappe.ui.form`), `FrappeViewsNamespace` (`frappe.views`) and `FrappeBoot` (`frappe.boot`). Augment only with your app's names: when frappe-types starts declaring a frappe name an app had declared for itself (`frappe.perm`, `frappe.workflow` and `frappe.contacts` are recent examples), delete the app's copy in the same change that upgrades the package. Those three live on `FrappeModelMetaGlobals` (`perm`, `workflow`) and `FrappeUtilsDomRouterGlobals` (`contacts`), which `Frappe` extends, so a differing copy on `Frappe` is `TS2430` ("Interface 'Frappe' incorrectly extends interface 'FrappeModelMetaGlobals'"), reported in a `.d.ts` file; under `skipLibCheck: true` it is not reported at all, and the app's partial copy silently replaces frappe-types' full declaration. Delete the copy even when the build stays green. Put the file in the tsconfig's `include`, and pass it to `audit-consumer.mjs --types`, which runs from a clone of this repository (see "Can my app compile against this?" under [Maintaining it across frappe versions](#maintaining-it-across-frappe-versions)).
 
 Two name lists that frappe keeps open at runtime are registries too. An app with a view of its own (a route `/desk/<doctype>/view/chat`, built by `frappe.views.ChatView`) registers the view mode in `FrappeViewModes`; `FrappeViewName` is its keys, so `frappe.views.view_modes.push("Chat")`, the switcher's `label_map["Chat"]` and a `"Chat"` key in `ListViewSelect#get_views()` need no cast. An app that wraps `frappe.utils.generate_route` to route a Workspace Shortcut to it registers the `doc_view` in `FrappeGenerateRouteDocViews`:
 
@@ -519,10 +519,42 @@ frappe.web_form.validate = () => {
 };
 ```
 
+A web form page also has `frappe.web_form_list` on its list route, `frappe.ui.WebFormListRow`, and the `window.saving` guard `WebForm#save` sets while a save is in flight.
+
 Two caveats:
 
 - **Not every desk name exists on a website page.** The website bundle carries only part of the desk API, and this entry does not take the rest away. If a web script calls something only the desk has, such as `frappe.views.ListView`, it type-checks and then fails at runtime. Keep web scripts in their own tsconfig, as above.
 - **Read `is_new` from `frappe.web_form_doc`.** frappe copies `web_form_doc` onto the controller, but that object carries `is_new` only on `/new`. On every other route `frappe.web_form.is_new` is the inherited `FieldGroup#is_new` method, which is always truthy. The types model this.
+
+#### Replacing frappe's web form script
+
+An app that ships its own web form script, the way frappe's `web_form.bundle.js` does, imports frappe's website bundles for their side effects and subclasses the `WebForm` and `WebFormList` classes. Those classes are the default exports of ES modules, with no global name, so they are reached by deep import. All of it is declared (the declarations come with `frappe-types/global`, which `frappe-types/web` includes), so no `declare module "frappe/..."` shim is needed:
+
+```ts
+import "frappe/public/js/controls.bundle.js";
+import "frappe/public/js/dialog.bundle.js";
+import "./templates/signature_card.html"; // registers frappe.templates["signature_card"]
+import WebForm from "frappe/public/js/frappe/web_form/web_form";
+import type { WebFormSaveResult } from "frappe-types/web";
+
+class MyWebForm extends WebForm {
+  override handle_success(data: WebFormSaveResult): void {
+    if (this.success_url) window.location.href = this.success_url;
+    else super.handle_success(data);
+  }
+}
+
+frappe.ready(() => {
+  const form = new MyWebForm({ parent: $(".web-form-wrapper") });
+  form.prepare(frappe.web_form_doc, frappe.reference_doc || {});
+  form.make();
+});
+```
+
+- **Side-effect bundles** are declared one by one, each with no exports: the files frappe's `web_form.bundle.js` imports (`controls.bundle.js`, `dialog.bundle.js`, `lib/moment.js`, `frappe/ui/keyboard.js`, `frappe/utils/datetime.js`, `frappe/web_form/webform_script.js`, `bootstrap-4-web.bundle.js`) and `web_form.bundle.js` itself, written with the `.js` extension. A named import from one of them is an error, as it is in esbuild.
+- **`.html` imports** are frappe microtemplates. frappe's esbuild plugin turns the file into `frappe.templates["<name>"] = …` and exports nothing, so `declare module "*.html" {}` declares a module with no exports. If other tooling in the same project gives `.html` imports exports, declare that module yourself; the two declarations merge.
+- **`WebForm` is a constructor, not a `class`.** The controller changes the types of members it inherits from `FieldGroup` (`doc`, `parent`, `page_breaks`, `is_new`), which a `class` declaration cannot do. `class X extends WebForm` and `override` work exactly as with a class, for the methods `WebForm` inherits from `FieldGroup` (`refresh`, `set_values`, …) as well as its own. A `WebForm` is not assignable to `FieldGroup`.
+- **Both spellings of the class modules** are declared: `frappe/public/js/frappe/web_form/web_form` and `…/web_form.js`, and the same for `web_form_list`.
 
 ## Maintaining it across frappe versions
 

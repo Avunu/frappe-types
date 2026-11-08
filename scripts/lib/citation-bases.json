@@ -182,6 +182,12 @@
       "declared": "none: the header names no base; every citation in it is a full path",
       "bases": ["frappe/public/js/frappe/", "frappe/"],
       "basis": "full-path-evidence: every full-path citation in the file is under frappe/public/js/frappe/ or frappe/"
+    },
+    "src/web_form.d.ts": {
+      "declared": "\"Citations are full-path so `npm run audit:drift` can check them\" (header)",
+      "bases": ["frappe/public/js/frappe/", "frappe/"],
+      "basis": "header",
+      "notes": ["A file-less `:N` follows a full-path web_form.js, web_form_list.js or event_emitter.js citation in the same comment and means that file."]
     }
   }
 }

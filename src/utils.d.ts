@@ -3690,36 +3690,65 @@ export interface FrappeUtilsDomRouterGlobals {
 	route_options: Record<string, unknown> | null;
 
 	/**
-	 * `frappe/public/js/frappe/utils/address_and_contact.js:1`, `:286-339` — the
+	 * `frappe.contacts` — see {@link FrappeContactsNamespace};
+	 * `frappe/public/js/frappe/utils/address_and_contact.js:1`, `:286-339`. The
 	 * Address and Contact helpers of a party's form. In `form.bundle.js`
 	 * (`frappe/public/js/form.bundle.js:16`), which every desk page loads
-	 * (`frappe/hooks.py:23-32`, `app_include_js`), so it is not optional, like
-	 * `frappe.ui.form`.
+	 * (`frappe/hooks.py:24-33`, `app_include_js`), so it is not optional, like
+	 * `frappe.ui.form`. Desk only.
 	 */
 	contacts: FrappeContactsNamespace;
 }
 
 /**
- * `frappe.contacts` — `frappe.provide("frappe.contacts")`
- * (`frappe/public/js/frappe/utils/address_and_contact.js:1`), extended at
- * `frappe/public/js/frappe/utils/address_and_contact.js:286-339`.
+ * What {@link FrappeContactsNamespace.get_last_doc} returns —
+ * `frappe/public/js/frappe/utils/address_and_contact.js:309-317`.
+ */
+export interface FrappeContactsLastDoc {
+	/** The doctype of the form visited just before, or `null` when the previous route was not a form. */
+	doctype: string | null;
+	/**
+	 * Its name, or `null` like `doctype`. A name containing `/` spans several
+	 * route segments, which are joined back together (`frappe/public/js/frappe/utils/address_and_contact.js:312`).
+	 */
+	docname: string | null;
+}
+
+/**
+ * `frappe.contacts` — `frappe.provide("frappe.contacts")` and `$.extend`
+ * (`frappe/public/js/frappe/utils/address_and_contact.js:1,286-339`).
  */
 export interface FrappeContactsNamespace {
-	/** `frappe/public/js/frappe/utils/address_and_contact.js:287-291` — empties the form's `address_html` and `contact_html` fields. */
+	/**
+	 * `frappe/public/js/frappe/utils/address_and_contact.js:287-291` — empties
+	 * the form's `address_html` and `contact_html` fields, where it has them.
+	 */
 	clear_address_and_contact(frm: Form): void;
-	/** `frappe/public/js/frappe/utils/address_and_contact.js:293-298` — renders the form's linked addresses and contacts into those fields. */
+	/**
+	 * `frappe/public/js/frappe/utils/address_and_contact.js:293-298` — renders
+	 * the Address and the Contact cards into the form's `address_html` and
+	 * `contact_html` fields, from the `addr_list` / `contact_list` the server
+	 * put in `frm.doc.__onload`. A group is skipped when the form has no such
+	 * field or the onload key is absent (the `is_loaded` getter,
+	 * `frappe/public/js/frappe/utils/address_and_contact.js:114-117`, checked
+	 * at `frappe/public/js/frappe/utils/address_and_contact.js:296`), so it is
+	 * safe to call on any form.
+	 */
 	render_address_and_contact(frm: Form): void;
 	/**
 	 * `frappe/public/js/frappe/utils/address_and_contact.js:300-318` — the form
-	 * the user came from, if the previous route was another doctype's form;
-	 * both `null` otherwise.
+	 * the user came from, read off `frappe.route_history`: the most recent
+	 * Form route of another doctype, skipping this doctype's own forms and
+	 * stopping at the first route that is not a form. Used to link a new
+	 * Address or Contact back to it.
 	 */
-	get_last_doc(frm: Form): { doctype: string | null; docname: string | null };
+	get_last_doc(frm: Form): FrappeContactsLastDoc;
 	/**
 	 * `frappe/public/js/frappe/utils/address_and_contact.js:320-338` — sets
-	 * `display_field` (default `"address_display"`) to the formatted address of
-	 * `address_field` (default `"address"`), or to `""` when it is empty. Does
-	 * nothing while `frm.updating_party_details` is set.
+	 * `display_field` (default `"address_display"`) to the formatted Address
+	 * named by `address_field` (default `"address"`), fetched from the server;
+	 * clears it when `address_field` is empty. Does nothing while
+	 * `frm.updating_party_details` is set. Returns before the value arrives.
 	 */
 	get_address_display(frm: Form, address_field?: string, display_field?: string): void;
 }

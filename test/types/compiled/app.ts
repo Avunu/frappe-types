@@ -80,3 +80,19 @@ export const bad = (frm: Form<"Project">) => frm.doc.projct_name;
 
 // @ts-expect-error `percent_complete` is a number
 export const bad_value = (frm: Form<"Project">) => frm.set_value("percent_complete", "50");
+
+// frappe.perm / frappe.workflow / frappe.contacts from compiled TypeScript.
+frappe.ui.form.on("Project", {
+	refresh(frm) {
+		const perm = frappe.perm.get_perm(frm.doctype, frm.doc);
+		for (const df of frm.meta.fields) {
+			if (frappe.perm.get_field_display_status(df, frm.doc, perm) === "None") continue;
+		}
+		const state_field = frappe.workflow.get_state_fieldname(frm.doctype);
+		if (state_field) {
+			const roles: string[] = frappe.workflow.get_document_state_roles(frm.doctype, frappe.workflow.get_state(frm.doc) ?? "");
+			void roles;
+		}
+		frappe.contacts.render_address_and_contact(frm);
+	},
+});

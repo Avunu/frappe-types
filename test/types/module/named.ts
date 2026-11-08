@@ -1,7 +1,20 @@
 // The module entry on its own (`import type ... from "frappe-types"`): named
 // types, the shared doctype registry, and no ambient `frappe`.
 
-import type { DocOf, DocTypeName, Form, FormEvents, FrappeResponse, FrappeServerMessage } from "frappe-types";
+import type {
+	DocOf,
+	DocTypeName,
+	Form,
+	FormEvents,
+	FrappeContactsNamespace,
+	FrappePermNamespace,
+	FrappeResponse,
+	FrappeServerMessage,
+	FrappeWorkflowNamespace,
+	Permission,
+	WebForm,
+	WebFormDoc,
+} from "frappe-types";
 
 declare global {
 	interface FrappeDocTypes {
@@ -20,6 +33,21 @@ export const events: FormEvents<"Task"> = {
 		void frm.doc.exp_end_date;
 	},
 };
+
+// frappe.perm, frappe.workflow, frappe.contacts and the web form types, by name.
+export function readable(perm: FrappePermNamespace, doctype: string): Permission[] {
+	return perm.get_perm(doctype);
+}
+export function state_field(workflow: FrappeWorkflowNamespace, doctype: string): string | null {
+	return workflow.get_state_fieldname(doctype);
+}
+export function render(contacts: FrappeContactsNamespace, frm: Form): void {
+	contacts.render_address_and_contact(frm);
+}
+export function success_url(form: WebForm, doc: WebFormDoc): string | undefined {
+	form.prepare(doc, {});
+	return form.success_url;
+}
 
 // @ts-expect-error the module entry installs no `frappe` global
 void frappe;
