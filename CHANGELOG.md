@@ -1,5 +1,21 @@
 # Changelog
 
+## [16.6.0](https://github.com/Avunu/frappe-types/compare/v16.5.0...v16.6.0) (2026-11-08)
+
+
+### Features
+
+* complete frappe.perm, workflow and contacts and declare the web form deep modules ([#44](https://github.com/Avunu/frappe-types/issues/44)) ([318dd44](https://github.com/Avunu/frappe-types/commit/318dd44e592a20607351fbc69bf62c6bc09f6c65))
+* model frappe's control classes, form footer, dialogs, perm and workflow ([#42](https://github.com/Avunu/frappe-types/issues/42)) ([12d630d](https://github.com/Avunu/frappe-types/commit/12d630df2f14b820ee0556cc3560b2af2b254ff2))
+* open view modes to apps and type the views, side panel and utils apps patch ([#43](https://github.com/Avunu/frappe-types/issues/43)) ([89cb135](https://github.com/Avunu/frappe-types/commit/89cb135d7f196b55ebf5674be2b65303e550c836))
+* type frappe's server calls, response envelope and window globals ([#40](https://github.com/Avunu/frappe-types/issues/40)) ([ca08433](https://github.com/Avunu/frappe-types/commit/ca08433a794102de9414627c2f39e798b6acc370))
+* type quick entry, BaseTimeline and the website-only window helpers ([#45](https://github.com/Avunu/frappe-types/issues/45)) ([80d616c](https://github.com/Avunu/frappe-types/commit/80d616c6a98b016338bace7fc79fcabf31f82037))
+
+
+### Bug Fixes
+
+* correct the declarations the app migration found too loose or too strict ([#46](https://github.com/Avunu/frappe-types/issues/46)) ([367c72e](https://github.com/Avunu/frappe-types/commit/367c72e064aa930fbc5918b8ed5443796139aaf6))
+
 ## [16.5.0](https://github.com/Avunu/frappe-types/compare/v16.4.1...v16.5.0) (2026-10-07)
 
 
