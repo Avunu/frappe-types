@@ -463,8 +463,11 @@ export interface FrappeServerMessage {
 	/**
 	 * The text, HTML-cleaned unless the caller allowed dangerous HTML
 	 * (`frappe/utils/messages.py:71-78`). A list for `as_list`, a list of rows for `as_table`.
+	 * `null` for `msgprint(None)` / `frappe.throw(None)`: `safe_decode` hands
+	 * `None` back (`frappe/utils/messages.py:45-46`, `frappe/utils/data.py:2917-2935`)
+	 * and `clean_html` returns a non-`str` unchanged (`frappe/utils/html_utils.py:29-31`).
 	 */
-	message: string | string[] | string[][];
+	message: string | string[] | string[][] | null;
 	/** Always set: the caller's title, else the translated `"Message"` (`frappe/utils/messages.py:90`). */
 	title: string;
 	/** `frappe/utils/messages.py:17,92-96`. `"red"` by default when the message raises. */
