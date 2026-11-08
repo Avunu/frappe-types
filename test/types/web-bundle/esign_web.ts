@@ -162,3 +162,8 @@ declare const saved: import("frappe-types").FrappeDoc;
 frappe.web_form.handle_success(saved);
 // @ts-expect-error null is neither a document nor a URL; frappe reads data.name
 frappe.web_form.handle_success(null);
+
+// The app's own Web Form field, on the document and on the controller.
+const enabled: 0 | 1 | undefined = frappe.web_form_doc.esign_enabled;
+const on_controller: 0 | 1 | undefined = frappe.web_form.esign_enabled;
+void [enabled, on_controller];
