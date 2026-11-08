@@ -521,6 +521,8 @@ frappe.web_form.validate = () => {
 
 A web form page also has `frappe.web_form_list` on its list route, `frappe.ui.WebFormListRow`, and the `window.saving` guard `WebForm#save` sets while a save is in flight.
 
+Every website page also gets the window helpers only the website script defines: `valid_email(id)`, `is_html(txt)` and `ask_to_login()` as bare globals, and `window.full_name`, which is copied from the cookie when the document is ready and so is declared only on `window`, as optional.
+
 Two caveats:
 
 - **Not every desk name exists on a website page.** The website bundle carries only part of the desk API, and this entry does not take the rest away. If a web script calls something only the desk has, such as `frappe.views.ListView`, it type-checks and then fails at runtime. Keep web scripts in their own tsconfig, as above.

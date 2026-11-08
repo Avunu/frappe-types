@@ -15,7 +15,10 @@
  * `frappe` on a WEBSITE page — `frappe.ready`, and on a web form page
  * `frappe.web_form`, `frappe.web_form_doc`, `frappe.reference_doc`,
  * `frappe.init_client_script`, `frappe.form_dirty`, `frappe.web_form_list`,
- * `frappe.ui.WebFormListRow` and the `window.saving` guard.
+ * `frappe.ui.WebFormListRow` and the `window.saving` guard — and the window
+ * helpers only the website script defines: `valid_email`, `is_html`,
+ * `ask_to_login` and `window.full_name`
+ * (`frappe/website/js/website.js:581-625`).
  *
  * The web form controller and list classes themselves (`WebForm`,
  * `WebFormList`) are default exports of ES modules, reached by deep import —
@@ -130,7 +133,41 @@ declare module "./index" {
 }
 
 declare global {
+	// -- website.js window helpers ------------------------------------------
+	// `frappe/website/js/website.js` is the last import of the website bundle
+	// (`frappe/public/js/frappe-web.bundle.js:47`) and no desk bundle loads it.
+	// It also reassigns `validate_email`, `cstr` and `is_null` (:589-597),
+	// which `frappe-types/global` already declares from the desk's
+	// `datatype.js`; the three below exist on website pages only.
+
+	/**
+	 * `frappe/website/js/website.js:581-587` — whether `id`, lower-cased, is an
+	 * email address (the regex `frappe.utils.validate_type` uses). `id` must be
+	 * a string: it calls `id.toLowerCase()`. Also `window.validate_email` on a
+	 * website page (:589).
+	 */
+	var valid_email: (id: string) => boolean;
+	/**
+	 * `frappe/website/js/website.js:599-609` — whether `txt` contains `<br>`,
+	 * `<p`, `<img` or `<div`. Not the same test as `frappe.utils.is_html`.
+	 */
+	var is_html: (txt: string) => boolean;
+	/**
+	 * `frappe/website/js/website.js:611-621` — for a Guest, remembers the
+	 * current path in `localStorage.last_visited` and goes to `login`; does
+	 * nothing for a logged-in user.
+	 */
+	var ask_to_login: () => void;
+
 	interface Window {
+		/**
+		 * `frappe/website/js/website.js:625` — the `full_name` cookie, copied in a
+		 * document-ready handler, so it is not there while the page's scripts
+		 * first run (a bare `full_name` then throws), and stays undefined when
+		 * the cookie is absent (`frappe/public/js/frappe/utils/common.js:239-241`).
+		 * Read it as `window.full_name`.
+		 */
+		full_name?: string;
 		/**
 		 * The web form's save guard: `WebForm#save` returns at once while it is
 		 * set (`frappe/public/js/frappe/web_form/web_form.js:405`), sets it before

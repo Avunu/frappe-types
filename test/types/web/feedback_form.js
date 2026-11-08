@@ -67,3 +67,27 @@ function save_signed() {
 	return false;
 }
 void save_signed;
+
+// The window helpers only the website script defines (website.js:581-625).
+frappe.web_form.validate = () => {
+	const email = frappe.web_form.get_value("email");
+	if (typeof email === "string" && !valid_email(email)) {
+		frappe.msgprint(__("Please enter a valid email"));
+		return false;
+	}
+	const comments = frappe.web_form.get_value("comments");
+	if (typeof comments === "string" && is_html(comments)) {
+		frappe.msgprint(__("Plain text only"));
+		return false;
+	}
+	return true;
+};
+if (!frappe.session.user || frappe.session.user === "Guest") ask_to_login();
+/** @type {string} */
+const signer = window.full_name ?? __("Guest");
+void signer;
+
+// @ts-expect-error valid_email calls id.toLowerCase(), so it takes a string
+void valid_email(null);
+// @ts-expect-error full_name is copied on document ready: read it as window.full_name
+void full_name;

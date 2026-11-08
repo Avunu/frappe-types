@@ -3,11 +3,15 @@
 // local shims or casts.
 
 import type {
+	BaseTimeline,
+	ContactQuickEntryDetailField,
 	ControlCode,
 	ControlData,
 	DocField,
+	DocInfoRow,
 	Form,
 	FormDocumentEvents,
+	FormTimeline,
 	FrappeFileUploaderFile,
 	LinkQuery,
 } from "frappe-types";
@@ -209,6 +213,34 @@ export class Phone extends frappe.ui.form.ControlPhone {
 	}
 }
 
+// frappe.ui.BaseTimeline subclassed, and the form timeline's email helpers.
+export class AuditTimeline extends frappe.ui.BaseTimeline {
+	override prepare_timeline_contents(): Promise<void> {
+		return frappe.xcall<{ creation: string; content: string }[]>("app.api.audit").then((rows) => {
+			for (const row of rows) this.timeline_items.push({ content: row.content, creation: row.creation });
+		});
+	}
+}
+export function last_email(frm: Form, timeline: BaseTimeline): DocInfoRow | null {
+	timeline.refresh();
+	return frm.timeline?.get_last_email() ?? null;
+}
+export class QuickContact extends frappe.ui.form.ContactQuickEntryForm {
+	override get_detail_fields(): ContactQuickEntryDetailField[] {
+		return super.get_detail_fields().filter((field) => field.table !== "email_ids");
+	}
+	override open_form_if_not_list(): void {
+		if (this.source_frm) this.source_frm.dirty();
+		super.open_form_if_not_list();
+	}
+}
+export async function quote_for(project: string): Promise<void> {
+	const form = new frappe.ui.form.QuickEntryForm("Sales Quote", null, null, null, true);
+	frappe.quick_entry = form;
+	await form.setup();
+	frappe.quick_edit("Project", project);
+}
+
 // ---- negative cases -------------------------------------------------------
 
 export function negatives(frm: Form): void {
@@ -226,4 +258,12 @@ export function negatives(frm: Form): void {
 	frappe.prompt<{ tasks: string }>([{ fieldname: "tasks", fieldtype: "Data" }], (values) => values);
 	// @ts-expect-error frappe.ui.Dialog takes no type argument; annotate the variable
 	void new frappe.ui.Dialog<StopTimerValues>({});
+}
+
+// The form timeline is built with its form, as the footer does; without one,
+// make() fails at once.
+export function form_timeline(Timeline: typeof FormTimeline, frm: Form): FormTimeline {
+	// @ts-expect-error FormTimeline requires frm, unlike BaseTimeline
+	void new Timeline({ parent: $("<div>") });
+	return new Timeline({ parent: $("<div>"), frm });
 }
