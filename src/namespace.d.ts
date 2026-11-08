@@ -41,7 +41,10 @@
 
 import type { DocFieldName, DocFieldValue, DocOf, DocTypeName, FormDocTypeOf } from "./model";
 import type {
+	AddressQuickEntryForm as AddressQuickEntryFormClass,
 	BaseControl,
+	BaseTimeline as BaseTimelineClass,
+	ContactQuickEntryForm as ContactQuickEntryFormClass,
 	ControlAttach as ControlAttachClass,
 	ControlAttachImage as ControlAttachImageClass,
 	ControlAttachmentGallery as ControlAttachmentGalleryClass,
@@ -175,6 +178,8 @@ declare global {
 			type SidePanel = SidePanelClass;
 			/** A document preview the side panel shows: what `frappe.desk.doc_preview.get_preview` returns. */
 			type DocPreview = DocPreviewShape;
+			/** `frappe.ui.BaseTimeline` — `frappe/public/js/frappe/form/footer/base_timeline.js:158`. */
+			type BaseTimeline = BaseTimelineClass;
 
 			namespace form {
 				/** `frappe.ui.form.Form` — `frappe/public/js/frappe/form/form.js:64`. */
@@ -298,6 +303,10 @@ declare global {
 				type QuickEntryForm = QuickEntryFormClass;
 				/** The `after_insert` callback of a quick entry dialog. */
 				type QuickEntryAfterInsert = QuickEntryAfterInsertType;
+				/** `frappe.ui.form.AddressQuickEntryForm` — `frappe/public/js/frappe/utils/address_and_contact.js:4`. */
+				type AddressQuickEntryForm = AddressQuickEntryFormClass;
+				/** `frappe.ui.form.ContactQuickEntryForm` — `frappe/public/js/frappe/utils/address_and_contact.js:22`. */
+				type ContactQuickEntryForm = ContactQuickEntryFormClass;
 				/** `frappe.ui.form.PrintView` — `frappe/printing/page/print/print.js:38`. */
 				type PrintView = PrintViewClass;
 				/** What `PrintView#show` prints: a form, or the print page's stand-in for one. */

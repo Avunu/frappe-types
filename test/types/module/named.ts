@@ -2,6 +2,8 @@
 // types, the shared doctype registry, and no ambient `frappe`.
 
 import type {
+	AddressQuickEntryForm,
+	BaseTimeline,
 	DocOf,
 	DocTypeName,
 	Form,
@@ -43,6 +45,13 @@ export function state_field(workflow: FrappeWorkflowNamespace, doctype: string):
 }
 export function render(contacts: FrappeContactsNamespace, frm: Form): void {
 	contacts.render_address_and_contact(frm);
+}
+// The quick entry and timeline classes, by name.
+export function link_to(dialog: AddressQuickEntryForm, frm: Form): void {
+	dialog.source_frm = frm;
+}
+export function entries(timeline: BaseTimeline): number {
+	return timeline.timeline_items.length;
 }
 export function success_url(form: WebForm, doc: WebFormDoc): string | undefined {
 	form.prepare(doc, {});

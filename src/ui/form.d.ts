@@ -44,6 +44,7 @@ import type {
 	ChildDoc,
 	DocField,
 	DocFieldName,
+	DocInfoRow,
 	DocOf,
 	DocTypeMeta,
 	FormatterOptions,
@@ -3422,6 +3423,17 @@ export declare class Form<DT extends string = string> {
 	comment_box?: ControlComment;
 	/** The footer's activity timeline — frappe/public/js/frappe/form/footer/footer.js:78. Set with {@link Form.footer}. */
 	timeline?: FormTimeline;
+	/**
+	 * The fieldname holding the address an email from this form goes to. Never
+	 * set by the form itself: a doctype script sets it (frappe's own
+	 * `frappe/contacts/doctype/contact/contact.js:6`,
+	 * `frappe/core/doctype/communication/communication.js:32-34`), and the
+	 * timeline and the email composer read it
+	 * (`frappe/public/js/frappe/form/footer/form_timeline.js:616-617`,
+	 * `frappe/public/js/frappe/views/communication.js:1189-1190`). See
+	 * {@link FormTimeline.get_recipient}.
+	 */
+	email_field?: string;
 	tour?: unknown;
 	states?: unknown;
 	form_wrapper?: JQuery<HTMLElement>;
@@ -3770,17 +3782,27 @@ export interface FormTimelineItem {
 }
 
 /**
- * The form's activity timeline, `FormTimeline`
- * (frappe/public/js/frappe/form/footer/form_timeline.js:10), extending
- * `BaseTimeline` (frappe/public/js/frappe/form/footer/base_timeline.js:4, also
- * `frappe.ui.BaseTimeline`, :158). Neither class is on `frappe.ui.form`; the
- * instance is {@link Form.timeline}. Only the shared, public members are
- * declared.
+ * `frappe.ui.BaseTimeline` — frappe/public/js/frappe/form/footer/base_timeline.js:4,
+ * published at :158 (and the module's default export, :159). A timeline of
+ * entries newest first, with an optional row of action buttons above them.
+ * Loaded on every desk page: `form.bundle.js` imports `form/form.js`
+ * (frappe/public/js/form.bundle.js:15), which imports the footer
+ * (frappe/public/js/frappe/form/form.js:14), which imports `FormTimeline`
+ * (frappe/public/js/frappe/form/footer/footer.js:3), which imports
+ * `BaseTimeline` (frappe/public/js/frappe/form/footer/form_timeline.js:3); and
+ * frappe lists `form.bundle.js` in `app_include_js` (frappe/hooks.py:29).
+ *
+ * The constructor copies every option onto the instance and calls `make()`,
+ * which REPLACES `parent` in the DOM with the timeline. A subclass supplies the
+ * entries by overriding {@link BaseTimeline.prepare_timeline_contents}, which
+ * pushes onto {@link BaseTimeline.timeline_items}; the base version adds none.
+ * {@link FormTimeline}, the form's activity timeline, is frappe's own subclass.
  */
-export declare class FormTimeline {
+export declare class BaseTimeline {
 	/** frappe/public/js/frappe/form/footer/base_timeline.js:5-8 — `Object.assign(this, opts)`, then `make()`. */
-	constructor(opts: { parent: JQuery<HTMLElement>; frm: Form; [option: string]: unknown });
-	frm: Form;
+	constructor(opts: { parent: JQuery<HTMLElement>; frm?: Form; [option: string]: unknown });
+	/** Read only when set: frappe/public/js/frappe/form/footer/base_timeline.js:49 fetches its docinfo. */
+	frm?: Form | undefined;
 	/** Replaced by the timeline in `make()` — frappe/public/js/frappe/form/footer/base_timeline.js:26. */
 	parent: JQuery<HTMLElement>;
 	/** frappe/public/js/frappe/form/footer/base_timeline.js:11-12. */
@@ -3789,15 +3811,15 @@ export declare class FormTimeline {
 	wrapper: JQuery<HTMLElement>;
 	/** frappe/public/js/frappe/form/footer/base_timeline.js:13. */
 	timeline_items_wrapper: JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/form/footer/base_timeline.js:14-20. */
+	/** Hidden until the first action button — frappe/public/js/frappe/form/footer/base_timeline.js:14-23, :36. */
 	timeline_actions_wrapper: JQuery<HTMLElement>;
 	/** The entries `prepare_timeline_contents` collected — frappe/public/js/frappe/form/footer/base_timeline.js:27, :48. */
 	timeline_items: FormTimelineItem[];
-	/** `frm.get_docinfo()` at the last render — frappe/public/js/frappe/form/footer/base_timeline.js:49. */
+	/** `frm.get_docinfo()` at the last render, `{}` without a form — frappe/public/js/frappe/form/footer/base_timeline.js:49. */
 	doc_info?: unknown;
-	/** frappe/public/js/frappe/form/footer/form_timeline.js:11-16. */
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:10-28 — builds the wrappers and swaps them in for `parent`. */
 	make(): void;
-	/** frappe/public/js/frappe/form/footer/form_timeline.js:18-23 — re-renders and fires the form's `timeline_refresh` event. */
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:30-32 — `render_timeline_items()`. */
 	refresh(): void;
 	/** frappe/public/js/frappe/form/footer/base_timeline.js:34-44 — a button above the entries; returns it. */
 	add_action_button(
@@ -3806,18 +3828,77 @@ export declare class FormTimeline {
 		icon?: string | null,
 		btn_class?: string | null
 	): JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/form/footer/form_timeline.js:123-127. */
+	/**
+	 * frappe/public/js/frappe/form/footer/base_timeline.js:46-64 — empties the
+	 * list, calls `prepare_timeline_contents()`, then renders `timeline_items`
+	 * sorted by `creation` (after the promise, when it returns one).
+	 */
 	render_timeline_items(): void;
-	/** frappe/public/js/frappe/form/footer/form_timeline.js:162-179 — fills `timeline_items`. */
+	/**
+	 * frappe/public/js/frappe/form/footer/base_timeline.js:66-68 — empty here. An
+	 * override pushes entries onto `timeline_items`, and may return a promise
+	 * that `render_timeline_items` waits for (:50-57); any other return value is
+	 * ignored.
+	 */
 	prepare_timeline_contents(): unknown;
 	/** frappe/public/js/frappe/form/footer/base_timeline.js:70-78 — renders one entry, newest first unless `append_at_the_end`. */
 	add_timeline_item(item: FormTimelineItem, append_at_the_end?: boolean): JQuery<HTMLElement>;
 	/** frappe/public/js/frappe/form/footer/base_timeline.js:80-82. */
 	add_timeline_items(items: FormTimelineItem[], append_at_the_end?: boolean): void;
+	/** frappe/public/js/frappe/form/footer/base_timeline.js:84-94 — inserts each entry before the first rendered one that is older. */
+	add_timeline_items_based_on_creation(items: FormTimelineItem[]): void;
 	/** frappe/public/js/frappe/form/footer/base_timeline.js:96-155. */
 	get_timeline_item(item: FormTimelineItem): JQuery<HTMLElement>;
+}
+
+/**
+ * The form's activity timeline, `FormTimeline`
+ * (frappe/public/js/frappe/form/footer/form_timeline.js:10), extending
+ * {@link BaseTimeline}. Not on `frappe.ui.form`; the instance is
+ * {@link Form.timeline}. Only the public members are declared.
+ */
+export declare class FormTimeline extends BaseTimeline {
+	/**
+	 * frappe/public/js/frappe/form/footer/footer.js:78-81 — always built with
+	 * the form, which `make()` reads at once
+	 * (frappe/public/js/frappe/form/footer/form_timeline.js:11-16, :26).
+	 */
+	constructor(opts: { parent: JQuery<HTMLElement>; frm: Form; [option: string]: unknown });
+	/** frappe/public/js/frappe/form/footer/footer.js:78-81 — always built with the form. */
+	override frm: Form;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:11-16. */
+	override make(): void;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:18-23 — re-renders and fires the form's `timeline_refresh` event. */
+	override refresh(): void;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:123-127. */
+	override render_timeline_items(): void;
+	/** frappe/public/js/frappe/form/footer/form_timeline.js:162-179 — fills `timeline_items`. */
+	override prepare_timeline_contents(): unknown;
 	/** frappe/public/js/frappe/form/footer/form_timeline.js:559 — opens the email composer, as a reply when given a Communication. */
 	compose_mail(communication_doc?: FrappeDoc | null, reply_all?: boolean): void;
+	/**
+	 * frappe/public/js/frappe/form/footer/form_timeline.js:615-621 — where a new
+	 * email goes: the document's {@link Form.email_field} value when the form
+	 * names one, else its `email_id`, else its `email`, else `""`. The value is
+	 * read off the document as stored, so it is `unknown`; the composer uses it
+	 * as its `recipients` (frappe/public/js/frappe/views/communication.js:1150).
+	 */
+	get_recipient(): unknown;
+	/**
+	 * frappe/public/js/frappe/form/footer/form_timeline.js:723-744 — the first
+	 * email Communication in the form's docinfo, or `null` when there is none.
+	 * With `from_recipient`, only one whose `sender` is
+	 * {@link FormTimeline.get_recipient}. The sort at :741 subtracts two
+	 * `creation` strings, which is `NaN`, so the docinfo's own order stands: the
+	 * server returns newest `communication_date` first
+	 * (`frappe/desk/form/load.py:379`), but a Communication added later by
+	 * realtime (frappe/public/js/frappe/form/form.js:2247) or by the timeline's
+	 * load-more (frappe/public/js/frappe/form/footer/form_timeline.js:211) goes
+	 * to the end. So the result is the first matching row in the docinfo, not
+	 * necessarily the newest. Read by the email composer
+	 * (frappe/public/js/frappe/views/communication.js:1155, :1928).
+	 */
+	get_last_email(from_recipient?: boolean): DocInfoRow | null;
 }
 
 /**
@@ -4135,6 +4216,71 @@ export declare class QuickEntryForm extends Dialog {
 	set_defaults(): void;
 }
 export interface QuickEntryForm {}
+
+/**
+ * `frappe.ui.form.AddressQuickEntryForm` —
+ * frappe/public/js/frappe/utils/address_and_contact.js:4-20, in `form.bundle.js`
+ * (frappe/public/js/form.bundle.js:16). `make_quick_entry("Address")` picks it
+ * by name (frappe/public/js/frappe/form/quick_entry.js:18-23). Opened from a
+ * form's address list, it links the new Address to that form and reloads it
+ * instead of routing away.
+ */
+export declare class AddressQuickEntryForm extends QuickEntryForm {
+	/**
+	 * The form the record is being added from. Not set by the class: the address
+	 * and contact list sets it from `frappe.new_doc`'s `init_callback`
+	 * (frappe/public/js/frappe/utils/address_and_contact.js:209). Without it the
+	 * dialog behaves like {@link QuickEntryForm}.
+	 */
+	source_frm?: Form;
+	/**
+	 * frappe/public/js/frappe/utils/address_and_contact.js:7-14 — with
+	 * {@link AddressQuickEntryForm.source_frm}, sets the document's `links` to
+	 * that form's document, then inserts. Takes no values: the dialog's own are
+	 * used.
+	 */
+	override insert(): Promise<FrappeDoc>;
+	/** frappe/public/js/frappe/utils/address_and_contact.js:16-19 — reloads {@link AddressQuickEntryForm.source_frm} when there is one. */
+	override open_form_if_not_list(): void;
+}
+export interface AddressQuickEntryForm {}
+
+/**
+ * One extra field of a {@link ContactQuickEntryForm} and the child table its
+ * value is moved into — frappe/public/js/frappe/utils/address_and_contact.js:47-78.
+ */
+export interface ContactQuickEntryDetailField {
+	fieldname: string;
+	label: string;
+	fieldtype: string;
+	options?: string;
+	/** The Contact table the value is appended to (`phone_nos`, `email_ids`). */
+	table: string;
+	/** The row field that receives the value (`phone`, `email_id`). */
+	value_field: string;
+	/** The row's check field set to 1 (`is_primary_phone`, `is_primary_mobile_no`, `is_primary`). */
+	primary_flag: string;
+}
+
+/**
+ * `frappe.ui.form.ContactQuickEntryForm` —
+ * frappe/public/js/frappe/utils/address_and_contact.js:22-79, an
+ * {@link AddressQuickEntryForm} that adds phone, mobile and email fields and
+ * turns each filled one into a primary row of the Contact's child tables.
+ */
+export declare class ContactQuickEntryForm extends AddressQuickEntryForm {
+	/** frappe/public/js/frappe/utils/address_and_contact.js:25-31 — appends a Column Break and the {@link ContactQuickEntryForm.get_detail_fields}, then renders. */
+	override render_dialog(): void;
+	/**
+	 * frappe/public/js/frappe/utils/address_and_contact.js:33-45 — the dialog's
+	 * values on the document, with each detail field removed and, when filled,
+	 * pushed as a primary row of its table.
+	 */
+	override update_doc(): FrappeDoc;
+	/** frappe/public/js/frappe/utils/address_and_contact.js:47-78 — phone, mobile number and email. */
+	get_detail_fields(): ContactQuickEntryDetailField[];
+}
+export interface ContactQuickEntryForm {}
 
 /**
  * What {@link PrintView.show} prints: a {@link Form}, or the stand-in the print
@@ -4468,10 +4614,10 @@ export interface FrappeUiFormNamespace {
 	MultiSelectDialog: unknown;
 	/** frappe/public/js/frappe/form/quick_entry.js:36. See {@link QuickEntryForm}. */
 	QuickEntryForm: typeof QuickEntryForm;
-	/** `utils/address_and_contact.js` */
-	AddressQuickEntryForm: unknown;
-	/** `utils/address_and_contact.js` */
-	ContactQuickEntryForm: unknown;
+	/** frappe/public/js/frappe/utils/address_and_contact.js:4. See {@link AddressQuickEntryForm}. */
+	AddressQuickEntryForm: typeof AddressQuickEntryForm;
+	/** frappe/public/js/frappe/utils/address_and_contact.js:22. See {@link ContactQuickEntryForm}. */
+	ContactQuickEntryForm: typeof ContactQuickEntryForm;
 	/** `form/script_manager.js — instance shape is the exported {@link ScriptManager} interface` */
 	ScriptManager: unknown;
 	/** `form/sidebar/share.js` */

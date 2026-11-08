@@ -221,8 +221,11 @@ export type {
 // ---------------------------------------------------------------------------
 /** Classes and functions (runtime values as well as types). */
 export {
+	AddressQuickEntryForm,
 	BaseControl,
+	BaseTimeline,
 	Column,
+	ContactQuickEntryForm,
 	ControlAttach,
 	ControlAttachImage,
 	ControlAttachmentGallery,
@@ -286,6 +289,7 @@ export {
 } from "./ui/form";
 
 export type {
+	ContactQuickEntryDetailField,
 	ControlCodeAceEditor,
 	ControlCodeAceSession,
 	ControlElementClass,
@@ -835,7 +839,7 @@ import type {
 } from "./ui/components";
 import type { DataTable, FrappeDataTableNamespace } from "./datatable";
 import type { FrappeModelMetaGlobals } from "./model";
-import type { Dialog, DialogConstructor, FieldGroupConstructor, FrappeUiFormNamespace } from "./ui/form";
+import type { BaseTimeline, Dialog, DialogConstructor, FieldGroupConstructor, FrappeUiFormNamespace } from "./ui/form";
 import type { FrappeNotifications } from "./ui/notifications";
 import type {
 	FrappeArrangementEditor,
@@ -1193,6 +1197,12 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	TabButtons: typeof FrappeTabButtons;
 	/** frappe/public/js/frappe/ui/components/tab_buttons.js:238-242 — builds a {@link FrappeTabButtons} and returns its container. */
 	tab_buttons: FrappeTabButtonsFunction;
+	/**
+	 * frappe/public/js/frappe/form/footer/base_timeline.js:158 — the timeline
+	 * class the form's activity timeline extends. Loaded on every desk page with
+	 * `form.bundle.js` (frappe/hooks.py:29). See {@link BaseTimeline}.
+	 */
+	BaseTimeline: typeof BaseTimeline;
 	/** frappe/public/js/frappe/ui/sort_selector.js:1, in the desk bundle (frappe/public/js/desk.bundle.js:124). See {@link SortSelector}. */
 	SortSelector: typeof SortSelector;
 	/**

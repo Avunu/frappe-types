@@ -30,7 +30,7 @@
 // ---------------------------------------------------------------------------
 
 import type { DocField, DocOf, DocTypeName, FrappeCheck, FrappeDoc, IndicatorTuple } from "./model";
-import type { Dialog } from "./ui/form";
+import type { Dialog, QuickEntryForm } from "./ui/form";
 // `frappe._` and the global `__` are one function (translate.js:26), so they
 // share `globals.d.ts`'s type.
 import type { TranslateFunction, TranslationArgs } from "./globals";
@@ -2706,12 +2706,38 @@ export interface FrappeCore {
 	 * route change or quick-entry dialog has been set up — it does **not** resolve
 	 * with the new document. A plain-object `opts` is stashed in
 	 * `frappe.route_options` (create_new.js:416-418).
+	 *
+	 * `init_callback` goes to `frappe.ui.form.make_quick_entry`
+	 * (create_new.js:422-424), so it is called as the quick entry form calls it:
+	 * with the rendered dialog (`frappe/public/js/frappe/form/quick_entry.js:169-171`),
+	 * or with the new document when the doctype opens its full form instead
+	 * (`frappe/public/js/frappe/form/quick_entry.js:67-69`). frappe's own caller
+	 * uses the dialog: `frappe.new_doc(doctype, null, (quick_entry) => (quick_entry.source_frm = frm))`
+	 * (`frappe/public/js/frappe/utils/address_and_contact.js:209`). It is not
+	 * called at all when the doctype has a `frappe.create_routes` entry
+	 * (create_new.js:419-420).
 	 */
 	new_doc(
 		doctype: string,
-		opts?: { folder?: string } | Record<string, unknown>,
-		init_callback?: (doc: FrappeDoc) => void
+		opts?: { folder?: string } | Record<string, unknown> | null,
+		init_callback?: ((dialog_or_doc: QuickEntryForm | FrappeDoc) => void) | null
 	): Promise<void> | undefined;
+	/**
+	 * `frappe/public/js/frappe/form/quick_entry.js:3-8` — fetches the saved
+	 * document and opens it in the doctype's quick entry dialog
+	 * (`frappe.ui.form.make_quick_entry(doctype, null, null, doc)`), the
+	 * `<DocTypeWithoutSpaces>QuickEntryForm` subclass when one is registered. A
+	 * missing `name` means a Single: the doctype is its own name (:4).
+	 */
+	quick_edit(doctype: string, name?: string | null): void;
+	/**
+	 * The quick entry dialog on screen — `frappe/public/js/frappe/form/quick_entry.js:25`,
+	 * set by `frappe.ui.form.make_quick_entry`, and back to `null` when the
+	 * dialog hides (:163) or the doctype opens its full form instead (:62).
+	 * Undefined until the first quick entry. An app that builds its own
+	 * quick entry form outside `make_quick_entry` assigns it the same way.
+	 */
+	quick_entry?: QuickEntryForm | null;
 
 	// -- formatting ---------------------------------------------------------
 
