@@ -6,9 +6,9 @@
  * evaluated per-permlevel permission array (`Permission`) and the
  * `frappe.get_indicator` tuple (`IndicatorTuple`).
  *
- * Verified against **Frappe v16.54.0** (`git tag v16.54.0`, branch `version-16`)
+ * Verified against **Frappe v16.55.2** (`git tag v16.55.2`, branch `version-16`)
  * at `apps/frappe`. Every non-obvious declaration cites the file and line it was
- * read from. Line numbers are only valid for v16.54.0 — re-verify on bump.
+ * read from. Line numbers are only valid for v16.55.2 — re-verify on bump.
  *
  * Primary sources:
  * - `frappe/public/js/frappe/model/model.js`        (frappe.model core)
@@ -213,7 +213,7 @@ export interface DocFieldObjectOptions extends FrappeFileUploaderOptions {
  * - a function, called with the form's document (or the control's `doc`), the
  *   doctype and the docname (:818-822), that returns either of those (:824-843).
  *
- * The same value is what `frm.set_query` stores (`frappe/public/js/frappe/form/form.js:1827-1839`)
+ * The same value is what `frm.set_query` stores (`frappe/public/js/frappe/form/form.js:1988-2000`)
  * and what `df.get_query` holds. The function's first argument is `undefined`
  * in a dialog with no document.
  */
@@ -270,7 +270,7 @@ export interface FormatterOptions {
 	/** frappe/public/js/frappe/form/formatters.js:213 — overrides the Link's anchor text. */
 	label?: string;
 	/**
-	 * Passed by `frm.get_formatted` (`frappe/public/js/frappe/form/form.js:2011`),
+	 * Passed by `frm.get_formatted` (`frappe/public/js/frappe/form/form.js:2172`),
 	 * `set_disp_area` (`frappe/public/js/frappe/form/controls/base_input.js:166`) and
 	 * the side panel (`frappe/public/js/frappe/ui/side_panel.js:104`); no formatter
 	 * in `formatters.js` reads it.
@@ -449,7 +449,7 @@ export interface DocField {
 	 * `ListView#build_columns_from_fields`
 	 * (`frappe/public/js/frappe/list/list_view.js:671` `if (field.width) df.width = field.width;`).
 	 * Both readers `cint()` it (`Grid#get_column_width`,
-	 * `frappe/public/js/frappe/form/grid.js:1535-1541`; `frappe/public/js/frappe/list/list_view.js:1567`),
+	 * `frappe/public/js/frappe/form/grid.js:1535-1541`; `frappe/public/js/frappe/list/list_view.js:1571`),
 	 * which is why both shapes are accepted. The grid clamps the result to 60-600px
 	 * (`frappe/public/js/frappe/form/grid.js:10-11`).
 	 */
@@ -723,7 +723,7 @@ export interface FrappeDocFields {
 
 	/* std "underscore" fields — `model/model.js:66-77`. Not `_comments`: it left the
 	 * list in v16.52, and list queries select it only to compute `_comment_count`,
-	 * then pop it (`frappe/model/db_query.py:1302`, `frappe/model/qb_query.py:265`). */
+	 * then pop it (`frappe/model/db_query.py:1311`, `frappe/model/qb_query.py:265`). */
 	_user_tags?: string;
 	_assign?: string;
 	_liked_by?: string;
@@ -747,8 +747,8 @@ export interface FrappeDocFields {
 	localname?: string;
 	/**
 	 * Server-side `onload` payload: `frappe/desk/form/load.py:414` resets it to
-	 * an empty dict and `Document.set_onload` (`frappe/model/document.py:2112-2113`)
-	 * fills it. Read by the form, e.g. `frappe/public/js/frappe/form/form.js:1320`.
+	 * an empty dict and `Document.set_onload` (`frappe/model/document.py:2137-2138`)
+	 * fills it. Read by the form, e.g. `frappe/public/js/frappe/form/form.js:1481`.
 	 * Its keys are whatever the doctype's controller put there.
 	 *
 	 * Typed as `object`, not `Record<string, unknown>`, so the usual
@@ -897,11 +897,11 @@ export type DocFieldValue<DT extends string, F extends string> = DT extends DocT
  * never the standard ones from {@link FrappeDocFields}.
  *
  * `set_value` looks every fieldname up in the form's `fields_dict`
- * (`frappe/public/js/frappe/form/form.js:1870`), which holds only the layout's
+ * (`frappe/public/js/frappe/form/form.js:2031`), which holds only the layout's
  * meta fields (`frappe/public/js/frappe/form/form.js:291`,
  * `frappe/public/js/frappe/form/layout.js:242`); a miss msgprints and throws
  * `frm.set_value: '<field>' does not exist in the form`
- * (`frappe/public/js/frappe/form/form.js:1914-1916`). `name`, `owner`,
+ * (`frappe/public/js/frappe/form/form.js:2075-2077`). `name`, `owner`,
  * `docstatus`, `idx`, the child-row linkage and the `__*` client flags are
  * never docfields, so none of them can be set this way.
  *
@@ -915,14 +915,14 @@ export type FormFieldName<DT extends DocTypeName> = Exclude<
 
 /**
  * The argument list of {@link import("./ui/form").Form.set_value} for a form of
- * doctype `DT` (frappe/public/js/frappe/form/form.js:1867-1931).
+ * doctype `DT` (frappe/public/js/frappe/form/form.js:2028-2092).
  *
  * - When `DT` is NOT registered (the default `string`, or any doctype missing
  *   from `FrappeDocTypes`), it is the open signature: a fieldname or a
  *   `{fieldname: value}` map, and any value.
  * - When every member of `DT` is registered, it is one field from
  *   {@link FormFieldName} with a value of that field's type — or a map of such
- *   fields, with no second argument (the object form ignores it, :1921-1930).
+ *   fields, with no second argument (the object form ignores it, :2082-2091).
  *   For a union `DT` a field's value may be of any member's type for it.
  *
  * A Table field also takes partial rows; see {@link import("./ui/form").FormSetValueInput}.
@@ -1440,7 +1440,7 @@ export interface Locals {
  * the server selected and has NO `doctype` key, which is why it is not a
  * {@link FrappeDoc}. Attachments, comments, versions, shares, view logs and
  * milestones are `get_all` rows (`frappe/desk/form/load.py:151-155`, `:181-188`,
- * `:192-205`, `:246-252`, `:423-430`; `frappe/share.py:163-167`) — comments by
+ * `:192-205`, `:246-252`, `:423-430`; `frappe/share.py:176-180`) — comments by
  * way of `get_document_comments` (`frappe/core/doctype/comment/comment.py:210`).
  */
 export interface DocInfoRow {
@@ -1452,7 +1452,7 @@ export interface DocInfoRow {
  * One entry of `docinfo.assignments`: a ToDo selected as
  * `name, allocated_to as owner, description, status`
  * (`frappe/desk/form/load.py:400-410`). `owner` is the ASSIGNEE, not the ToDo's
- * creator; `frappe/public/js/frappe/form/form.js:2352` maps it to a user list.
+ * creator; `frappe/public/js/frappe/form/form.js:2513` maps it to a user list.
  */
 export interface DocInfoAssignment {
 	name: string;
@@ -2850,7 +2850,7 @@ export interface FrappeWorkflowNamespace {
  * hands it to `on_success` (`frappe/public/js/frappe/file_uploader/FileUploader.vue:624-637`).
  *
  * A document is sent as `as_dict(no_nulls=True)`
- * (`frappe/model/document.py:2257-2258`), so a field left empty is missing
+ * (`frappe/model/document.py:2282-2283`), so a field left empty is missing
  * rather than `null`; the Check fields always carry `0` or `1`.
  *
  * Hand-written like {@link DocPerm}: the registry is empty here, and
@@ -2858,7 +2858,7 @@ export interface FrappeWorkflowNamespace {
  */
 export interface FrappeFileDoc extends FrappeDoc {
 	doctype: "File";
-	/** The file's name with its extension; a file's `name` is a hash (`frappe/core/doctype/file/file.py:98-99`) — `frappe/core/doctype/file/file.json:38`. */
+	/** The file's name with its extension; a file's `name` is a hash (`frappe/core/doctype/file/file.py:99-100`) — `frappe/core/doctype/file/file.json:38`. */
 	file_name?: string;
 	/** `frappe/core/doctype/file/file.json:49`; `upload_file` sets it with `cint` (`frappe/handler.py:235`). */
 	is_private: FrappeCheck;
@@ -2890,6 +2890,6 @@ export interface FrappeFileDoc extends FrappeDoc {
 	uploaded_to_dropbox: FrappeCheck;
 	/** `frappe/core/doctype/file/file.json:174`. */
 	uploaded_to_google_drive: FrappeCheck;
-	/** The extension, upper-cased, e.g. `"PDF"` (`frappe/core/doctype/file/file.py:462-467`) — `frappe/core/doctype/file/file.json:184`. */
+	/** The extension, upper-cased, e.g. `"PDF"` (`frappe/core/doctype/file/file.py:497-502`) — `frappe/core/doctype/file/file.json:184`. */
 	file_type?: string;
 }

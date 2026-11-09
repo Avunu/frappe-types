@@ -62,7 +62,7 @@
  *
  *   - `frappe/public/js/frappe/<path>.js:N` is a line of frappe core at the
  *     frappe tag this file is stamped with (the stamp is the one `v`-prefixed
- *     tag in this header: v16.54.0); `scripts/audit-drift.mjs` can check only
+ *     tag in this header: v16.55.2); `scripts/audit-drift.mjs` can check only
  *     that form.
  *   - A bare `file.js:N` naming one of the library's own files (`datamanager.js`,
  *     `cellmanager.js`, `columnmanager.js`, `rowmanager.js`, `body-renderer.js`,
@@ -81,7 +81,7 @@
  * | construction site                                                  | reaches the constructor via           |
  * |--------------------------------------------------------------------|---------------------------------------|
  * | `frappe/public/js/frappe/views/reports/report_view.js:305`         | module-local `import DataTable`       |
- * | `frappe/public/js/frappe/views/reports/query_report.js:1224`       | `new window.DataTable(...)`           |
+ * | `frappe/public/js/frappe/views/reports/query_report.js:1229`       | `new window.DataTable(...)`           |
  * | `frappe/public/js/frappe/data_import/import_preview.js:316`        | module-local `import DataTable`       |
  * | `frappe/public/js/frappe/form/multi_select_dialog.js:216`          | `new frappe.DataTable(...)`           |
  * | `frappe/desk/doctype/system_console/system_console.js:76`          | bare global `DataTable` — the file imports nothing, so it resolves to `window.DataTable` |
@@ -165,7 +165,7 @@ export type DataTableRowIndex = number;
  * `RowManager.getCheckedRows` (`rowmanager.js:80-87`) iterates its `checkMap`
  * array with `for (let rowIndex in this.checkMap)`, so stock frappe-datatable
  * hands back the array's own STRING keys, not numbers. Every consumer
- * (`frappe/public/js/frappe/views/reports/report_view.js:1390-1391`, `frappe/public/js/frappe/views/reports/query_report.js:2559-2567`) only uses them to
+ * (`frappe/public/js/frappe/views/reports/report_view.js:1390-1391`, `frappe/public/js/frappe/views/reports/query_report.js:2569-2577`) only uses them to
  * index `this.data`, so the wart is invisible in JS — but it is load-bearing in
  * TypeScript. carbon_frappe's replacement (`tables/datatable/managers.js:190-195`)
  * uses `reduce` and returns real numbers.
@@ -210,7 +210,7 @@ export type DataTableCellValue = string | number | boolean | null | undefined;
  * on prepared cells may ignore the `undefined` arm; it may not be pretended
  * away.
  *
- * @remarks `frappe/public/js/frappe/views/reports/query_report.js:1534-1546` declares its own `format` with the same
+ * @remarks `frappe/public/js/frappe/views/reports/query_report.js:1539-1551` declares its own `format` with the same
  * five parameters and forwards them to `report_settings.formatter`.
  */
 export type DataTableCellFormatter = (
@@ -227,7 +227,7 @@ export type DataTableCellFormatter = (
  *
  * Must return a `[cellValue, keywordValue]` pair, or a falsy value to fall back
  * to numeric-then-string comparison. `frappe/public/js/frappe/views/reports/report_view.js:1252-1261` and
- * `frappe/public/js/frappe/views/reports/query_report.js:1512-1521` both install one for `Date` columns that returns
+ * `frappe/public/js/frappe/views/reports/query_report.js:1517-1526` both install one for `Date` columns that returns
  * `[+cellValue, +keywordValue]` or `null`.
  */
 export type DataTableCompareValue = (
@@ -477,7 +477,7 @@ export interface DataTableColumn extends DataTableCellBase {
 
 	/**
 	 * Query Report columns carry their raw report-column fields through
-	 * untouched — `Object.assign(column, {...})` at `frappe/public/js/frappe/views/reports/query_report.js:1524`. The
+	 * untouched — `Object.assign(column, {...})` at `frappe/public/js/frappe/views/reports/query_report.js:1529`. The
 	 * total-row hook reads `column.fieldtype` and `column.disable_total`
 	 * (`frappe/public/js/frappe/utils/utils.js:1005-1012`), and the link side panel falls back to `column.fieldtype`
 	 * when there is no `docfield` (`frappe/public/js/frappe/views/reports/link_side_panel.js:28`).
@@ -491,7 +491,7 @@ export interface DataTableColumn extends DataTableCellBase {
 	 * the same `Object.assign`. A `"Label:Link/DocType:width"` column string is
 	 * split into it (`frappe/public/js/frappe/views/reports/report_utils.js:96-109`),
 	 * and `frappe.format` reads it when it formats the cell with the column as
-	 * its docfield (`frappe/public/js/frappe/views/reports/query_report.js:1504-1509`).
+	 * its docfield (`frappe/public/js/frappe/views/reports/query_report.js:1509-1514`).
 	 */
 	options?: string | string[];
 }
@@ -904,7 +904,7 @@ export interface DataTableOptions {
 	 * Row height in px. Default `40` (`defaults.js:79`). Frappe core passes
 	 *   - 35: `frappe/public/js/frappe/views/reports/report_view.js:314` and
 	 *     `frappe/public/js/frappe/form/multi_select_dialog.js:223`;
-	 *   - 33: `frappe/public/js/frappe/views/reports/query_report.js:1213`;
+	 *   - 33: `frappe/public/js/frappe/views/reports/query_report.js:1218`;
 	 *   - 42: `frappe/public/js/frappe/data_import/import_preview.js:320`, which
 	 *     also pins `.dt-row` to 42px (`frappe/public/js/frappe/data_import/import_preview.js:501-503`).
 	 *
@@ -918,7 +918,7 @@ export interface DataTableOptions {
 
 	/**
 	 * Render the filter row under the header. Default `false` (`defaults.js:81`);
-	 * `frappe/public/js/frappe/views/reports/report_view.js:312`, `frappe/public/js/frappe/views/reports/query_report.js:1208` and
+	 * `frappe/public/js/frappe/views/reports/report_view.js:312`, `frappe/public/js/frappe/views/reports/query_report.js:1213` and
 	 * `frappe/public/js/frappe/form/multi_select_dialog.js:220` set it `true`.
 	 */
 	inlineFilters?: boolean;
@@ -980,10 +980,10 @@ export interface DataTableOptions {
  * `report_settings.get_datatable_options` — a Query Report's chance to rewrite
  * the whole options bag before construction.
  *
- * Called ONCE, on construction only (`frappe/public/js/frappe/views/reports/query_report.js:1221-1223`); the
- * `datatable.refresh(data, columns)` reuse path (`frappe/public/js/frappe/views/reports/query_report.js:1197-1203`) skips
+ * Called ONCE, on construction only (`frappe/public/js/frappe/views/reports/query_report.js:1226-1228`); the
+ * `datatable.refresh(data, columns)` reuse path (`frappe/public/js/frappe/views/reports/query_report.js:1202-1208`) skips
  * it, which is why a report that changes `checkboxColumn` must destroy the
- * instance to see it take effect. `frappe/public/js/frappe/views/reports/query_report.js:1492` also calls it with `{}`
+ * instance to see it take effect. `frappe/public/js/frappe/views/reports/query_report.js:1497` also calls it with `{}`
  * purely to sniff `checkboxColumn` when placing the "Total" label.
  *
  * The hook is expected to RETURN the options (mutating and returning the same
@@ -993,7 +993,7 @@ export type DataTableGetDatatableOptions = (options: DataTableOptions) => DataTa
 
 /**
  * `report_settings.after_datatable_render` — run right after construction
- * (`frappe/public/js/frappe/views/reports/query_report.js:1230-1232`) with the live instance. Report scripts use it
+ * (`frappe/public/js/frappe/views/reports/query_report.js:1235-1237`) with the live instance. Report scripts use it
  * for `style.setStyle`, `rowmanager.checkMap = []` and per-cell `editable` flags.
  */
 export type DataTableAfterRender = (datatable: DataTableInstance) => void;
@@ -1043,7 +1043,7 @@ export declare class DataManager {
 	 * Display order as original row indices. Sorting permutes THIS, never `rows`
 	 * (`datamanager.js:201-206`). Read to export rows in the order the user sees:
 	 * Print in `frappe/public/js/frappe/views/reports/report_view.js:1611`, the export dialog's `visible_names`
-	 * in `frappe/public/js/frappe/views/reports/report_view.js:1783`, and `frappe/public/js/frappe/views/reports/query_report.js:1993`.
+	 * in `frappe/public/js/frappe/views/reports/report_view.js:1783`, and `frappe/public/js/frappe/views/reports/query_report.js:1998`.
 	 */
 	rowViewOrder: DataTableRowIndex[];
 
@@ -1106,7 +1106,7 @@ export declare class DataManager {
 	 * the very assignment {@link DataTableConstructor} exists to allow — a type
 	 * error. Every caller uses the result as a count anyway
 	 * (`columns.slice(this.getStandardColumnCount())`, `datamanager.js:534`;
-	 * `frappe/public/js/frappe/views/reports/query_report.js:1975` slices exported rows with it).
+	 * `frappe/public/js/frappe/views/reports/query_report.js:1980` slices exported rows with it).
 	 */
 	getStandardColumnCount(): number;
 
@@ -1247,7 +1247,7 @@ export declare class RowManager {
 	 * array's STRING keys (`rowmanager.js:80-87`, a `for...in`); carbon_frappe
 	 * returns numbers (`managers.js:190-195`). See {@link DataTableRowIndexKey}.
 	 * Consumers only ever use them as indices — `frappe/public/js/frappe/views/reports/report_view.js:1391`,
-	 * `frappe/public/js/frappe/views/reports/query_report.js:2561-2567`.
+	 * `frappe/public/js/frappe/views/reports/query_report.js:2571-2577`.
 	 */
 	getCheckedRows(): DataTableRowIndexKey[];
 
@@ -1286,7 +1286,7 @@ export declare class RowManager {
 
 	collapseAllNodes(): void;
 
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1228` calls this with `report_settings.initial_depth`. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1233` calls this with `report_settings.initial_depth`. */
 	setTreeDepth(depth: number): void;
 
 	/**
@@ -1540,14 +1540,14 @@ export declare class BodyRenderer {
 	 * HyperList happens to have in the DOM — it builds its window from this list
 	 * (`body-renderer.js:28-50`). Frappe core tests `.includes(rowIndex)` against it to export only the
 	 * rows the user is looking at after filtering (`frappe/public/js/frappe/views/reports/report_view.js:1613`,
-	 * `frappe/public/js/frappe/views/reports/query_report.js:1995`); `frappe/public/js/frappe/views/reports/query_report.js:1659`
+	 * `frappe/public/js/frappe/views/reports/query_report.js:2000`); `frappe/public/js/frappe/views/reports/query_report.js:1664`
 	 * reads it with an `|| []` fallback.
 	 */
 	visibleRowIndices: DataTableRowIndex[];
 
 	/**
 	 * The row objects behind {@link visibleRowIndices} (`body-renderer.js:16`);
-	 * read by `frappe/public/js/frappe/views/reports/query_report.js:1970`.
+	 * read by `frappe/public/js/frappe/views/reports/query_report.js:1975`.
 	 *
 	 * Stock assigns the array it was handed (`body-renderer.js:16`
 	 * `this.visibleRows = rows`), so every element is there. carbon_frappe
@@ -1559,7 +1559,7 @@ export declare class BodyRenderer {
 
 	/**
 	 * Computed footer totals as a cell array (`body-renderer.js:95-135`).
-	 * `frappe/public/js/frappe/views/reports/query_report.js:1972` and `frappe/public/js/frappe/views/reports/query_report.js:2002` push it into exports.
+	 * `frappe/public/js/frappe/views/reports/query_report.js:1977` and `frappe/public/js/frappe/views/reports/query_report.js:2007` push it into exports.
 	 *
 	 * Typed as the WEAKER {@link DataTableColumnTotalCell}, not
 	 * {@link DataTableTotalCell}: stock stamps `isTotalRow: 1` on each cell
@@ -1816,7 +1816,7 @@ export declare class DataTable {
 	/**
 	 * Re-initialise the data model and re-render (`datatable.js:140-144`).
 	 * Both arguments are optional; omitting `data` reuses `options.data`
-	 * (`datamanager.js:18-20`). `frappe/public/js/frappe/views/reports/query_report.js:1197-1203` uses this as the fast
+	 * (`datamanager.js:18-20`). `frappe/public/js/frappe/views/reports/query_report.js:1202-1208` uses this as the fast
 	 * path when only the rows changed.
 	 */
 	refresh(data?: DataTableData, columns?: DataTableColumnInput[]): void;
@@ -1848,7 +1848,7 @@ export declare class DataTable {
 	 * panel calls `datatable.getColumn(Number(col_index))`
 	 * (`frappe/public/js/frappe/views/reports/link_side_panel.js:26`), and both reports wire it up right after
 	 * construction (`frappe/public/js/frappe/views/reports/report_view.js:411-421`,
-	 * `frappe/public/js/frappe/views/reports/query_report.js:1234-1244`).
+	 * `frappe/public/js/frappe/views/reports/query_report.js:1239-1249`).
 	 */
 	getColumn(colIndex: DataTableColIndex): DataTableColumn | undefined;
 
@@ -1971,7 +1971,7 @@ export interface DataTableConstructor {
  *
  * Assigned at MODULE SCOPE by two separate report bundles —
  * `frappe/public/js/frappe/views/reports/report_view.js:6` and `frappe/public/js/frappe/views/reports/query_report.js:6` — both `window.DataTable = DataTable`.
- * `frappe/public/js/frappe/views/reports/query_report.js:1224` then constructs from the global, as does the System Console's
+ * `frappe/public/js/frappe/views/reports/query_report.js:1229` then constructs from the global, as does the System Console's
  * SQL output through a bare `DataTable` (`frappe/desk/doctype/system_console/system_console.js:76`, a file with no
  * import), which is why reassigning it is enough to reach every Query Report and
  * the console, but NOT enough to reach `frappe/public/js/frappe/views/reports/report_view.js:305` or

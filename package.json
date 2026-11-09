@@ -58,7 +58,7 @@
   ],
   "frappe": {
     "major": "16",
-    "verifiedAgainst": "v16.54.0",
+    "verifiedAgainst": "v16.55.2",
     "branch": "version-16"
   },
   "dependencies": {

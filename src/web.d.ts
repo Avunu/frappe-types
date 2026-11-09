@@ -38,7 +38,7 @@
  * `frappe.ready` in its desk scripts too, where it does not exist. Keep web
  * scripts and desk scripts in separate tsconfig projects if that matters.
  *
- * Verified against **frappe v16.54.0**.
+ * Verified against **frappe v16.55.2**.
  *
  * @packageDocumentation
  */

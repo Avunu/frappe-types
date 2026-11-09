@@ -1,7 +1,7 @@
 /**
  * frappe-types — group `deep-module-imports`
  *
- * Frappe v16.54.0 (`git tag v16.54.0`, branch `version-16`).
+ * Frappe v16.55.2 (`git tag v16.55.2`, branch `version-16`).
  * Source of truth: `apps/frappe/frappe/public/js/frappe/form/`.
  *
  * ---------------------------------------------------------------------------

@@ -5,11 +5,11 @@
  * `GridPagination` themselves are declared in `deep-modules.d.ts` and
  * re-exported from here.
  *
- * Source of truth: frappe v16.54.0 (`git tag v16.54.0`, branch `version-16`),
+ * Source of truth: frappe v16.55.2 (`git tag v16.55.2`, branch `version-16`),
  * `frappe/public/js/frappe/form/**`. Every signature below was read out of that
  * tree. The 16.50 migration then re-read the declarations against 16.50.0, and
  * the citations are now full paths (`frappe/public/js/frappe/form/layout.js:106-141`)
- * carrying v16.54.0 line numbers. A `:N` that follows one inside the same comment
+ * carrying v16.55.2 line numbers. A `:N` that follows one inside the same comment
  * (`…/form.js:684, :809`) continues in the file the citation before it names.
  *
  * ## Two facts about this slice that shape every declaration here
@@ -75,7 +75,7 @@ import type { FrappeFileUploader, FrappeFileUploaderOptions } from "./components
 import type { Page } from "../utils";
 
 /**
- * `frm.call` returns `frappe.call`'s jqXHR (`frappe/public/js/frappe/form/form.js:1981`),
+ * `frm.call` returns `frappe.call`'s jqXHR (`frappe/public/js/frappe/form/form.js:2142`),
  * so it shares the request types `core.d.ts` owns. Another type-only cycle.
  */
 import type { FrappeAjaxResult, FrappeCallOptions, FrappeResponse } from "../core";
@@ -206,7 +206,7 @@ export interface ScriptManager {
 /**
  * The `frappe.ui.form.Dashboard` handle on a `Form`
  * (frappe/public/js/frappe/form/form.js:313). Only the members `Form` itself
- * calls are declared (frappe/public/js/frappe/form/form.js:684, :809, :1291-1315, :1583, :2431).
+ * calls are declared (frappe/public/js/frappe/form/form.js:684, :809, :1452-1476, :1744, :2592).
  */
 export interface Dashboard {
 	refresh(): void;
@@ -1273,7 +1273,7 @@ export declare class ControlLink extends ControlData {
 	/** frappe/public/js/frappe/form/controls/link.js:301. */
 	autocomplete_open?: boolean | undefined;
 	/**
-	 * Set by `Form#set_query` (frappe/public/js/frappe/form/form.js:1827-1839) and
+	 * Set by `Form#set_query` (frappe/public/js/frappe/form/form.js:1988-2000) and
 	 * copied from the grid's control (frappe/public/js/frappe/form/grid_row.js:1164).
 	 * Read before `df.get_query` (frappe/public/js/frappe/form/controls/link.js:790-791).
 	 */
@@ -3215,7 +3215,7 @@ export declare class Dialog<TValues extends object = Record<string, unknown>> ex
 	/**
 	 * frappe/public/js/frappe/ui/dialog.js:261 (set when the primary button is clicked), reset by `show()` at
 	 * :337. Read by `frappe.confirm` / `frappe.warn` to tell "dismissed" from
-	 * "confirmed" (frappe/public/js/frappe/ui/messages.js:57, frappe/public/js/frappe/form/form.js:1113) and by
+	 * "confirmed" (frappe/public/js/frappe/ui/messages.js:57, frappe/public/js/frappe/form/form.js:1176) and by
 	 * `ControlInput#set_mandatory` (frappe/public/js/frappe/form/controls/base_input.js:266).
 	 */
 	primary_action_fulfilled?: boolean;
@@ -3359,7 +3359,7 @@ export declare class Form<DT extends string = string> {
 	custom_buttons: Record<string, JQuery<HTMLElement>>;
 	/**
 	 * The block `set_intro` last added to the form — frappe/public/js/frappe/form/form.js:75, assigned at
-	 * :1583. `null` until then, and after `set_intro` is called with no text.
+	 * :1744. `null` until then, and after `set_intro` is called with no text.
 	 */
 	$intro_message: JQuery<HTMLElement> | null;
 	sections: Section[];
@@ -3485,14 +3485,14 @@ export declare class Form<DT extends string = string> {
 	switch_doc(docname: string): void;
 	/** frappe/public/js/frappe/form/form.js:745-755. */
 	refresh_fields(): void;
-	/** frappe/public/js/frappe/form/form.js:1514-1520. Refreshes one control plus layout dependencies/sections. */
+	/** frappe/public/js/frappe/form/form.js:1675-1681. Refreshes one control plus layout dependencies/sections. */
 	refresh_field(fname: string): void;
 	/** frappe/public/js/frappe/form/form.js:821-829. */
 	save_or_update(): void;
 	/**
 	 * frappe/public/js/frappe/form/form.js:831-847. While the save is in flight the button carries
 	 * `aria-busy` next to `disabled` (:837), cleared again by `handle_save_fail`
-	 * (frappe/public/js/frappe/form/form.js:1268) and by `frappe.ui.form.save` (frappe/public/js/frappe/form/save.js:41, :104) — the save
+	 * (frappe/public/js/frappe/form/form.js:1429) and by `frappe.ui.form.save` (frappe/public/js/frappe/form/save.js:41, :104) — the save
 	 * promise does not settle on every validation-error path (:834-836).
 	 */
 	save(
@@ -3507,7 +3507,7 @@ export declare class Form<DT extends string = string> {
 	 * `on_submit` event. The promise resolves with the form only after
 	 * `on_submit` has run (:950-952). It rejects when the user may not submit:
 	 * `validate_form_action("Submit")` runs inside the promise's executor
-	 * (:932) and calls `frappe.throw` (:1202-1228). Otherwise it never rejects,
+	 * (:932) and calls `frappe.throw` (:1363-1389). Otherwise it never rejects,
 	 * and stays pending when the user cancels, `before_submit` sets
 	 * `frappe.validated = false`, or the save fails (`on_error` is called
 	 * instead, :939, :946, :964, :969).
@@ -3518,7 +3518,7 @@ export declare class Form<DT extends string = string> {
 		on_error?: () => void
 	): Promise<this>;
 	/**
-	 * frappe/public/js/frappe/form/form.js:974-1000. Cancels the document, after
+	 * frappe/public/js/frappe/form/form.js:974-1004. Cancels the document, after
 	 * offering to cancel its submitted linked documents too. Returns nothing.
 	 */
 	savecancel(btn?: HTMLElement | JQuery | null, callback?: () => void, on_error?: () => void): void;
@@ -3528,65 +3528,65 @@ export declare class Form<DT extends string = string> {
 	 * settles: nothing calls its `resolve` (:920).
 	 */
 	discard(btn?: HTMLElement | JQuery | null, callback?: () => void, on_error?: () => void): Promise<unknown>;
-	/** frappe/public/js/frappe/form/form.js:1166-1171. */
+	/** frappe/public/js/frappe/form/form.js:1229-1250. */
 	savetrash(): void;
-	/** frappe/public/js/frappe/form/form.js:1503-1512. */
+	/** frappe/public/js/frappe/form/form.js:1664-1673. */
 	reload_doc(): Promise<unknown> | undefined;
-	/** frappe/public/js/frappe/form/form.js:1523-1540. */
+	/** frappe/public/js/frappe/form/form.js:1684-1701. */
 	add_fetch(
 		link_field: string,
 		source_field: string,
 		target_field: string,
 		target_doctype?: string
 	): void;
-	/** frappe/public/js/frappe/form/form.js:1542-1544. */
+	/** frappe/public/js/frappe/form/form.js:1703-1705. */
 	has_perm(ptype: string): boolean;
-	/** frappe/public/js/frappe/form/form.js:1546-1552. Marks `doc.__unsaved` and fires the `dirty` event. */
+	/** frappe/public/js/frappe/form/form.js:1707-1713. Marks `doc.__unsaved` and fires the `dirty` event. */
 	dirty(): void;
-	/** frappe/public/js/frappe/form/form.js:1554-1556. */
+	/** frappe/public/js/frappe/form/form.js:1715-1717. */
 	get_docinfo(): unknown;
-	/** frappe/public/js/frappe/form/form.js:1558-1560. */
+	/** frappe/public/js/frappe/form/form.js:1719-1721. */
 	is_dirty(): boolean;
-	/** frappe/public/js/frappe/form/form.js:1562-1564. Returns `doc.__islocal`, which is `1 | undefined`. */
+	/** frappe/public/js/frappe/form/form.js:1723-1725. Returns `doc.__islocal`, which is `1 | undefined`. */
 	is_new(): 1 | undefined;
 	/**
-	 * frappe/public/js/frappe/form/form.js:1573-1575. `this.perm[permlevel] ? this.perm[permlevel][access_type] : null`
+	 * frappe/public/js/frappe/form/form.js:1734-1736. `this.perm[permlevel] ? this.perm[permlevel][access_type] : null`
 	 * — `null` (not `false`) for an unknown permlevel, and `undefined` when that
 	 * permlevel's row simply has no such key (the read-only perm map built by
-	 * `set_read_only`, frappe/public/js/frappe/form/form.js:1988-2001, carries only six).
+	 * `set_read_only`, frappe/public/js/frappe/form/form.js:2149-2162, carries only six).
 	 */
 	get_perm(
 		permlevel: number,
 		access_type: string
 	): boolean | 0 | 1 | null | undefined;
 	/**
-	 * frappe/public/js/frappe/form/form.js:1577-1585. Replaces the previous intro: the block remembered in
-	 * `$intro_message` is removed first (:1578-1581), then `txt` — when truthy —
-	 * is shown with `dashboard.set_headline_alert` (:1582-1584). A falsy `txt`
+	 * frappe/public/js/frappe/form/form.js:1738-1746. Replaces the previous intro: the block remembered in
+	 * `$intro_message` is removed first (:1739-1742), then `txt` — when truthy —
+	 * is shown with `dashboard.set_headline_alert` (:1743-1745). A falsy `txt`
 	 * therefore clears the intro; it used to pass straight through to the
 	 * dashboard and never removed the block.
 	 */
 	set_intro(txt: string, color?: string): void;
-	/** frappe/public/js/frappe/form/form.js:1587-1589. */
+	/** frappe/public/js/frappe/form/form.js:1748-1750. */
 	set_footnote(txt: string): void;
-	/** frappe/public/js/frappe/form/form.js:1591-1600. `group` creates/uses a dropdown. */
+	/** frappe/public/js/frappe/form/form.js:1752-1761. `group` creates/uses a dropdown. */
 	add_custom_button(
 		label: string,
 		fn: () => void,
 		group?: string
 	): JQuery<HTMLElement> | undefined;
-	/** frappe/public/js/frappe/form/form.js:1602-1604. */
+	/** frappe/public/js/frappe/form/form.js:1763-1765. */
 	change_custom_button_type(label: string, group: string | null, type: string): void;
-	/** frappe/public/js/frappe/form/form.js:1606-1610. */
+	/** frappe/public/js/frappe/form/form.js:1767-1771. */
 	clear_custom_buttons(): void;
-	/** frappe/public/js/frappe/form/form.js:1613-1634. */
+	/** frappe/public/js/frappe/form/form.js:1774-1795. */
 	remove_custom_button(label: string, group?: string): void;
-	/** frappe/public/js/frappe/form/form.js:1666-1668. */
+	/** frappe/public/js/frappe/form/form.js:1827-1829. */
 	get_doc(): DocOf<DT>;
-	/** frappe/public/js/frappe/form/form.js:1740-1756. `"*"` maps every field in `fields_dict`. */
+	/** frappe/public/js/frappe/form/form.js:1901-1917. `"*"` maps every field in `fields_dict`. */
 	field_map(fnames: string | string[], fn: (df: DocField) => void): void;
 	/**
-	 * frappe/public/js/frappe/form/form.js:1758-1767. One argument reads a parent field; two read a child
+	 * frappe/public/js/frappe/form/form.js:1919-1928. One argument reads a parent field; two read a child
 	 * field of the Table named by the first. Returns whatever
 	 * `frappe.meta.get_docfield` does — `null` when the doctype has no docfield
 	 * map (frappe/public/js/frappe/model/meta.js:72-73) or `undefined` when it has no such fieldname — and
@@ -3594,7 +3594,7 @@ export declare class Form<DT extends string = string> {
 	 */
 	get_docfield(fieldname1: string, fieldname2?: string): DocField | null | undefined;
 	/**
-	 * frappe/public/js/frappe/form/form.js:1769-1801. Passing `docname` + `table_field` targets a child
+	 * frappe/public/js/frappe/form/form.js:1930-1962. Passing `docname` + `table_field` targets a child
 	 * docfield; `table_row_name` narrows it to a single row.
 	 */
 	set_df_property(
@@ -3605,49 +3605,49 @@ export declare class Form<DT extends string = string> {
 		table_field?: string,
 		table_row_name?: string | null
 	): void;
-	/** frappe/public/js/frappe/form/form.js:1803-1807. Writes `read_only` as `0 | 1`. */
+	/** frappe/public/js/frappe/form/form.js:1964-1968. Writes `read_only` as `0 | 1`. */
 	toggle_enable(fnames: string | string[], enable: boolean): void;
-	/** frappe/public/js/frappe/form/form.js:1809-1813. Writes `reqd` as a **boolean**, not `0 | 1`. */
+	/** frappe/public/js/frappe/form/form.js:1970-1974. Writes `reqd` as a **boolean**, not `0 | 1`. */
 	toggle_reqd(fnames: string | string[], mandatory: boolean): void;
-	/** frappe/public/js/frappe/form/form.js:1815-1819. Writes `hidden` as `0 | 1`. */
+	/** frappe/public/js/frappe/form/form.js:1976-1980. Writes `hidden` as `0 | 1`. */
 	toggle_display(fnames: string | string[], show: boolean): void;
-	/** frappe/public/js/frappe/form/form.js:1827-1839. */
+	/** frappe/public/js/frappe/form/form.js:1988-2000. */
 	set_query(fieldname: string, opt1: unknown, opt2?: unknown): void;
-	/** frappe/public/js/frappe/form/form.js:1841-1843. */
+	/** frappe/public/js/frappe/form/form.js:2002-2004. */
 	clear_table(fieldname: string): void;
 	/**
-	 * frappe/public/js/frappe/form/form.js:1845-1865. Appends a child row and returns it. `values` is merged
+	 * frappe/public/js/frappe/form/form.js:2006-2026. Appends a child row and returns it. `values` is merged
 	 * with `$.extend` **minus** `idx` and `name`, which are never overridden.
 	 */
 	add_child(fieldname: string, values?: Record<string, unknown>): ChildDoc;
 	/**
-	 * frappe/public/js/frappe/form/form.js:1867-1931. One field and its value,
-	 * or a `{fieldname: value}` map (:1921-1930 walks the object form and ignores
+	 * frappe/public/js/frappe/form/form.js:2028-2092. One field and its value,
+	 * or a `{fieldname: value}` map (:2082-2091 walks the object form and ignores
 	 * the second argument). For a registered `DT` the fieldname must be one of
 	 * its own fields — never a standard one like `name` or `idx`, which frappe
-	 * throws on (:1914-1916) — and the value must fit that field's type;
+	 * throws on (:2075-2077) — and the value must fit that field's type;
 	 * otherwise any fieldname and value are accepted, as before. A Table field
 	 * also takes partial rows: frappe clears the table and `add_child`s a fresh
-	 * row per element, copying everything but the standard fields (:1873-1901).
+	 * row per element, copying everything but the standard fields (:2034-2062).
 	 * See {@link FormSetValueArgs} for the exact rules, and for why this is one
 	 * rest-tuple signature rather than overloads.
 	 */
 	set_value(...args: FormSetValueArgs<DT>): Promise<unknown>;
 	/**
-	 * frappe/public/js/frappe/form/form.js:1933-1982 — `frappe.call` with the
-	 * form filled in, returning what `frappe.call(opts)` returns (:1981): the
+	 * frappe/public/js/frappe/form/form.js:2094-2143 — `frappe.call` with the
+	 * form filled in, returning what `frappe.call(opts)` returns (:2142): the
 	 * jqXHR resolving with the response, whose `message` is `T`.
 	 *
 	 * - `frm.call("method", args, callback)` runs a method of the document's
-	 *   controller (`doc: this.doc`, :1935-1942), and refreshes the fields when
-	 *   it succeeds (:1973-1978).
+	 *   controller (`doc: this.doc`, :2096-2103), and refreshes the fields when
+	 *   it succeeds (:2134-2139).
 	 * - The object form takes {@link FrappeCallOptions}, with `method`
 	 *   required: without `doc` frappe reads `opts.method.indexOf(".")`
-	 *   unguarded (:1944-1945), and with `doc` it is the controller method
+	 *   unguarded (:2105-2106), and with `doc` it is the controller method
 	 *   `run_doc_method` runs. Without `doc`, a `method` with no dot is
-	 *   prefixed with the doctype's server module (:1944-1946), and a plain-object `message` is written back: into
+	 *   prefixed with the doctype's server module (:2105-2107), and a plain-object `message` is written back: into
 	 *   `child` (a row of this form) when given, else into the document with
-	 *   `set_value` (:1947-1970). `debounce` can make `frappe.call` return a
+	 *   `set_value` (:2108-2131). `debounce` can make `frappe.call` return a
 	 *   bare `Promise<void>` (`frappe/public/js/frappe/request.js:105-107`).
 	 *
 	 * From JavaScript, annotate the callback or the `.then` callback to say
@@ -3662,66 +3662,66 @@ export declare class Form<DT extends string = string> {
 		opts: FrappeCallOptions<T> & { method: string; child?: FrappeDoc; debounce: number }
 	): FrappeAjaxResult<T> | Promise<void>;
 	call<T = unknown>(opts: FrappeCallOptions<T> & { method: string; child?: FrappeDoc }): FrappeAjaxResult<T>;
-	/** frappe/public/js/frappe/form/form.js:1984-1986. A raw `fields_dict` lookup, so a miss is `undefined`. */
+	/** frappe/public/js/frappe/form/form.js:2145-2147. A raw `fields_dict` lookup, so a miss is `undefined`. */
 	get_field(field: string): LayoutFieldObject | undefined;
-	/** frappe/public/js/frappe/form/form.js:2003-2005. Delegates to `script_manager.trigger`. */
+	/** frappe/public/js/frappe/form/form.js:2164-2166. Delegates to `script_manager.trigger`. */
 	trigger(event: string, doctype?: string, docname?: string): Promise<unknown>;
-	/** frappe/public/js/frappe/form/form.js:2007-2014. */
+	/** frappe/public/js/frappe/form/form.js:2168-2175. */
 	get_formatted(fieldname: string): string;
-	/** frappe/public/js/frappe/form/form.js:2016-2018. Delegates to `frappe.ui.form.get_open_grid_form`. */
+	/** frappe/public/js/frappe/form/form.js:2177-2179. Delegates to `frappe.ui.form.get_open_grid_form`. */
 	open_grid_row(): GridRow | undefined;
-	/** frappe/public/js/frappe/form/form.js:2020-2022. */
+	/** frappe/public/js/frappe/form/form.js:2181-2183. */
 	get_title(): string;
-	/** frappe/public/js/frappe/form/form.js:2024-2041. `[parentfield, name]` pairs of checked child rows. */
+	/** frappe/public/js/frappe/form/form.js:2185-2202. `[parentfield, name]` pairs of checked child rows. */
 	get_selected(): Record<string, string[]>;
 	/**
-	 * frappe/public/js/frappe/form/form.js:2117-2137. Opens a new `doctype` document seeded from this form: a
-	 * `make_methods[doctype]` handler wins (:2122-2123, and its result is
-	 * returned), then a `custom_make_buttons[doctype]` button (:2124-2125),
+	 * frappe/public/js/frappe/form/form.js:2278-2298. Opens a new `doctype` document seeded from this form: a
+	 * `make_methods[doctype]` handler wins (:2283-2284, and its result is
+	 * returned), then a `custom_make_buttons[doctype]` button (:2285-2286),
 	 * otherwise a quick-entry dialog over a new doc whose link fields
-	 * `set_link_field` has filled in (:2127-2135). `fieldname` — new in 16.50 —
+	 * `set_link_field` has filled in (:2288-2296). `fieldname` — new in 16.50 —
 	 * restricts that fill to the one Link field of that name (the dashboard's
 	 * "+ New" badges pass it, frappe/public/js/frappe/form/dashboard.js:345-348).
 	 */
 	make_new(doctype: string, fieldname?: string): unknown;
 	/**
-	 * frappe/public/js/frappe/form/form.js:2139-2162. Writes this form's name into `new_doc`'s Link field(s)
+	 * frappe/public/js/frappe/form/form.js:2300-2323. Writes this form's name into `new_doc`'s Link field(s)
 	 * to this doctype, and — without `fieldname` — copies any other Link /
 	 * Dynamic Link value this form shares by fieldname. With `fieldname` only
-	 * that one field is filled (:2144-2152). Recurses into required Table fields.
+	 * that one field is filled (:2305-2313). Recurses into required Table fields.
 	 */
 	set_link_field(doctype: string, new_doc: FrappeDoc | ChildDoc, fieldname?: string): void;
-	/** frappe/public/js/frappe/form/form.js:2164-2176. */
+	/** frappe/public/js/frappe/form/form.js:2325-2337. */
 	update_in_all_rows(
 		table_fieldname: string,
 		fieldname: string,
 		value: unknown
 	): void;
-	/** frappe/public/js/frappe/form/form.js:2178-2184. */
+	/** frappe/public/js/frappe/form/form.js:2339-2345. */
 	get_sum(table_fieldname: string, fieldname: string): number;
 	/**
-	 * frappe/public/js/frappe/form/form.js:2186-2222. Activates the field's tab, expands its section and
+	 * frappe/public/js/frappe/form/form.js:2347-2383. Activates the field's tab, expands its section and
 	 * scrolls it into view within `.main-section` — the scroll container is passed
-	 * explicitly since 16.50 (:2204). Returns `false` when there is no such field
-	 * or it has no wrapper (:2188, :2191) and `true` otherwise (:2221): callers
-	 * such as `scroll_to_element` branch on it (:1641, :1652).
+	 * explicitly since 16.50 (:2365). Returns `false` when there is no such field
+	 * or it has no wrapper (:2349, :2352) and `true` otherwise (:2382): callers
+	 * such as `scroll_to_element` branch on it (:1802, :1813).
 	 */
 	scroll_to_field(fieldname: string, focus?: boolean): boolean;
-	/** frappe/public/js/frappe/form/form.js:2296-2332. */
+	/** frappe/public/js/frappe/form/form.js:2457-2493. */
 	set_active_tab(tab: Tab): void;
-	/** frappe/public/js/frappe/form/form.js:2334-2336. */
+	/** frappe/public/js/frappe/form/form.js:2495-2497. */
 	get_active_tab(): Tab | undefined;
 	/**
-	 * frappe/public/js/frappe/form/form.js:1465-1469. `"#<fieldname>"` of the active tab, or `""` when there is
+	 * frappe/public/js/frappe/form/form.js:1626-1630. `"#<fieldname>"` of the active tab, or `""` when there is
 	 * none or it is the `__details` pseudo-tab. `navigate_records` stores it in
-	 * `frappe.route_hash` so the next record opens on the same tab (:1458).
+	 * `frappe.route_hash` so the next record opens on the same tab (:1619).
 	 */
 	get_active_tab_hash(): string;
-	/** frappe/public/js/frappe/form/form.js:1236-1239. */
+	/** frappe/public/js/frappe/form/form.js:1397-1400. */
 	enable_save(): void;
-	/** frappe/public/js/frappe/form/form.js:1241-1248. */
+	/** frappe/public/js/frappe/form/form.js:1402-1409. */
 	disable_save(set_dirty?: boolean): void;
-	/** frappe/public/js/frappe/form/form.js:1250-1256. */
+	/** frappe/public/js/frappe/form/form.js:1411-1417. */
 	disable_form(): void;
 }
 
@@ -3892,7 +3892,7 @@ export declare class FormTimeline extends BaseTimeline {
 	 * `creation` strings, which is `NaN`, so the docinfo's own order stands: the
 	 * server returns newest `communication_date` first
 	 * (`frappe/desk/form/load.py:379`), but a Communication added later by
-	 * realtime (frappe/public/js/frappe/form/form.js:2247) or by the timeline's
+	 * realtime (frappe/public/js/frappe/form/form.js:2408) or by the timeline's
 	 * load-more (frappe/public/js/frappe/form/footer/form_timeline.js:211) goes
 	 * to the end. So the result is the first matching row in the docinfo, not
 	 * necessarily the newest. Read by the email composer
@@ -3926,7 +3926,7 @@ export interface FormDocumentEvents {
 /**
  * What {@link Form.set_value} accepts for a field whose document type is `V`:
  * `V` itself, plus — for a Table field — an array of partial rows, because
- * frappe builds the real rows from them (frappe/public/js/frappe/form/form.js:1873-1901).
+ * frappe builds the real rows from them (frappe/public/js/frappe/form/form.js:2034-2062).
  */
 export type FormSetValueInput<V> = V extends readonly (infer R extends object)[]
 	? V | ReadonlyArray<Partial<R>>
@@ -4015,13 +4015,13 @@ export interface StandardFormEvents<FrmDT extends string = string> {
 	before_submit?: FormEventHandler<FrmDT>;
 	/** frappe/public/js/frappe/form/form.js:950-951 — after a successful submit. */
 	on_submit?: FormEventHandler<FrmDT>;
-	/** frappe/public/js/frappe/form/form.js:1078 — `frappe.validated = false` stops the cancel (:1079-1081). */
+	/** frappe/public/js/frappe/form/form.js:1141, :1105 — `frappe.validated = false` stops the cancel (:1142-1144, :1106-1108). */
 	before_cancel?: FormEventHandler<FrmDT>;
-	/** frappe/public/js/frappe/form/form.js:1090 — after a successful cancel. */
+	/** frappe/public/js/frappe/form/form.js:1153, :1130 — after a successful cancel (:1130 is the cancel-with-linked-docs path, which skips it when the job is queued in the background, :1118-1125). */
 	after_cancel?: FormEventHandler<FrmDT>;
-	/** frappe/public/js/frappe/form/form.js:922, :1124 — `frappe.validated = false` stops the discard (:1125-1127). */
+	/** frappe/public/js/frappe/form/form.js:922, :1187 — `frappe.validated = false` stops the discard (:1188-1190). */
 	before_discard?: FormEventHandler<FrmDT>;
-	/** frappe/public/js/frappe/form/form.js:1135 — after a successful discard. */
+	/** frappe/public/js/frappe/form/form.js:1198 — after a successful discard. */
 	after_discard?: FormEventHandler<FrmDT>;
 	/** frappe/public/js/frappe/form/workflow.js:136 — before a workflow transition is applied; `frm.selected_workflow_action` holds the action (:135). */
 	before_workflow_action?: FormEventHandler<FrmDT>;
@@ -4033,7 +4033,7 @@ export interface StandardFormEvents<FrmDT extends string = string> {
 	dashboard_update?: FormEventHandler<FrmDT>;
 	/** frappe/public/js/frappe/form/form.js:141 — when the form's page is hidden. */
 	on_hide?: FormEventHandler<FrmDT>;
-	/** frappe/public/js/frappe/form/form.js:2319 — after `set_active_tab`. */
+	/** frappe/public/js/frappe/form/form.js:2480 — after `set_active_tab`. */
 	on_tab_change?: FormEventHandler<FrmDT>;
 	/**
 	 * frappe/public/js/frappe/form/grid_row.js:1419 — a child row's detail form
@@ -4069,7 +4069,7 @@ export interface StandardFormEvents<FrmDT extends string = string> {
  *   and `<table>_on_form_rendered` on the PARENT (frappe/public/js/frappe/form/grid_row.js:1418);
  * - a `depends_on: "fn:<name>"` callback (frappe/public/js/frappe/form/layout.js:810-815);
  * - a helper of your own, reached with `frm.trigger("<name>")`
- *   (frappe/public/js/frappe/form/form.js:2003-2005). It is called like any
+ *   (frappe/public/js/frappe/form/form.js:2164-2166). It is called like any
  *   other handler, so it takes `(frm, cdt, cdn)` too.
  *
  * Handler parameters are checked against `(frm, cdt: string, cdn: string)` —
@@ -4318,7 +4318,7 @@ export declare class PrintView {
 	wrapper: JQuery<HTMLElement>;
 	/** frappe/printing/page/print/print.js:41. */
 	page: Page;
-	/** The document printed, set by {@link PrintView.show} (frappe/printing/page/print/print.js:407). */
+	/** The document printed, set by {@link PrintView.show} (frappe/printing/page/print/print.js:408). */
 	frm: PrintViewTarget;
 	/** frappe/printing/page/print/print.js:99 — the Print Settings single. */
 	print_settings: FrappeDoc;
@@ -4326,7 +4326,7 @@ export declare class PrintView {
 	print_wrapper: JQuery<HTMLElement>;
 	/** frappe/printing/page/print/print.js:135. */
 	sidebar: JQuery<HTMLElement>;
-	/** frappe/printing/page/print/print.js:434 — values of the print settings the doctype adds to the sidebar. */
+	/** frappe/printing/page/print/print.js:435 — values of the print settings the doctype adds to the sidebar. */
 	additional_settings: Record<string, unknown>;
 	/** frappe/printing/page/print/print.js:49-104 — builds the preview, toolbar, sidebar and menu. Called by the constructor. */
 	make(): void;
@@ -4334,39 +4334,41 @@ export declare class PrintView {
 	set_title(): void;
 	/** frappe/printing/page/print/print.js:110-132 — Print, PDF, Email and the Form switch. Since 16.53 Full Page and Refresh are in the menu instead. */
 	setup_toolbar(): void;
-	/** frappe/printing/page/print/print.js:134-192. */
+	/** frappe/printing/page/print/print.js:134-193. */
 	setup_sidebar(): void;
-	/** frappe/printing/page/print/print.js:353-369 — a control in the sidebar. */
+	/** frappe/printing/page/print/print.js:354-370 — a control in the sidebar. */
 	add_sidebar_item(df: Partial<DocField>, is_dynamic?: boolean): BaseControl;
-	/** frappe/printing/page/print/print.js:371-404. */
+	/** frappe/printing/page/print/print.js:372-405. */
 	setup_menu(): void;
 	/**
-	 * frappe/printing/page/print/print.js:406-421 — prints `frm`: sets the title
+	 * frappe/printing/page/print/print.js:407-422 — prints `frm`: sets the title
 	 * and breadcrumbs, then the default format, language and letterhead, then
 	 * renders the preview. Resolves when all of that has run.
 	 */
 	show(frm: PrintViewTarget): Promise<unknown>;
-	/** frappe/printing/page/print/print.js:537-541. */
+	/** frappe/printing/page/print/print.js:538-542. */
 	refresh_print_format(): void;
-	/** frappe/printing/page/print/print.js:804-843 — renders the preview, through the print format generator when the format uses one. */
+	/** frappe/printing/page/print/print.js:805-844 — renders the preview, through the print format generator when the format uses one. */
 	preview(): void;
-	/** frappe/printing/page/print/print.js:976-984 — returns a form's print view to its main view. */
+	/** frappe/printing/page/print/print.js:977-985 — returns a form's print view to its main view. */
 	hide(): void;
-	/** frappe/printing/page/print/print.js:986-991. */
+	/** frappe/printing/page/print/print.js:987-992. */
 	go_to_form_view(): void;
-	/** frappe/printing/page/print/print.js:1008-1065 — through the print server, a mapped raw printer, or the browser (the generated PDF when Print Settings has `print_generated_pdf`). */
+	/** frappe/printing/page/print/print.js:1009-1066 — through the print server, a mapped raw printer, or the browser (the generated PDF when Print Settings has `print_generated_pdf`). */
 	printit(): void;
-	/** frappe/printing/page/print/print.js:1135-1147 — opens the PDF in a new window. */
+	/** frappe/printing/page/print/print.js:1136-1148 — opens the PDF in a new window. */
 	render_pdf(): void;
-	/** frappe/printing/page/print/print.js:1233-1239 — opens `method` with the document, format, letterhead and settings as query parameters (`get_page_url`, :1241-1265). */
+	/** frappe/printing/page/print/print.js:1234-1240 — opens `method` with the document, format, letterhead and settings as query parameters (`get_page_url`, :1242-1266). */
 	render_page(method: string, printit?: boolean, pdf_generator?: string): void;
-	/** frappe/printing/page/print/print.js:1297-1299 — the selected letterhead, or the translated "No Letterhead". */
+	/** frappe/printing/page/print/print.js:1298-1300 — the selected letterhead, or the translated "No Letterhead". */
 	get_letterhead(): string;
-	/** frappe/printing/page/print/print.js:1364-1366 — the selected print format, or `"Standard"`. */
+	/** frappe/printing/page/print/print.js:1373-1378 — the selected print format, or `"Standard"`. */
 	selected_format(): string;
-	/** frappe/printing/page/print/print.js:1372-1383 — the Print Format document from `locals`, or `{}`. */
+	/** frappe/printing/page/print/print.js:1380-1384 — the selected Letter Head name, empty when none is selected. Since 16.55. */
+	selected_letterhead(): string | undefined;
+	/** frappe/printing/page/print/print.js:1390-1401 — the Print Format document from `locals`, or `{}`. */
 	get_print_format(format?: string): Record<string, unknown>;
-	/** frappe/printing/page/print/print.js:1385-1387 — `1` unless "No Letterhead" is selected, else `0`. */
+	/** frappe/printing/page/print/print.js:1403-1405 — `1` unless "No Letterhead" is selected, else `0`. */
 	with_letterhead(): number;
 }
 export interface PrintView {}

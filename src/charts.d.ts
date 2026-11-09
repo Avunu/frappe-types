@@ -1,7 +1,7 @@
 /**
  * `frappe.Chart` — the frappe-charts slice of the frappe desk API.
  *
- * Frappe v16.54.0 re-exports the `frappe-charts` package verbatim:
+ * Frappe v16.55.2 re-exports the `frappe-charts` package verbatim:
  *
  * ```js
  * // frappe/public/js/frappe/ui/chart.js:1-4
@@ -104,11 +104,11 @@ export type FrappeChartPresetColor =
  *
  * Deliberately widened to `string`: the accepted set is a runtime regex, and
  * frappe feeds it every spelling. `frappe.utils.make_chart`
- * (`frappe/public/js/frappe/utils/utils.js:1575-1600`) fills in
+ * (`frappe/public/js/frappe/utils/utils.js:1575-1601`) fills in
  * `frappe.utils.get_chart_palette()` when the caller names no colors
  * (`frappe/public/js/frappe/utils/utils.js:1577-1579`) — ten literal hex strings
  * read off the Espresso `--blue-600`… custom properties of the current theme
- * (`frappe/public/js/frappe/utils/utils.js:1604-1609`,
+ * (`frappe/public/js/frappe/utils/utils.js:1605-1610`,
  * `frappe/public/js/frappe/ui/components/utils.js:97-108`), because frappe-charts
  * lightens and blends colors from their literal values and cannot take a
  * `var(--…)`. That helper falls back to the raw `var(--token)` text when the
@@ -224,7 +224,7 @@ export interface FrappeChartAxisOptions {
 	 * frappe passes `frappe.utils.format_chart_axis_number` (frappe/public/js/frappe/utils/utils.js:1587).
 	 */
 	numberFormatter?: (value: number) => string | number;
-	/** Fraction of the per-label slot a series label may occupy; default `SERIES_LABEL_SPACE_RATIO = 0.6` (utils/constants.js:69). frappe raises it to `0.9` past 10 labels (frappe/public/js/frappe/utils/utils.js:1615-1618). */
+	/** Fraction of the per-label slot a series label may occupy; default `SERIES_LABEL_SPACE_RATIO = 0.6` (utils/constants.js:69). frappe raises it to `0.9` past 10 labels (frappe/public/js/frappe/utils/utils.js:1616-1619). */
 	seriesLabelSpaceRatio?: number;
 	/** Clamps the computed y interval range; `utils/intervals.js:85-91` only ever WIDENS the data-derived extremes. Defaults to `{}`. */
 	yAxisRange?: { min?: number; max?: number };
@@ -284,12 +284,12 @@ export interface FrappeChartLineOptions {
  *
  * The index signature is deliberate, not a shrug. Frappe genuinely funnels
  * arbitrary keys through here:
- * - `frappe/public/js/frappe/widgets/chart_widget.js:765-785` merges a Dashboard
+ * - `frappe/public/js/frappe/widgets/chart_widget.js:765-787` merges a Dashboard
  *   Chart's `custom_options` JSON blob straight into the args;
- * - `frappe/public/js/frappe/views/reports/query_report.js:1288-1307` leaves
+ * - `frappe/public/js/frappe/views/reports/query_report.js:1293-1312` leaves
  *   report-only keys (`fieldtype`, `options`) on the same object that
  *   `render_chart` hands to the constructor
- *   (`frappe/public/js/frappe/views/reports/query_report.js:1313`);
+ *   (`frappe/public/js/frappe/views/reports/query_report.js:1318`);
  * - `frappe/public/js/frappe/form/dashboard.js:548-555` passes `start` / `count_label` at the TOP level
  *   even though frappe-charts reads `data.start` and `options.countLabel`
  *   (those two are therefore silently ignored — see the group notes).

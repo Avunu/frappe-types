@@ -2,7 +2,7 @@
  * `frappe.ui.Notifications` — the desk's notification bell, and the panel (or
  * popover) it opens.
  *
- * Source of truth: frappe v16.54.0,
+ * Source of truth: frappe v16.55.2,
  * `frappe/public/js/frappe/ui/notifications/notifications.js`. Every declaration
  * and every citation below was re-read against the 16.50.0 release, and again
  * against 16.54.0 wherever frappe changed the cited lines; the version
@@ -28,7 +28,7 @@
  *   (frappe/public/js/frappe/ui/notifications/notifications.js:35-46), so
  *   dismissal (outside click, `Escape`, page change) is the panel registry's job;
  * - the **desk** host — `{ popover: true, wrapper }`, used by the desktop screen
- *   (frappe/desk/page/desktop/desktop.js:231-236). There is only a bell, so the
+ *   (frappe/desk/page/desktop/desktop.js:256-261). There is only a bell, so the
  *   body is handed to a `frappe.ui.Popover`
  *   (frappe/public/js/frappe/ui/notifications/notifications.js:52-78).
  *

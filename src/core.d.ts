@@ -6,11 +6,11 @@
  * `prompt` / `boot` / `session` / `db` / `format` / `form.formatters` /
  * `provide` / `get_doc` / `new_doc`, plus the `__()` translation global.
  *
- * Verified against **frappe v16.54.0** (git tag `v16.54.0`, branch `version-16`)
+ * Verified against **frappe v16.55.2** (git tag `v16.55.2`, branch `version-16`)
  * at `apps/frappe`. Every non-obvious declaration cites `file:line` so the next
  * version bump can be diffed against the same lines. A citation is the full
  * `frappe/public/js/frappe/<path>.js:NNN` form; a bare `messages.js:NNN` after
- * one means the same file. The doc comments below describe v16.54.0 behaviour
+ * one means the same file. The doc comments below describe v16.55.2 behaviour
  * (the line numbers were re-read there): notably `frappe.show_alert` is now a
  * thin wrapper over `frappe.ui.toast`, and a session that expires opens a
  * "Session Expired" dialog instead of redirecting at once.
@@ -436,7 +436,7 @@ export type FrappeShowAlertActions = Record<string, (event: unknown) => void>;
 
 /**
  * One message a server-side `frappe.msgprint` / `frappe.throw` / `frappe.toast`
- * queued: the `out` dict of `frappe/utils/messages.py:46-117`.
+ * queued: the `out` dict of `frappe/utils/messages.py:46-118`.
  *
  * Where a client meets it:
  *
@@ -452,7 +452,7 @@ export type FrappeShowAlertActions = Record<string, (event: unknown) => void>;
  * - `FrappeResponse.messages` (API v2): the same dicts, not encoded
  *   (`frappe/utils/response.py:215-216`).
  * - the `"msgprint"` realtime event, for `msgprint(…, realtime=True)`
- *   (`frappe/utils/messages.py:114-115`, received and shown at
+ *   (`frappe/utils/messages.py:115-116`, received and shown at
  *   `frappe/public/js/frappe/socketio_client.js:76`).
  *
  * The keys mirror {@link FrappeMsgprintOptions} because each entry ends up as
@@ -468,25 +468,25 @@ export interface FrappeServerMessage {
 	 * and `clean_html` returns a non-`str` unchanged (`frappe/utils/html_utils.py:29-31`).
 	 */
 	message: string | string[] | string[][] | null;
-	/** Always set: the caller's title, else the translated `"Message"` (`frappe/utils/messages.py:90`). */
+	/** Always set: the caller's title, else the translated `"Message"` (`frappe/utils/messages.py:91`). */
 	title: string;
 	/** `frappe/utils/messages.py:17,92-96`. `"red"` by default when the message raises. */
 	indicator?: "blue" | "green" | "orange" | "red" | "yellow";
-	/** `frappe/utils/messages.py:98-99`. */
+	/** `frappe/utils/messages.py:99-100`. */
 	is_minimizable?: boolean;
-	/** `frappe/utils/messages.py:101-102` — `1` for `frappe.toast` / `alert=True`: shown as a toast, not a dialog. */
+	/** `frappe/utils/messages.py:102-103` — `1` for `frappe.toast` / `alert=True`: shown as a toast, not a dialog. */
 	alert?: 1;
-	/** `frappe/utils/messages.py:104-106` — `1` when the message came with an exception (`frappe.throw`). */
+	/** `frappe/utils/messages.py:105-107` — `1` when the message came with an exception (`frappe.throw`). */
 	raise_exception?: 1;
-	/** `frappe/utils/messages.py:106` — links the message to its exception; API v2 merges the two (`frappe/utils/response.py:81-88`). */
+	/** `frappe/utils/messages.py:107` — links the message to its exception; API v2 merges the two (`frappe/utils/response.py:81-88`). */
 	__frappe_exc_id?: string;
 	/**
-	 * `frappe/utils/messages.py:108-109` — the caller's dict, read by the desk as
+	 * `frappe/utils/messages.py:109-110` — the caller's dict, read by the desk as
 	 * {@link FrappeMsgprintPrimaryAction} (`frappe/public/js/frappe/ui/messages.js:229-266`).
 	 * JSON carries no function, so `action` is never set.
 	 */
 	primary_action?: Omit<FrappeMsgprintPrimaryAction, "action">;
-	/** `frappe/utils/messages.py:111-112`. */
+	/** `frappe/utils/messages.py:112-113`. */
 	wide?: boolean;
 	/** `frappe/utils/messages.py:65-67` — set when `message` is a list rendered as one. */
 	as_list?: boolean;
@@ -938,7 +938,7 @@ export interface FrappeGetLoggedUserResponse {
  * Third argument of every formatter and of `frappe.format`.
  * Source: keys read at `frappe/public/js/frappe/form/formatters.js:12, 71, 158,
  * 182, 213`. `frappe.format(value, df, null, doc)` is legal
- * (`frappe/public/js/frappe/list/list_view.js:1466`), hence the `| null` on the
+ * (`frappe/public/js/frappe/list/list_view.js:1470`), hence the `| null` on the
  * parameters below.
  *
  * `1` / `0` appear alongside `true` / `false` at real call sites
@@ -1219,7 +1219,7 @@ export interface FrappeBootAppEntry {
 	 * hook says.
 	 */
 	on_apps_screen: boolean;
-	/** `frappe/boot.py:343` — apps-screen sort order, lower first; `100` when undeclared (`frappe/boot.py:218,343`), Framework declares `1000` (`frappe/hooks.py:587`). */
+	/** `frappe/boot.py:343` — apps-screen sort order, lower first; `100` when undeclared (`frappe/boot.py:218,343`), Framework declares `1000` (`frappe/hooks.py:588`). */
 	sequence_id: number;
 	/**
 	 * `frappe/boot.py:360-365` — the hook's `route`, else the `app_home` hook, else
@@ -1759,8 +1759,8 @@ export type FrappeAssetsJson = Record<string, string>;
 //
 // Where the two copies disagreed, the merged type keeps what frappe does: a
 // formatter may return `undefined` (the Subject text falls back to `doc.name`,
-// `frappe/public/js/frappe/list/list_view.js:1881-1883`) and `button.action`
-// is required (called unguarded, `frappe/public/js/frappe/list/list_view.js:2168`),
+// `frappe/public/js/frappe/list/list_view.js:1885-1887`) and `button.action`
+// is required (called unguarded, `frappe/public/js/frappe/list/list_view.js:2172`),
 // both as the old copy had them. What the aliases do NOT carry over from the
 // old copy, because `views.d.ts` already declared it narrower at 16.4.1:
 // `filters` entries are `[fieldname, operator, value]` or
@@ -2254,7 +2254,7 @@ export interface FrappeTemplateNamespace {
  * `print_template` microtemplates it renders, which is what the index
  * signature is for: frappe's report views add `filters`, `report`,
  * `original_data`, `can_use_smaller_font` and so on
- * (`frappe/public/js/frappe/views/reports/query_report.js:1682-1694`).
+ * (`frappe/public/js/frappe/views/reports/query_report.js:1687-1699`).
  */
 export interface FrappeRenderGridOptions {
 	/**
@@ -2267,7 +2267,7 @@ export interface FrappeRenderGridOptions {
 	/** The rows `print_grid.html` renders (`frappe/public/js/frappe/views/reports/print_grid.html:36`). */
 	data?: readonly unknown[];
 	title?: string;
-	/** HTML; `null` when the caller has none (`frappe/public/js/frappe/views/reports/query_report.js:1684`). */
+	/** HTML; `null` when the caller has none (`frappe/public/js/frappe/views/reports/query_report.js:1689`). */
 	subtitle?: string | null;
 	/** microtemplate.js:128-134 — `orientation: "Landscape"` turns `landscape` on. */
 	print_settings?: { orientation?: string; [key: string]: unknown } | null;
@@ -2330,10 +2330,10 @@ export interface FrappeCore {
 	listview_settings: Record<string, ListViewSettings | undefined>;
 	/**
 	 * The save/submit/cancel/discard veto flag. `0` at module scope
-	 * (`frappe/public/js/frappe/form/form.js:2446`), reset to `true` before each
+	 * (`frappe/public/js/frappe/form/form.js:2607`), reset to `true` before each
 	 * of those actions (`frappe/public/js/frappe/form/form.js:898`, `:936`,
-	 * `:1077`, `:1123`) and read after the `validate` / `before_*` handlers ran
-	 * (`:904`, `:938`, `:1079`, `:1125`). A form script vetoes by setting it to
+	 * `:1104`, `:1140`, `:1186`) and read after the `validate` / `before_*` handlers ran
+	 * (`:904`, `:938`, `:1106`, `:1142`, `:1188`). A form script vetoes by setting it to
 	 * `false`.
 	 */
 	validated: boolean | 0;

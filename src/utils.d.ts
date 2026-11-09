@@ -5,7 +5,7 @@
  * `frappe.router` slice of the Frappe desk JS API, plus the `frappe.ui.Page`
  * class and the theme switcher's `frappe.ui` members.
  *
- * Target: **Frappe v16.54.0** (`git tag v16.54.0`, branch `version-16`).
+ * Target: **Frappe v16.55.2** (`git tag v16.55.2`, branch `version-16`).
  *
  * Every signature below was read out of the shipped source; the citations are
  * `path/to/file.js:line` relative to `apps/frappe/`. When frappe's own code is
@@ -15,7 +15,7 @@
  * one.
  *
  * Sources read in full for this fragment:
- * - `frappe/public/js/frappe/utils/utils.js`      (2337 lines)
+ * - `frappe/public/js/frappe/utils/utils.js`      (2338 lines)
  * - `frappe/public/js/frappe/utils/datatable.js`  (22 lines)
  * - `frappe/public/js/frappe/utils/common.js`     (frappe.utils.* additions)
  * - `frappe/public/js/frappe/query_string.js`     (frappe.utils.* additions)
@@ -238,7 +238,7 @@ export interface FrappeMapDefaults {
  * The registry of `doc_view`s {@link FrappeGenerateRouteItem} accepts: its keys
  * are {@link FrappeGenerateRouteDocView}. Seeded with the views
  * `generate_route`'s switch routes to
- * (`frappe/public/js/frappe/utils/utils.js:1635-1665`), which are the non-empty
+ * (`frappe/public/js/frappe/utils/utils.js:1636-1666`), which are the non-empty
  * options of the Workspace Shortcut `doc_view` field
  * (`frappe/desk/doctype/workspace_shortcut/workspace_shortcut.json:48`); any
  * other value routes to the doctype's default view (`:1666-1667`). The field's
@@ -270,26 +270,26 @@ export type FrappeGenerateRouteDocView = Extract<keyof FrappeGenerateRouteDocVie
 
 /**
  * The argument `frappe.utils.generate_route()` reads.
- * `frappe/public/js/frappe/utils/utils.js:1620-1717`. Only `type` is required;
+ * `frappe/public/js/frappe/utils/utils.js:1621-1718`. Only `type` is required;
  * every other member is consulted per `type`, and unknown members are ignored.
  */
 export interface FrappeGenerateRouteItem {
 	/** Lower-cased before dispatch: doctype | report | page | dashboard | workspace. */
 	type: string;
 	name?: string;
-	/** Set by the function itself when `type === "doctype"` (`frappe/public/js/frappe/utils/utils.js:1622-1624`). */
+	/** Set by the function itself when `type === "doctype"` (`frappe/public/js/frappe/utils/utils.js:1623-1625`). */
 	doctype?: string;
-	/** Short-circuits every branch when present (`frappe/public/js/frappe/utils/utils.js:1626,1695-1697`). */
+	/** Short-circuits every branch when present (`frappe/public/js/frappe/utils/utils.js:1627,1695-1697`). */
 	route?: string;
 	link?: string;
 	/**
-	 * Doctypes only: the view to route to (`frappe/public/js/frappe/utils/utils.js:1635`).
+	 * Doctypes only: the view to route to (`frappe/public/js/frappe/utils/utils.js:1636`).
 	 * See {@link FrappeGenerateRouteDocViews}. `""` is the Workspace Shortcut
 	 * field's empty option
 	 * (`frappe/desk/doctype/workspace_shortcut/workspace_shortcut.json:48`), which
 	 * the shortcut widget forwards as it is
 	 * (`frappe/public/js/frappe/widgets/shortcut_widget.js:41-49`): the doctype's
-	 * default view (`frappe/public/js/frappe/utils/utils.js:1666-1667`).
+	 * default view (`frappe/public/js/frappe/utils/utils.js:1667-1668`).
 	 */
 	doc_view?: FrappeGenerateRouteDocView | "";
 	kanban_board?: string;
@@ -298,19 +298,19 @@ export interface FrappeGenerateRouteItem {
 	is_query_report?: boolean;
 	report_ref_doctype?: string;
 	/**
-	 * Workspaces only (`frappe/public/js/frappe/utils/utils.js:1686-1693`): a public
+	 * Workspaces only (`frappe/public/js/frappe/utils/utils.js:1687-1694`): a public
 	 * workspace is routed by `name`, anything else as `private/<title>`.
 	 */
 	public?: boolean;
 	/**
 	 * Workspaces only, and only read for a non-public one
-	 * (`frappe/public/js/frappe/utils/utils.js:1692`): a private page is spelled by
+	 * (`frappe/public/js/frappe/utils/utils.js:1693`): a private page is spelled by
 	 * its title, because its `name` carries the owner's email. Falls back to `name`.
 	 */
 	title?: string;
 	/**
 	 * Serialised onto the URL as a query string
-	 * (`frappe/public/js/frappe/utils/utils.js:1699-1710`). An **array** value is
+	 * (`frappe/public/js/frappe/utils/utils.js:1700-1711`). An **array** value is
 	 * `JSON.stringify`'d (it is a `[operator, value]` filter that the list view
 	 * parses back out); anything else is `encodeURIComponent`'d as-is.
 	 */
@@ -375,7 +375,7 @@ export interface FrappeDesktopIconRecord {
 	module: string | null;
 }
 
-/** `frappe/public/js/frappe/utils/utils.js:1773-1799` — the argument to `build_summary_item`. */
+/** `frappe/public/js/frappe/utils/utils.js:1774-1800` — the argument to `build_summary_item`. */
 export interface FrappeSummaryItem {
 	type?: "separator" | (string & {});
 	label?: string;
@@ -386,7 +386,7 @@ export interface FrappeSummaryItem {
 	indicator?: string;
 }
 
-/** `frappe/public/js/frappe/utils/utils.js:1845-1904` — one entry of `add_select_group_button`. */
+/** `frappe/public/js/frappe/utils/utils.js:1846-1905` — one entry of `add_select_group_button`. */
 export interface FrappeSelectGroupAction {
 	label: string;
 	description?: string;
@@ -755,7 +755,7 @@ export interface FrappeUtils {
 	/** `utils.js:678-714`. Sorted-merge intersection; sorts copies first. */
 	intersection<T>(a: readonly T[], b: readonly T[]): T[];
 
-	/** `frappe/public/js/frappe/utils/utils.js:1910-1915`. `undefined` for an empty/absent array, else the array. */
+	/** `frappe/public/js/frappe/utils/utils.js:1911-1916`. `undefined` for an empty/absent array, else the array. */
 	parse_array<T>(array: readonly T[] | null | undefined): readonly T[] | undefined;
 
 	/** `utils.js:1918-1928`. Python's `range`; a lone argument is the *end*. */
@@ -1105,7 +1105,7 @@ export interface FrappeUtils {
 	get_desktop_icon_by_label(title: string, filters?: Record<string, unknown>): FrappeDesktopIconRecord | undefined;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1575-1600`. Merges `custom_options`
+	 * `frappe/public/js/frappe/utils/utils.js:1575-1601`. Merges `custom_options`
 	 * over frappe's defaults (`type: "bar"`, `axisOptions.xIsSeries` …) and
 	 * constructs a `frappe.Chart`.
 	 *
@@ -1115,8 +1115,9 @@ export interface FrappeUtils {
 	 * Espresso palette resolved against the current theme.
 	 *
 	 * Options are typed as an open record because the merge is a
-	 * `for...in` over arbitrary keys with a one-level `Object.assign` for
-	 * object-valued keys — there is no closed option set at this layer.
+	 * `for...in` over arbitrary keys (skipping `__proto__`,
+	 * `frappe/public/js/frappe/utils/utils.js:1592`) with a one-level
+	 * `Object.assign` for object-valued keys — there is no closed option set at this layer.
 	 */
 	make_chart(
 		wrapper: string | HTMLElement | JQuery<HTMLElement>,
@@ -1124,7 +1125,7 @@ export interface FrappeUtils {
 	): FrappeBaseChart;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1604-1609`. Espresso's chart colours
+	 * `frappe/public/js/frappe/utils/utils.js:1605-1610`. Espresso's chart colours
 	 * (`CHART_PALETTE`, `frappe/public/js/frappe/ui/components/utils.js:97`) as the
 	 * **current theme** defines them: each `var(--x)` entry is replaced by
 	 * `getComputedStyle(document.documentElement).getPropertyValue("--x")`, because
@@ -1134,11 +1135,11 @@ export interface FrappeUtils {
 	 */
 	get_chart_palette(): string[];
 
-	/** `frappe/public/js/frappe/utils/utils.js:1611-1614`. `shorten_number(label, country, 3)`. */
+	/** `frappe/public/js/frappe/utils/utils.js:1612-1615`. `shorten_number(label, country, 3)`. */
 	format_chart_axis_number(label: number | string, country?: string): string;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1615-1619`. **Mutates** `chart_args`, setting
+	 * `frappe/public/js/frappe/utils/utils.js:1616-1620`. **Mutates** `chart_args`, setting
 	 * `axisOptions.seriesLabelSpaceRatio = 0.9` for >10 labels. Throws if
 	 * `chart_args.data.labels` is absent.
 	 */
@@ -1149,7 +1150,7 @@ export interface FrappeUtils {
 	}): void;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1620-1718`. Builds a `/desk/...` route
+	 * `frappe/public/js/frappe/utils/utils.js:1621-1719`. Builds a `/desk/...` route
 	 * from a sidebar/shortcut item. It writes **no shell segment**: the result is
 	 * always `/desk/<route>`, and `frappe.router` adds the shell when it routes
 	 * there (see {@link FrappeRouterBase.write_shell_into_url}).
@@ -1157,9 +1158,9 @@ export interface FrappeUtils {
 	generate_route(item: FrappeGenerateRouteItem): string;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1720-1766`. `"1.2 M"`-style
+	 * `frappe/public/js/frappe/utils/utils.js:1721-1767`. `"1.2 M"`-style
 	 * abbreviation. Returns `""` for `null`, `undefined`, blank or NaN input
-	 * (`is_null(number) || isNaN(number)`, `:1730`; `0` is therefore **not**
+	 * (`is_null(number) || isNaN(number)`, `:1731`; `0` is therefore **not**
 	 * blanked any more and comes back as `"0"`), and the plain number string when
 	 * it is shorter than `min_length` digits.
 	 */
@@ -1170,10 +1171,10 @@ export interface FrappeUtils {
 		max_no_of_decimals?: number
 	): string;
 
-	/** `frappe/public/js/frappe/utils/utils.js:1768-1771`. */
+	/** `frappe/public/js/frappe/utils/utils.js:1769-1772`. */
 	get_number_of_decimals(number: number): number;
 
-	/** `frappe/public/js/frappe/utils/utils.js:1773-1799`. Renders a report/dashboard summary chip. */
+	/** `frappe/public/js/frappe/utils/utils.js:1774-1800`. Renders a report/dashboard summary chip. */
 	build_summary_item(summary: FrappeSummaryItem): JQuery<HTMLElement>;
 
 	/** `utils.js:1801-1823`. Opens `/printview` in a popup. */
@@ -1196,7 +1197,7 @@ export interface FrappeUtils {
 	): void;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1845-1904`. Split button whose primary
+	 * `frappe/public/js/frappe/utils/utils.js:1846-1905`. Split button whose primary
 	 * action follows the selection. `btn_type` is spliced into the class list
 	 * (`btn ${btn_type} btn-sm`), so it is a bootstrap class such as `"btn-primary"`.
 	 */
@@ -1271,21 +1272,21 @@ export interface FrappeUtils {
 	generate_tracking_url(): void;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:2200-2207`. `true` for `""`, `null`, `undefined`, `{}`, `[]`;
+	 * `frappe/public/js/frappe/utils/utils.js:2201-2208`. `true` for `""`, `null`, `undefined`, `{}`, `[]`;
 	 * `false` for `0`, `1`, `"hello"`, `{a:1}`, `[1]`.
 	 */
 	is_empty(value: unknown): boolean;
 
-	/** `frappe/public/js/frappe/utils/utils.js:2215-2222`. **Mutates** `obj`, replacing password-ish values with `*****`. */
+	/** `frappe/public/js/frappe/utils/utils.js:2216-2223`. **Mutates** `obj`, replacing password-ish values with `*****`. */
 	mask_passwords(obj: Record<string, unknown>): void;
 
-	/** `frappe/public/js/frappe/utils/utils.js:2241-2247`. Lazily loads highlight.js and marks up every `<pre>`. */
+	/** `frappe/public/js/frappe/utils/utils.js:2242-2248`. Lazily loads highlight.js and marks up every `<pre>`. */
 	highlight_pre($wrapper: JQuery<HTMLElement>): void;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:2253-2258`. `true` unless the
+	 * `frappe/public/js/frappe/utils/utils.js:2254-2259`. `true` unless the
 	 * `only_allow_system_managers_to_upload_public_files` default is enabled
-	 * (`frappe.defaults.is_enabled(...)`, `:2254`), in which case only
+	 * (`frappe.defaults.is_enabled(...)`, `:2255`), in which case only
 	 * `System Manager` / `Administrator` may.
 	 */
 	can_upload_public_files(): boolean;

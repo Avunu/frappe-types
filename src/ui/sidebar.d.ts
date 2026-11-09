@@ -4,7 +4,7 @@
  * `frappe.ui.sidebar_item` route resolver and the `module_sidebars` boot
  * payload they render.
  *
- * Source of truth: frappe v16.54.0 (`git tag v16.54.0`, branch `version-16`),
+ * Source of truth: frappe v16.55.2 (`git tag v16.55.2`, branch `version-16`),
  * `frappe/public/js/frappe/ui/sidebar/**`, `frappe/boot.py`,
  * `frappe/desk/doctype/sidebar/sidebar.py` and `frappe/desk/doctype/dock/dock.py`.
  * Every declaration and every citation below was re-read against the 16.50.0

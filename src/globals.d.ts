@@ -4,7 +4,7 @@
 // The `window`-level desk globals that are NOT hung off `frappe.*`, plus the
 // jQuery surface frappe and Bootstrap extend.
 //
-// Source of truth: apps/frappe @ 2fcb9397a1 (tag v16.54.0, branch version-16).
+// Source of truth: apps/frappe @ 3d1284c5fd (tag v16.55.2, branch version-16).
 // Citations are `path/relative/to/apps/frappe/file.js:line` (the full form,
 // `frappe/public/js/frappe/…`) or a bare `file.js:line` that means a file under
 // `frappe/public/js/frappe/`; their line numbers are those of the tag named
@@ -221,7 +221,7 @@ export type CurrentForm = Form | null;
  * (frappe/public/js/frappe/list/list_factory.js:24-38), and that class does NOT
  * extend `ListView` — it is a plain class with `doctype`, `view_name`,
  * `parent`, `page`, `show()` and `get_search_params()`
- * (frappe/public/js/frappe/views/kanban_v2/kanban_page.js:2211-2238). On such a
+ * (frappe/public/js/frappe/views/kanban_v2/kanban_page.js:2219-2246). On such a
  * board `cur_list` is therefore not a `ListView` at all, whatever `views.d.ts`'s
  * `CurrentListView` says.
  *

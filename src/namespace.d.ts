@@ -350,7 +350,7 @@ declare global {
 			type QueryReportSettings = QueryReportSettingsShape;
 			/** A prepared query report column, as `formatter` receives it. */
 			type QueryReportColumn = QueryReportColumnShape;
-			/** One filter control of a query report, as `frappe.query_report.get_filter(...)` returns it (`frappe/public/js/frappe/views/reports/query_report.js:1610-1616`). */
+			/** One filter control of a query report, as `frappe.query_report.get_filter(...)` returns it (`frappe/public/js/frappe/views/reports/query_report.js:1615-1621`). */
 			type QueryReportFilter = QueryReportFilterControlShape;
 		}
 	}

@@ -1,7 +1,7 @@
 /**
  * frappe-types — group `deep-module-imports`, ambient wiring.
  *
- * Frappe v16.54.0. Companion to `deep-modules.d.ts`, which declares (or, for
+ * Frappe v16.55.2. Companion to `deep-modules.d.ts`, which declares (or, for
  * the web form pair, re-exports from `web_form.d.ts`) everything the class
  * specifiers below re-export. Further down are the side-effect-only bundles
  * an app imports for what they install, and frappe's `.html` microtemplates.
