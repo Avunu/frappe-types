@@ -2837,3 +2837,59 @@ export interface FrappeWorkflowNamespace {
 	/** `frappe/public/js/frappe/model/workflow.js:91-96` — the `action` of every transition, duplicates kept. **Throws** when the doctype has no workflow. */
 	get_all_transition_actions(doctype: string): string[];
 }
+
+// ---------------------------------------------------------------------------
+// File
+// ---------------------------------------------------------------------------
+
+/**
+ * A File document as the server sends it — the File doctype
+ * (`frappe/core/doctype/file/file.json:36-191`). What `upload_file` returns
+ * when no `method` is given (`frappe/handler.py:129`): it saves a new File and returns it
+ * (`frappe/handler.py:226-238`), the response's `message`. The desk uploader
+ * hands it to `on_success` (`frappe/public/js/frappe/file_uploader/FileUploader.vue:624-637`).
+ *
+ * A document is sent as `as_dict(no_nulls=True)`
+ * (`frappe/model/document.py:2257-2258`), so a field left empty is missing
+ * rather than `null`; the Check fields always carry `0` or `1`.
+ *
+ * Hand-written like {@link DocPerm}: the registry is empty here, and
+ * `frappe-types gen-registry` types an app's own doctypes, not frappe's.
+ */
+export interface FrappeFileDoc extends FrappeDoc {
+	doctype: "File";
+	/** The file's name with its extension; a file's `name` is a hash (`frappe/core/doctype/file/file.py:98-99`) — `frappe/core/doctype/file/file.json:38`. */
+	file_name?: string;
+	/** `frappe/core/doctype/file/file.json:49`; `upload_file` sets it with `cint` (`frappe/handler.py:235`). */
+	is_private: FrappeCheck;
+	/** `frappe/core/doctype/file/file.json:69`. */
+	is_home_folder: FrappeCheck;
+	/** `frappe/core/doctype/file/file.json:77`. */
+	is_attachments_folder: FrappeCheck;
+	/** Bytes — `frappe/core/doctype/file/file.json:83`. */
+	file_size?: number;
+	/** `/files/…`, `/private/files/…` or a remote URL — `frappe/core/doctype/file/file.json:97`. */
+	file_url?: string;
+	/** `frappe/core/doctype/file/file.json:103`. */
+	thumbnail_url?: string;
+	/** The parent folder, a File — `frappe/core/doctype/file/file.json:109`; `"Home"` from `upload_file` by default (`frappe/handler.py:156`). */
+	folder?: string;
+	/** `frappe/core/doctype/file/file.json:119`. */
+	is_folder: FrappeCheck;
+	/** `frappe/core/doctype/file/file.json:130`. */
+	attached_to_doctype?: string;
+	/** `frappe/core/doctype/file/file.json:142`. */
+	attached_to_name?: string;
+	/** The Attach field the file fills — `frappe/core/doctype/file/file.json:148`. */
+	attached_to_field?: string;
+	/** `frappe/core/doctype/file/file.json:154`. */
+	old_parent?: string;
+	/** `frappe/core/doctype/file/file.json:160`. */
+	content_hash?: string;
+	/** `frappe/core/doctype/file/file.json:167`. */
+	uploaded_to_dropbox: FrappeCheck;
+	/** `frappe/core/doctype/file/file.json:174`. */
+	uploaded_to_google_drive: FrappeCheck;
+	/** The extension, upper-cased, e.g. `"PDF"` (`frappe/core/doctype/file/file.py:462-467`) — `frappe/core/doctype/file/file.json:184`. */
+	file_type?: string;
+}

@@ -121,6 +121,26 @@ Three things ship next to the declarations: two `tsconfig` presets, a type-space
 
 `moduleDetection: "force"` is right for desk scripts as well. frappe runs each one inside its own function (`new Function(script)()`, in `form/script_manager.js` for doctype scripts and in `frappe.dom.eval` for report scripts), so one file's top-level names never reach another file.
 
+### Lint globals
+
+A linter's `no-undef` does not read the tsconfig, so desk scripts also need the desk globals in the lint config. Two files ship them, each `{ "globals": { "<name>": "readonly" } }`:
+
+| file | the bare globals of |
+| --- | --- |
+| `frappe-types/lint/desk-globals.json` | `frappe-types/global`: `frappe`, `__`, `locals`, the `cur_*` slots, `erpnext`, `msgprint`, `DataTable`, frappe's window helpers (`flt`, `format_currency`, `refresh_field`, …), the permission and key constants, and `$` / `jQuery` |
+| `frappe-types/lint/web-globals.json` | `frappe-types/web`: the same, plus `valid_email`, `is_html` and `ask_to_login` |
+
+They are generated from the declarations (`npm run gen:lint-globals`), and the unit tests fail when they differ, so a name is in the list exactly when the types declare it. Libraries frappe loads but this package does not type, such as `moment`, are not in it.
+
+```js
+// eslint.config.mjs
+import desk from "frappe-types/lint/desk-globals.json" with { type: "json" };
+
+export default [{ files: ["myapp/**/*.js"], languageOptions: { globals: desk.globals } }];
+```
+
+oxlint's `extends` does not carry `globals`, so an `.oxlintrc.json` copies the object into its own `globals` (or an override's), from the installed file.
+
 ### JSDoc in desk scripts
 
 `frappe` is a value at runtime. For JSDoc it is also a namespace of types, so you can write `@type {frappe.ui.form.FormEvents<"Customer">}`. The namespace is installed with `frappe-types/global` and declares only types, so it merges with the `frappe` global without changing it. Most of the time you don't need an annotation, because `frappe.ui.form.on` infers the doctype from its first argument:

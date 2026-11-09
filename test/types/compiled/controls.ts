@@ -194,6 +194,18 @@ export function open_uploader(): void {
 			void file_doc?.name;
 		},
 	});
+	// Unannotated, the uploaded document is a File: its fields are typed.
+	new Uploader({
+		on_success(file_doc) {
+			if (!file_doc) return;
+			const url: string | undefined = file_doc.file_url;
+			const is_private: 0 | 1 = file_doc.is_private;
+			const doctype: "File" = file_doc.doctype;
+			// @ts-expect-error file_size is a number of bytes
+			const size: string | undefined = file_doc.file_size;
+			void [url, is_private, doctype, size];
+		},
+	});
 	// as_dataurl: true with the Library, Link and Google Drive sources off:
 	// nothing is uploaded, so only data-URL file entries arrive.
 	new Uploader({

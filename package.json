@@ -43,12 +43,14 @@
       "types": "./src/web.d.ts"
     },
     "./tsconfig/*": "./tsconfig/*",
+    "./lint/*": "./lint/*",
     "./package.json": "./package.json"
   },
   "files": [
     "src",
     "bin",
     "tsconfig",
+    "lint",
     "README.md",
     "CHANGELOG.md",
     "DRIFT.md",
@@ -77,6 +79,7 @@
     "audit:drift": "node scripts/audit-drift.mjs",
     "remap:citations": "node scripts/remap-citations.mjs",
     "consumers": "node scripts/audit-consumer.mjs",
+    "gen:lint-globals": "node scripts/gen-lint-globals.mjs",
     "upgrade": "npx npm-check-updates -u --reject @types/jquery,typescript-5.8 && npm install"
   },
   "publishConfig": {
