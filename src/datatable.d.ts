@@ -702,7 +702,7 @@ export interface DataTableTotalCell extends DataTableColumnTotalCell {
  * goes ONE way, to {@link DataTable}: that is the whole point of
  * {@link DataTableConstructor}, and what `window.DataTable = CarbonDataTable`
  * (`tables/datatable/install.ts:28`) needs. The reverse is impossible — stock
- * has nothing to answer {@link DataTableEngine} with — and the shims still
+ * has nothing to answer `DataTableEngine` with — and the shims still
  * diverge inside the shapes declared here, which is why so many members below
  * are unions: `DataManager.getChildren` hands back prepared ROWS where stock
  * hands back row INDICES, `DataManager.updateCell` implements only the
@@ -1403,7 +1403,7 @@ export declare class ColumnManager {
  * `datatable.cellmanager` — focus, selection, editing and copy.
  * Source: `cellmanager.js`. carbon_frappe: `CellManagerShim`
  * (`tables/datatable/managers.js:363-459`), which delegates to its own
- * {@link CellNavigation} and {@link CellEditing}.
+ * `CellNavigation` and `CellEditing`.
  */
 export declare class CellManager {
 	constructor(instance: DataTable);
@@ -1504,7 +1504,7 @@ export declare class CellManager {
 
 	scrollToCell($cell: HTMLElement | null): boolean | void;
 
-	/** stock only (`cellmanager.js:490-529`) — carbon_frappe routes editors through {@link CellEditing}. */
+	/** stock only (`cellmanager.js:490-529`) — carbon_frappe routes editors through `CellEditing`. */
 	getEditor?(
 		colIndex: DataTableColIndex,
 		rowIndex: DataTableRowIndex,
@@ -1705,7 +1705,7 @@ export type DataTableKeyListener = (e: KeyboardEvent) => boolean | void;
  *
  * carbon_frappe: `KeyboardShim` (`tables/datatable/managers.js:569-586`) — same
  * `on()` contract, but backed by a `Map` and dispatched from
- * {@link CellNavigation} rather than from a DOM listener of its own.
+ * `CellNavigation` rather than from a DOM listener of its own.
  */
 export declare class Keyboard {
 	/** stock binds `keydown` on the wrapper (`keyboard.js:21-24`); carbon_frappe takes the host. */
@@ -1719,296 +1719,6 @@ export declare class Keyboard {
 	/** stock only — the bound DOM handler (`keyboard.js:26-47`). */
 	handler?(e: KeyboardEvent): void;
 
-	/** carbon_frappe only (`managers.js:579-585`); `false` from any listener means "not handled". */
-	dispatch?(key: string, event: KeyboardEvent): boolean;
-}
-
-// ---------------------------------------------------------------------------
-// carbon_frappe additions
-// ---------------------------------------------------------------------------
-
-/** A focused / cursor cell address (`tables/datatable/navigation.js:65-66`). */
-export interface DataTableFocusedCell {
-	colIndex: DataTableColIndex;
-	rowIndex: DataTableRowIndex;
-}
-
-/**
- * The selection rectangle in mixed coordinates
- * (`tables/datatable/navigation.js:148-158`): `c1`/`c2` are COLUMN indices,
- * `p1`/`p2` are POSITIONS in the current view order — not row indices — because
- * the rectangle must stay contiguous on screen after a sort.
- */
-export interface DataTableSelectionBounds {
-	c1: DataTableColIndex;
-	c2: DataTableColIndex;
-	p1: number;
-	p2: number;
-}
-
-/**
- * `datatable.navigation` — carbon_frappe ONLY.
- *
- * Stock frappe-datatable spreads this behaviour across `CellManager` and
- * `Keyboard`; carbon_frappe factors it out
- * (`tables/datatable/navigation.js:62-350`) while reproducing the same keyboard
- * contract (`cellmanager.js:44-164`): arrows move focus skipping non-focusable
- * columns, ctrl+arrow jumps to an edge, shift+arrow extends, enter edits,
- * ctrl+C copies as TSV, ctrl+F focuses the column's inline filter.
- */
-export declare class CellNavigation {
-	constructor(host: DataTableInstance);
-
-	/** The anchor cell, or `null` when nothing is focused. */
-	focused: DataTableFocusedCell | null;
-
-	/** The far corner of the selection; equals {@link focused} for a single cell. */
-	cursor: DataTableFocusedCell | null;
-
-	/** `true` between mousedown on a cell and the document-level mouseup (`navigation.js:242`, `:337-341`). */
-	dragging?: boolean;
-
-	/** The bound container, set by {@link bind} (`navigation.js:223`). */
-	container?: HTMLElement;
-
-	/** Display order as row indices — `datamanager.rowViewOrder` (`navigation.js:73-75`). */
-	readonly viewOrder: DataTableRowIndex[];
-
-	/** Position of a row index within {@link viewOrder}, or `-1`. */
-	viewPos(rowIndex: DataTableRowIndex): number;
-
-	/** Column indices whose column is not `focusable: false` (`navigation.js:85-91`). */
-	focusableColumns(): DataTableColIndex[];
-
-	nextFocusable(colIndex: DataTableColIndex, step: number): DataTableColIndex | null;
-
-	/** `(colIndex, rowIndex)` — COLUMN FIRST, matching the library's own ordering. */
-	focus(
-		colIndex: DataTableColIndex,
-		rowIndex: DataTableRowIndex,
-		opts?: { extend?: boolean }
-	): boolean;
-
-	/** `toEdge` is ctrl+arrow; `extend` is shift+arrow (`navigation.js:120-145`). */
-	move(
-		direction: "left" | "right" | "up" | "down",
-		opts?: { extend?: boolean; toEdge?: boolean }
-	): boolean;
-
-	/** `null` when there is no selection. */
-	bounds(): DataTableSelectionBounds | null;
-
-	/** Re-applies `dt-cell--focus` / `dt-cell--highlight` after every engine render. */
-	render(): void;
-
-	scrollIntoView(rowIndex: DataTableRowIndex): void;
-
-	/**
-	 * Copies the selection to the clipboard as TSV and returns the CELL COUNT
-	 * (not the text) — `navigation.js:200-218`.
-	 */
-	copy(): number;
-
-	/** Opens the editor on the focused cell (`navigation.js:343-349`). */
-	activateFocused(): void;
-
-	bind(container: HTMLElement): void;
-
-	onKeyDown(e: KeyboardEvent): void;
-
-	endDrag(): void;
-}
-
-/**
- * `datatable.editing` — carbon_frappe ONLY
- * (`tables/datatable/editing.js:25-191`).
- *
- * Implements the same `getEditor` protocol stock implements inside
- * `CellManager`; `cellmanager.$editingCell` on a CarbonDataTable is a getter
- * onto this object's field (`tables/datatable/managers.js:379-381`).
- */
-export declare class CellEditing {
-	constructor(host: DataTableInstance);
-
-	/** The `.dt-cell` with an open editor, or `null`. */
-	$editingCell: HTMLElement | null;
-
-	editor: DataTableEditor | null;
-
-	/** The `.dt-cell__edit` mount point created on demand (`editing.js:36-45`). */
-	editParent: HTMLElement | null;
-
-	/** The value the editor opened with; restored if `setValue` rejects. */
-	oldValue: DataTableCellValue;
-
-	context: {
-		colIndex: DataTableColIndex;
-		rowIndex: DataTableRowIndex;
-		column: DataTableColumn;
-		cell: DataTableCell;
-	} | null;
-
-	/** The cell carrying `dt-cell--focus` (`editing.js:145-151`). */
-	focused?: HTMLElement | null;
-
-	ensureEditParent(td: HTMLElement, colIndex: DataTableColIndex): HTMLElement;
-
-	/** `false` when the column or the cell refuses editing (`editing.js:57-59`). */
-	activate(td: HTMLElement | null): boolean;
-
-	defaultEditor(parent: HTMLElement): DataTableEditor;
-
-	/** `commit` defaults to `true`; `false` abandons the edit (`editing.js:107-118`). */
-	deactivate(commit?: boolean): boolean;
-
-	submit(): void;
-
-	focus(td: HTMLElement | null): void;
-
-	unfocus(): void;
-
-	bind(container: HTMLElement): void;
-}
-
-/**
- * The DOM handles carbon_frappe's renderer publishes
- * (`tables/engine/render.js:44-75`). `scroll` is the element `datatable.bodyScrollable`
- * points at (`tables/datatable/datatable.js:433`).
- */
-export interface DataTableEngineRenderer {
-	/**
-	 * The element the renderer mounted into — `undefined` until {@link
-	 * DataTableEngine.render | mount} has run. The renderer is constructed with
-	 * only its host and learns the element later
-	 * (`tables/engine/render.ts:307-308`, assigned in `mount` at
-	 * `tables/engine/render.ts:397-401`), so the field genuinely holds
-	 * `undefined` for the span between `new TableRenderer(this)` and
-	 * `renderer.mount(container)` inside the engine's constructor
-	 * (`tables/engine/table.ts:591`, `:598`). Reached through a live
-	 * `datatable.engine` it is always set; narrow anyway, or read
-	 * {@link DataTableEngine.container}, which is not optional.
-	 */
-	container: HTMLElement | undefined;
-	toolbar: HTMLElement;
-	scroll: HTMLElement;
-	table: HTMLTableElement;
-	colgroup: HTMLTableColElement;
-	thead: HTMLTableSectionElement;
-	tbody: HTMLTableSectionElement;
-	tfoot: HTMLTableSectionElement;
-	footer: HTMLElement;
-	getRowNode(rowId: string): HTMLElement | null;
-	getCellNode(rowId: string, colId: string): HTMLElement | null;
-	getHeaderNode(colId: string): HTMLElement | null;
-}
-
-/**
- * The TanStack Table v9 instance behind carbon_frappe's engine.
- *
- * Deliberately NOT modelled here: TanStack ships its own generic types, and
- * restating them would be a maintenance trap. Only the methods carbon_frappe
- * reaches for are named, with TanStack-owned values left `unknown` so a consumer
- * must narrow or import the real types.
- */
-export interface DataTableEngineTable {
-	getRowModel(): { rows: unknown[] };
-	getVisibleLeafColumns(): Array<{ id: string }>;
-	getColumn(id: string): unknown;
-	getRow(id: string): unknown;
-	/**
-	 * TanStack v9 stores only the SELECTED ids — the state map is
-	 * `Record<string, true>`, never a `false` entry
-	 * (`@tanstack/table-core/dist/features/row-selection/rowSelectionFeature.types.d.ts:6`)
-	 * — and every TanStack setter takes a value OR an updater function
-	 * (`Updater<T> = T | ((old: T) => T)`, `dist/types/type-utils.d.ts:2`).
-	 * Restated inline rather than imported, for the reason given above.
-	 */
-	setRowSelection(
-		selection: Record<string, true> | ((old: Record<string, true>) => Record<string, true>)
-	): void;
-	setSorting(sorting: Array<{ id: string; desc: boolean }>): void;
-	setColumnFilters(filters: Array<{ id: string; value: unknown }>): void;
-	setColumnSizing(updater: (prev: Record<string, number>) => Record<string, number>): void;
-	setExpanded(expanded: Record<string, boolean> | true): void;
-	toggleAllRowsExpanded(expanded?: boolean): void;
-	resetColumnFilters(): void;
-	/**
-	 * TanStack's own options setter. The parameter stays `unknown`: it is either
-	 * a whole `TableOptions` object or an updater over one
-	 * (`Updater<TableOptions<TFeatures, TData>>`,
-	 * `@tanstack/table-core/dist/core/table/coreTablesFeature.types.d.ts:214`),
-	 * and `TableOptions` is the twenty-feature generic this interface refuses to
-	 * restate (see the note above). Anything narrower here is also WRONG — it
-	 * would not admit the real method, and `window.DataTable = CarbonDataTable`
-	 * (`tables/datatable/install.ts:28`) compares this surface structurally. A
-	 * caller building an argument from scratch must import TanStack's types.
-	 */
-	setOptions(newOptions: unknown): void;
-	store: { state: DataTableEngineState; subscribe(fn: () => void): unknown };
-}
-
-/** TanStack state slices carbon_frappe reads (`tables/engine/table.js:238-241`). */
-export interface DataTableEngineState {
-	sorting?: Array<{ id: string; desc: boolean }>;
-	columnFilters?: Array<{ id: string; value: unknown }>;
-	expanded?: Record<string, boolean> | true;
-	rowSelection?: Record<string, boolean>;
-	columnSizing?: Record<string, number>;
-}
-
-/**
- * `datatable.engine` — carbon_frappe ONLY. The `CarbonTable` that actually
- * renders (`tables/engine/table.js:73-641`); stock frappe-datatable has no
- * equivalent, which is why `!!dt.engine` is carbon_frappe's own "am I installed"
- * probe.
- *
- * Declared as the surface reached through a `DataTable`. carbon_frappe's own
- * `CarbonTable` class type is authoritative inside that app.
- */
-export interface DataTableEngine {
-	renderer: DataTableEngineRenderer;
-	table: DataTableEngineTable;
-	readonly state: DataTableEngineState;
-	options: Record<string, unknown> & { rowHeight?: number; showTotalRow?: boolean };
-	/** `cf-table-instance-{n}` (`table.js:82`). */
-	scopeClass: string;
-	container: HTMLElement;
-	readonly wrapper: HTMLElement;
-	/** The Carbon size band the requested `rowHeight` snaps to (`table.js:243-246`). */
-	readonly rowSize: "xs" | "sm" | "md" | "lg" | "xl";
-	readonly rowHeightPx: number;
-
-	render(): void;
-	/** Coalesced render, with a `.cancel()` (`table.js:93`, `:342`). */
-	scheduleRender(): void;
-	/**
-	 * The engine's data is the PREPARED rows, not `options.data` — carbon_frappe
-	 * hands it `this.rows` (`tables/datatable/datatable.ts:217`). Nullable
-	 * because `CarbonTable.setData` accepts `null`/`undefined` as "leave it
-	 * alone" (`tables/engine/table.ts:780`).
-	 */
-	setData(data: readonly DataTableRow[] | null | undefined): this;
-
-	/**
-	 * Takes the engine's own column SPECS (`CarbonColumnSpec`,
-	 * `tables/engine/table.ts:787`), which are carbon_frappe's, not
-	 * frappe-datatable's {@link DataTableColumn} — left `readonly unknown[]`
-	 * here for the same reason the TanStack surface is: restating a type this
-	 * package does not own is the maintenance trap {@link DataTableEngineTable}
-	 * names.
-	 */
-	setColumns(columns: readonly unknown[] | null | undefined): this;
-	setColumnSize(columnId: string, px: number): this;
-	getColumnSize(columnId: string): number | null;
-	toggleFilters(show?: boolean): boolean;
-	getRenderRows(): { rows: unknown[]; paddingTop: number; paddingBottom: number };
-	getRowNode(rowId: string): HTMLElement | null;
-	getCellNode(rowId: string, colId: string): HTMLElement | null;
-	getHeaderNode(colId: string): HTMLElement | null;
-	scrollToRowIndex(index: number, opts?: { align?: "start" | "center" | "end" | "auto" }): void;
-	on(name: string, handler: (...args: unknown[]) => void): void;
-	off(name: string, handler: (...args: unknown[]) => void): void;
-	destroy(): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -2220,50 +1930,16 @@ export declare class DataTable {
 /**
  * What you actually hold when you construct through the global.
  *
- * `DataTable` above is the stock class; this adds the members carbon_frappe's
- * drop-in replacement publishes. They are optional because on a stock bench they
- * are genuinely absent — `!!dt.engine` is the documented way to tell the two
- * apart (`carbon_frappe/scripts/tables/report.mjs:25`).
+ * The stock {@link DataTable}. An app that installs a drop-in replacement as
+ * `window.DataTable` declares the members it adds by augmenting this interface:
+ *
+ * ```ts
+ * declare module "frappe-types" {
+ *   interface DataTableInstance { engine?: MyEngine }
+ * }
+ * ```
  */
-export interface DataTableInstance extends DataTable {
-	/**
-	 * carbon_frappe only — the rendering engine
-	 * (`tables/datatable/datatable.js:277`).
-	 */
-	engine?: DataTableEngine;
-
-	/** carbon_frappe only (`tables/datatable/datatable.js:105`). */
-	navigation?: CellNavigation;
-
-	/** carbon_frappe only (`tables/datatable/datatable.js:104`). */
-	editing?: CellEditing;
-
-	/**
-	 * carbon_frappe only — how many auto-injected `_checkbox` / `_rowIndex`
-	 * columns precede the real ones (`tables/datatable/datatable.js:159`).
-	 * On stock, ask `datamanager.getStandardColumnCount()` instead.
-	 */
-	standardColumnCount?: number;
-
-	/**
-	 * carbon_frappe only — the prepared columns, hoisted onto the host
-	 * (`tables/datatable/datatable.js:171`). On stock these live only on
-	 * `datamanager.columns`.
-	 */
-	columns?: DataTableColumn[];
-
-	/** carbon_frappe only — the prepared rows (`tables/datatable/datatable.js:217`). */
-	rows?: DataTableRow[];
-
-	/** carbon_frappe only — the original data array (`tables/datatable/datatable.js:216`). */
-	data?: DataTableData;
-
-	/** carbon_frappe only — mirrors `style.scopeClass` on the host (`tables/datatable/datatable.js:87`). */
-	scopeClass?: string;
-
-	/** carbon_frappe only — the wrapper again, under the engine's name (`tables/datatable/datatable.js:90`). */
-	container?: HTMLElement;
-}
+export interface DataTableInstance extends DataTable {}
 
 /**
  * The constructor VALUE — what `window.DataTable` and `frappe.DataTable` hold.
@@ -2478,116 +2154,6 @@ export interface DataTableDataset extends DOMStringMap {
 	index?: string;
 }
 
-/**
- * The Carbon-side markup carbon_frappe's engine emits ALONGSIDE the `dt-*`
- * contract (`tables/engine/classes.js:19-60`, `tables/engine/render.js`).
- *
- * Dual emission is the whole compatibility strategy: a report written against
- * frappe-datatable keeps matching `.dt-*`, while Carbon's own stylesheet matches
- * `.cds--*` on the same nodes. Neither vocabulary is optional.
- *
- * @remarks `cds--data-table--sticky-header` is deliberately NOT emitted —
- * Carbon's own sticky-header implementation discards `<colgroup>`, so sticky is
- * done with `position: sticky` on the `<th>`s instead
- * (`tables/engine/classes.js:37-38`).
- */
-export type CarbonDataTableDomClass =
-	| "cds--data-table"
-	| "cds--data-table-container"
-	| "cds--data-table-content"
-	| `cds--data-table--${"xs" | "sm" | "md" | "lg" | "xl"}`
-	| "cds--data-table--sort"
-	| "cds--data-table--selected"
-	| "cds--table-sort"
-	| "cds--table-sort--active"
-	| "cds--table-sort--descending"
-	| "cds--table-sort__flex"
-	| "cds--table-sort__icon"
-	| "cds--table-sort__icon-unsorted"
-	| "cds--table-sort__header"
-	| "cds--table-header-label"
-	| "cds--table-toolbar"
-	| "cds--toolbar-content"
-	| "cds--toolbar-action"
-	| "cds--action-list"
-	| "cds--batch-actions"
-	| "cds--batch-actions--active"
-	| "cds--batch-summary"
-	| "cds--batch-summary__para"
-	| "cds--parent-row"
-	| "cds--child-row"
-	| "cds--child-row-inner-container"
-	| "cds--expandable-row"
-	| "cds--expandable-row--hover"
-	| "cds--table-expand"
-	| "cds--table-expand__button"
-	| "cds--table-expand__svg"
-	| "cds--table-column-menu"
-	| "cds--overflow-menu--data-table"
-	| "cds--toolbar-search-container-expandable"
-	| "cds--toolbar-search-container-active"
-	| "cds--pagination"
-	| "cds--skeleton";
-
-/**
- * carbon_frappe's own engine markup (`tables/engine/render.js`,
- * `tables/engine/classes.js`). Structural, not compatibility: these are the
- * hooks carbon_frappe's SCSS and its own browser suites target.
- */
-export type CarbonEngineDomClass =
-	| "cf-table"
-	| "cf-table--selecting"
-	| "cf-table__table"
-	| "cf-table__scroll"
-	| "cf-table__scroll--empty"
-	| "cf-table__head"
-	| "cf-table__head--sticky"
-	| "cf-table__body"
-	| "cf-table__foot"
-	| "cf-table__header-row"
-	| "cf-table__filter-row"
-	| "cf-table__filter-input"
-	| "cf-table__row"
-	| "cf-table__row--expanded"
-	| "cf-table__total-row"
-	| "cf-table__child-cell"
-	| "cf-table__cell"
-	| "cf-table__cell-content"
-	| "cf-table__cell--header"
-	| "cf-table__cell--filter"
-	| "cf-table__cell--total"
-	| "cf-table__cell--grid"
-	| "cf-table__cell--center"
-	| "cf-table__cell--right"
-	| "cf-table__cell--pinned"
-	| "cf-table__cell--pinned-start"
-	| "cf-table__cell--pinned-end"
-	| "cf-table__cell--pinned-first"
-	| "cf-table__cell--pinned-last"
-	| "cf-table__resize-handle"
-	| "cf-table__sort-icon"
-	| "cf-table__spacer"
-	| "cf-table__empty"
-	| "cf-table__meta"
-	| "cf-table__toolbar"
-	| "cf-table__footer"
-	| `cf-table-instance-${number}`;
-
-/**
- * `data-*` attributes carbon_frappe's engine writes (`tables/engine/render.js:231`,
- * `:294`, `:410`, `:450`, `:518`). Read back as `th.dataset.colId` /
- * `tr.dataset.rowId` — the keyed-render identity test.
- *
- * `dataset` already types every key as `string | undefined`; this interface
- * exists to NAME the two keys that are contractual.
- */
-export interface CarbonEngineDataset extends DOMStringMap {
-	/** `data-col-id` — the engine column id, `c{colIndex}:{column.id}` (`tables/datatable/datatable.js:268`). */
-	colId?: string;
-	/** `data-row-id` — `String(row.meta.rowIndex)` (`tables/datatable/datatable.js:272`). */
-	rowId?: string;
-}
-
 /*
  * RESTORED - `DocumentThemeDataset` was present in the verified fragment
  * `frappe-datatable.d.ts` and lost during assembly (see the completeness
@@ -2612,14 +2178,3 @@ export interface DocumentThemeDataset extends DOMStringMap {
 	theme?: string;
 }
 
-/**
- * Ad-hoc expando written onto a live `<td>` to prove the keyed renderer REUSES
- * row and cell nodes across a re-render
- * (`carbon_frappe/scripts/tables/engine.mjs:173-177`).
- *
- * Declared so the identity check does not need an escape hatch. Merge into the
- * global `HTMLElement` when assembling; it is a test affordance, not API.
- */
-export interface HTMLElementNodeIdentityExpando {
-	__probe?: string;
-}

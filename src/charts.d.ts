@@ -1043,14 +1043,6 @@ export interface FrappeChartConstructor {
 	new (parent: string | HTMLElement, options: FrappeChartOptions): FrappeBaseChart;
 	/** Present so prototype patches (`frappe.Chart.prototype.draw = …`) type-check. */
 	readonly prototype: FrappeBaseChart;
-	/**
-	 * NOT part of frappe. An idempotency marker set by carbon_frappe's chart
-	 * shim (`carbon_frappe/public/js/carbon_charts.bundle.ts:192, 206`) so a second
-	 * `patch()` is a no-op. Declared here because `frappe.Chart` is a plain writable property
-	 * and a strict consumer has no other way to read or write it; other patchers
-	 * should merge their own marker into this interface rather than reuse it.
-	 */
-	__carbon_frappe?: boolean;
 }
 
 /**
@@ -1087,63 +1079,6 @@ export declare class FrappeRealtimeChart extends FrappeBaseChart {
 	/** Drops the oldest point once `currentSize` reaches `maxLabelPoints` (`frappe/public/js/frappe/ui/chart.js:30-37`). */
 	update_chart(label: string, data: number[]): void;
 }
-
-/* -------------------------------------------------------------------------- */
-/* carbon_frappe-side contracts                                                */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Shape of `carbon_frappe/public/js/generated/chart-palettes.ts`.
- *
- * That module is emitted by `carbon_frappe/scripts/generate-chart-palettes.ts:126-136`
- * and committed with a DO-NOT-EDIT banner. It is a `.ts`, not a `.js`, precisely so
- * that it needs no hand-written sibling declaration file that could drift from it
- * (`generate-chart-palettes.ts:10-17`): the generator writes the annotations
- * itself, and this interface is the same contract spelled as a type for anything
- * that wants to name it:
- *
- * ```ts
- * export const light: string[];
- * export const dark: string[];
- * export const heatmap: string[];
- * ```
- *
- * `light` and `dark` are @carbon/charts' 14-series categorical palettes for the
- * white and dark themes (14 hex strings each, in source order);  `heatmap` is a
- * 5-step sequential blue ramp (Carbon `blue` steps 10, 30, 50, 60, 80 —
- * `generate-chart-palettes.ts:103`). Typed as `string[]` rather than a 14-tuple
- * on purpose: the length is whatever the upstream `'14': ('1': …)` SCSS block
- * contains at codegen time. The same script also emits the SCSS twin of
- * `light` / `dark` as `carbon_frappe/public/scss/generated/_chart-palettes.scss`
- * (`$chart-colors-light`, `$chart-colors-dark`; `generate-chart-palettes.ts:117-124`).
- */
-export interface ChartPalettesModule {
-	light: string[];
-	dark: string[];
-	heatmap: string[];
-}
-
-/**
- * Build-time TEXT contract, not a JS symbol — the INPUT of carbon_frappe's chart
- * codegen, an npm path inside `@carbon/charts` (read from the app's own
- * `node_modules`), not one of the generated files in carbon_frappe.
- *
- * `carbon_frappe/scripts/generate-chart-palettes.ts:47-54` reads this file as a
- * string and scrapes it with `/'14':\s*\(\s*'1':\s*\(([\s\S]*?)\n\t\t\)/g`,
- * requiring at least two matches (white theme first, then dark;
- * `generate-chart-palettes.ts:59-63`). Each block's entries are then resolved
- * with `/getColorValue\((\w+),\s*(\d+)\)|(#[0-9a-fA-F]{3,8})/g` against
- * `@carbon/colors`, trying `colors[name]` then `colors[nameHover]`
- * (`generate-chart-palettes.ts:65-90`).
- *
- * The codegen therefore depends on three upstream details staying put: TAB
- * indentation of the SCSS map, the `'14'` / `'1'` key nesting, and the SCSS
- * function name `getColorValue(name, step)`. It `process.exit(1)`s on any of
- * them changing. All three hold in `@carbon/charts@1.27.21`, the version
- * carbon_frappe pins (`'14': (` at `scss/_color-palette.scss:108` and `:230`, the
- * map closing with `\n\t\t)`).
- */
-export type CarbonChartsColorPaletteScssPath = "@carbon/charts/scss/_color-palette.scss";
 
 /**
  * The CSS custom properties owned by the vendored frappe-charts stylesheet

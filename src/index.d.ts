@@ -153,10 +153,6 @@ export {
 } from "./core";
 
 export type {
-	CarbonFrappeBrand,
-	CarbonFrappeBranded,
-	CarbonTableDemoGlobal,
-	CarbonTableDemoSurface,
 	FrappeAjaxResult,
 	FrappeAnyFunction,
 	FrappeArrayPolyfills,
@@ -223,8 +219,6 @@ export type {
 	FrappeUserInfo,
 	FrappeUserPermissionValue,
 	FrappeXcallResult,
-	PatchRegistryEntry,
-	SafePatch,
 } from "./core";
 
 // ---------------------------------------------------------------------------
@@ -388,25 +382,6 @@ export {
 
 export type {
 	AnimationFrameHandle,
-	CarbonAttrSetter,
-	CarbonCellContext,
-	CarbonColumnContext,
-	CarbonDatasetKeys,
-	CarbonFilterCellEntry,
-	CarbonHeaderCellContext,
-	CarbonProfileContext,
-	CarbonProfileHook,
-	CarbonRowContext,
-	CarbonRowEntry,
-	CarbonRowSize,
-	CarbonRowSizes,
-	CarbonTableAdapterSeams,
-	CarbonTableClassKey,
-	CarbonTableClassMap,
-	CarbonTableClassProfile,
-	CarbonTableClassProfileHook,
-	CarbonTableDataAttribute,
-	CarbonTableElementExpandos,
 	DataTablePluralTranslation,
 	DataTableTranslationTable,
 	DataTableTranslations,
@@ -467,7 +442,6 @@ export type {
 	PageIconSpec,
 	PageOptions,
 	PageShortcut,
-	RafScheduler,
 	TimerHandle,
 } from "./utils";
 
@@ -565,9 +539,7 @@ export type {
 /** Classes and functions (runtime values as well as types). */
 export {
 	BodyRenderer,
-	CellEditing,
 	CellManager,
-	CellNavigation,
 	ColumnManager,
 	DataManager,
 	DataTable,
@@ -577,9 +549,6 @@ export {
 } from "./datatable";
 
 export type {
-	CarbonDataTableDomClass,
-	CarbonEngineDataset,
-	CarbonEngineDomClass,
 	DataTableAfterRender,
 	DataTableAlign,
 	DataTableAppliedFilters,
@@ -607,14 +576,9 @@ export type {
 	DataTableDomClass,
 	DataTableEditCellClass,
 	DataTableEditor,
-	DataTableEngine,
-	DataTableEngineRenderer,
-	DataTableEngineState,
-	DataTableEngineTable,
 	DataTableEvents,
 	DataTableFilterResult,
 	DataTableFilterRows,
-	DataTableFocusedCell,
 	DataTableGetDatatableOptions,
 	DataTableGetEditor,
 	DataTableGlobals,
@@ -633,14 +597,12 @@ export type {
 	DataTableRowIndexKey,
 	DataTableRowMeta,
 	DataTableRowRenderProps,
-	DataTableSelectionBounds,
 	DataTableSortOrder,
 	DataTableStaticClass,
 	DataTableStyleObject,
 	DataTableTotalCell,
 	DocumentThemeDataset,
 	FrappeDataTableNamespace,
-	HTMLElementNodeIdentityExpando,
 } from "./datatable";
 
 // ---------------------------------------------------------------------------
@@ -660,8 +622,6 @@ export {
 } from "./charts";
 
 export type {
-	CarbonChartsColorPaletteScssPath,
-	ChartPalettesModule,
 	FrappeAxisChartData,
 	FrappeAxisDataset,
 	FrappeChartAxisOptions,
@@ -714,8 +674,6 @@ export type {
 	DevServerFlag,
 	ErpNextGlobal,
 	FrappeCustomJQueryEvent,
-	HarnessProbe,
-	HarnessWindowGlobals,
 	JQueryDatepickerPlugin,
 	JQueryFrappeOverloads,
 	JQueryFrappePlugins,
