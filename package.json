@@ -1,6 +1,6 @@
 {
   "name": "frappe-types",
-  "version": "16.7.0",
+  "version": "16.7.1",
   "description": "TypeScript types for the Frappe Framework desk JS API (window.frappe), with an offline generator of a global DocType registry for desk scripts. Not the frappe_types bench app.",
   "keywords": [
     "frappe",
