@@ -970,53 +970,6 @@ export interface JQueryValPatchNote {
 // =============================================================================
 
 /**
- * Test-harness scratch globals.
- *
- * carbon_frappe's Chrome-DevTools harness passes function *bodies as strings*
- * to `Runtime.evaluate`, so these are invisible to tsc today; they are declared
- * for the planned move to typed function serialisation
- * (carbon_frappe/tsconfig.scripts.json's rationale block says as much).
- *
- * - `__before` — carbon_frappe/scripts/tables/grid.mjs:20, read back at :28.
- * - `__formRow` — grid.mjs:216. Write-only in the current harness; nothing ever
- *   reads it back, so the declared type only has to accept a `GridRow`
- *   subclass instance.
- * - `__freezeBefore` — grid.mjs:217, compared against `frappe.dom.freeze_count`
- *   at grid.mjs:240 and :303.
- * - `__probe` — carbon_frappe/scripts/tables/query-report.mjs:36, mutated from
- *   inside report-settings hooks (:40, :44, :50, :58, :64) and read at :96 and
- *   :124. `hasRowmanager` / `hasDatamanager` are added late (:65-66), hence
- *   optional.
- */
-export interface HarnessWindowGlobals {
-	__before?: number;
-	__formRow?: GridRow;
-	__freezeBefore?: number;
-	__probe?: HarnessProbe;
-}
-
-/** The counter bag written at carbon_frappe/scripts/tables/query-report.mjs:36. */
-export interface HarnessProbe {
-	formatter: number;
-	getOpts: number;
-	afterRender: number;
-	editor: number;
-	/**
-	 * Whatever the last `editor.setValue(value, rowIndex, column)` received.
-	 *
-	 * The inventory guessed `string | null`, but the value originates from a
-	 * user-supplied `editor.getValue()` promise
-	 * (carbon_frappe/public/js/tables/datatable/editing.js:127-135) and the
-	 * built-in editor is the only one that guarantees a string
-	 * (editing.js:97-99). A custom `getEditor` can return anything, so
-	 * `unknown` is the honest type; the harness only JSON-stringifies it.
-	 */
-	setValueSeen: unknown;
-	hasRowmanager?: boolean;
-	hasDatamanager?: boolean;
-}
-
-/**
  * The helper functions frappe puts on `window`, so a desk script calls them
  * bare: `format_currency(amount, currency)`, `open_url_post(url, args)`.
  *
@@ -1346,7 +1299,7 @@ export interface DeskHelperGlobals {
  * (`if (!panel.classList.contains("hidden") && window.jQuery)`), even though on
  * a real desk page frappe/public/js/jquery-bootstrap.js:15-16 always sets both.
  */
-export interface DeskWindow extends DeskTemplateGlobals, HarnessWindowGlobals, Partial<DeskHelperGlobals> {
+export interface DeskWindow extends DeskTemplateGlobals, Partial<DeskHelperGlobals> {
 	/** jquery-bootstrap.js:16 — `window.$ = jQuery;` */
 	$?: JQueryStatic;
 	/** jquery-bootstrap.js:15 — `window.jQuery = jQuery;` */
