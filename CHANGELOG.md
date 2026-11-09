@@ -1,5 +1,18 @@
 # Changelog
 
+## [16.7.0](https://github.com/Avunu/frappe-types/compare/v16.6.0...v16.7.0) (2026-11-09)
+
+
+### Features
+
+* ship lint globals generated from the ambient declarations ([#48](https://github.com/Avunu/frappe-types/issues/48)) ([34ff711](https://github.com/Avunu/frappe-types/commit/34ff711dae624bef11088a618d891bf75f1ed395))
+* type the File document upload_file returns and FileUploader on_success gets ([#47](https://github.com/Avunu/frappe-types/issues/47)) ([1bde628](https://github.com/Avunu/frappe-types/commit/1bde62847597cabd050d1e00e613f0a289caa018))
+
+
+### Bug Fixes
+
+* drop carbon_theme's own declarations, which describe no frappe source ([#49](https://github.com/Avunu/frappe-types/issues/49)) ([adbeaa5](https://github.com/Avunu/frappe-types/commit/adbeaa5ce8d4940946b5a0a7662d6af5889c38bf))
+
 ## [16.6.0](https://github.com/Avunu/frappe-types/compare/v16.5.0...v16.6.0) (2026-11-08)
 
 
