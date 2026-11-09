@@ -171,11 +171,15 @@ if (Uploader) {
 		on_success(file_doc, response) {
 			/** @type {import("frappe-types").FrappeDoc | null} */
 			const doc = file_doc;
+			/** @type {string | undefined} */
+			const url = file_doc?.file_url;
+			// @ts-expect-error is_private is a Check, 0 or 1
+			/** @type {boolean | undefined} */ const flag = file_doc?.is_private;
 			/** @type {import("frappe-types").FrappeResponse | string} */
 			const body = response;
 			// @ts-expect-error without as_dataurl nothing has a dataurl
 			void file_doc?.dataurl.length;
-			void doc, body;
+			void doc, body, url, flag;
 		},
 	});
 	// With as_dataurl: true and nothing else to upload from, it gets the file

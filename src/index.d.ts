@@ -111,6 +111,7 @@ export type {
 	FrappeDoc,
 	FrappeDocBase,
 	FrappeDocFields,
+	FrappeFileDoc,
 	FrappeMetaNamespace,
 	FrappeModelMetaGlobals,
 	FrappeModelNamespace,

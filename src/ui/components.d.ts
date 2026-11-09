@@ -40,7 +40,7 @@
  * `FrappeUiNamespace` (see the note on that interface in `src/index.d.ts`).
  */
 
-import type { FrappeDoc } from "../model";
+import type { FrappeFileDoc } from "../model";
 import type { FrappeResponse } from "../core";
 import type { Dialog, Form } from "./form";
 
@@ -461,7 +461,7 @@ export interface FrappeFileUploaderRestrictions {
  * as JSON, or its raw text when it does not parse
  * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:624-632`). From
  * frappe's `upload_file` (or the `method` given) it is the
- * {@link FrappeResponse} envelope, the File document in `message`.
+ * {@link FrappeResponse} envelope, the {@link FrappeFileDoc} in `message`.
  */
 export type FrappeFileUploaderResponse = FrappeResponse | string;
 
@@ -497,7 +497,7 @@ export interface FrappeFileUploaderOptions {
 	 * `as_dataurl`, a file picked is not uploaded: it gets the file entry
 	 * alone, its `dataurl` set (`frappe/public/js/frappe/file_uploader/FileUploader.vue:576-584`).
 	 */
-	on_success?(file: FrappeDoc | FrappeFileUploaderDataUrlFile | null, response?: FrappeFileUploaderResponse): unknown;
+	on_success?(file: FrappeFileDoc | FrappeFileUploaderDataUrlFile | null, response?: FrappeFileUploaderResponse): unknown;
 	/** Attach the upload to this document — `frappe/public/js/frappe/file_uploader/FileUploader.vue:722-724`. */
 	doctype?: string | null;
 	docname?: string | null;
@@ -543,7 +543,7 @@ export interface FrappeFileUploaderOptions {
  */
 export interface FrappeFileUploaderUploadOptions extends Omit<FrappeFileUploaderOptions, "as_dataurl" | "on_success"> {
 	as_dataurl?: false;
-	on_success?(file_doc: FrappeDoc | null, response: FrappeFileUploaderResponse): unknown;
+	on_success?(file_doc: FrappeFileDoc | null, response: FrappeFileUploaderResponse): unknown;
 }
 
 /**
@@ -583,7 +583,7 @@ export interface FrappeFileUploaderFile {
 	optimize: boolean;
 	name: string;
 	/** The File document once uploaded — `frappe/public/js/frappe/file_uploader/FileUploader.vue:635`. */
-	doc: FrappeDoc | null;
+	doc: FrappeFileDoc | null;
 	/** Bytes sent so far — `frappe/public/js/frappe/file_uploader/FileUploader.vue:603`. */
 	progress: number;
 	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:604. */
