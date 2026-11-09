@@ -1,5 +1,12 @@
 # Changelog
 
+## [16.7.1](https://github.com/Avunu/frappe-types/compare/v16.7.0...v16.7.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* re-verify declarations against frappe v16.55.2 ([#52](https://github.com/Avunu/frappe-types/issues/52)) ([6abb87f](https://github.com/Avunu/frappe-types/commit/6abb87f4105b6c95f9fe4208584303663fc5f83d))
+
 ## [16.7.0](https://github.com/Avunu/frappe-types/compare/v16.6.0...v16.7.0) (2026-11-09)
 
 
