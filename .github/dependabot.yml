@@ -64,9 +64,8 @@ updates:
       day: "monday"
     commit-message:
       prefix: "chore"
+    # Ungrouped: one pull request per flake input, so a frappe bump (which needs the
+    # review above) is never bundled with a routine nixpkgs or tooling bump.
     open-pull-requests-limit: 5
-    groups:
-      flake-inputs:
-        patterns: ["*"]
     cooldown:
       default-days: 3
