@@ -3199,7 +3199,7 @@ export interface DeskThemeAttributes {
  * 2. **`document.querySelector()` returns `Element | null`, and `Element` has
  *    no `.dataset`.** `dataset` lives on `HTMLElement` / `HTMLOrSVGElement`,
  *    so a node read back from the desk must be narrowed with
- *    `instanceof HTMLElement` before `CarbonDatasetKeys` applies — which
+ *    `instanceof HTMLElement` before carbon_theme's dataset keys apply — which
  *    is what `tables/engine/table.js:76-78` and
  *    `tables/datatable/datatable.js:80-83` already do for their containers.
  * 3. **`document.createElement(tag)` with a `string` tag returns the broad
@@ -3207,8 +3207,8 @@ export interface DeskThemeAttributes {
  *    (`tables/engine/dom.js:9-23`) takes a plain `string`, so its callers get
  *    `HTMLElement` and must assert or generic-ise where a
  *    `HTMLTableRowElement` / `HTMLTableCellElement` / `HTMLInputElement` is
- *    needed (see `CarbonTableAdapterSeams`, whose seams are typed with
- *    the specific elements the engine actually requires of them).
+ *    needed (see carbon_theme's table adapter seams, typed with
+ *the specific elements the engine actually requires of them).
  */
 export interface DeskDomGlobals {
 	/** `tables/engine/dom.js:10`, `table.js:75`, `render.js:299`, and passim. */

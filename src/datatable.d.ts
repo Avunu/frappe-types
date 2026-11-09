@@ -702,7 +702,7 @@ export interface DataTableTotalCell extends DataTableColumnTotalCell {
  * goes ONE way, to {@link DataTable}: that is the whole point of
  * {@link DataTableConstructor}, and what `window.DataTable = CarbonDataTable`
  * (`tables/datatable/install.ts:28`) needs. The reverse is impossible — stock
- * has nothing to answer `DataTableEngine` with — and the shims still
+ * has nothing to answer carbon_theme's table engine with — and the shims still
  * diverge inside the shapes declared here, which is why so many members below
  * are unions: `DataManager.getChildren` hands back prepared ROWS where stock
  * hands back row INDICES, `DataManager.updateCell` implements only the
