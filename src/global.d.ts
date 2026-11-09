@@ -69,7 +69,7 @@
  * So: guard with `window.frappe`, then use `frappe`. Both resolve to one
  * {@link Frappe} type.
  *
- * Verified against **frappe v16.54.0**.
+ * Verified against **frappe v16.55.2**.
  *
  * @packageDocumentation
  */

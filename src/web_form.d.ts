@@ -4,7 +4,7 @@
  * `frappe/public/js/frappe/web_form/web_form_list.js` and the page data
  * `frappe/website/doctype/web_form/web_form.py` hands them.
  *
- * Source of truth: frappe v16.54.0 (`git tag v16.54.0`). Citations are
+ * Source of truth: frappe v16.55.2 (`git tag v16.55.2`). Citations are
  * full-path so `npm run audit:drift` can check them.
  *
  * ## Why a file of its own
@@ -112,8 +112,8 @@ export interface WebFormDoc extends WebFormDocFields {
  * as `unknown`.
  *
  * `as_dict(no_nulls=True)` drops a field whose value is `None`
- * (`frappe/model/document.py:2673`), so an unset Data field is ABSENT rather
- * than `null`; a table is always present, as a list (`:2679-2690`).
+ * (`frappe/model/document.py:2698`), so an unset Data field is ABSENT rather
+ * than `null`; a table is always present, as a list (`:2704-2715`).
  */
 export interface WebFormDocFields {
 	/** The Web Form's name. */

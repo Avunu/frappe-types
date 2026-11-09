@@ -42,7 +42,7 @@
  * therefore type-checks `$(…)` even where the page loads no jQuery; the
  * README says so.
  *
- * Verified against **frappe v16.54.0**. Every declaration cites `file.js:line`
+ * Verified against **frappe v16.55.2**. Every declaration cites `file.js:line`
  * (full-path, `frappe/public/js/frappe/…`, wherever this file was re-read for a
  * later release).
  *
@@ -1184,7 +1184,7 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	/**
 	 * frappe/public/js/frappe/ui/group_by/group_by.js:3. Defined by
 	 * `report.bundle.js` (frappe/public/js/report.bundle.js:8), which is in
-	 * frappe's `app_include_js` (frappe/hooks.py:30) and so loads on every desk
+	 * frappe's `app_include_js` (frappe/hooks.py:31) and so loads on every desk
 	 * page, before any app script (frappe/www/desk.py:68,
 	 * frappe/www/desk.html:76-78). See {@link GroupBy}.
 	 */
@@ -1208,7 +1208,7 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	 * frappe/public/js/frappe/views/reports/link_side_panel.js:8-12 — whether a
 	 * Link cell click previews: never on mobile, otherwise the desk setting
 	 * `report_split_view`, on when unset. Defined at desk boot by
-	 * `report.bundle.js` (frappe/hooks.py:30).
+	 * `report.bundle.js` (frappe/hooks.py:31).
 	 */
 	split_view_enabled: () => boolean;
 	/** frappe/public/js/frappe/ui/side_panel.js:399. Lazy, from `side_panel.bundle.js`. See {@link SidePanel}. */

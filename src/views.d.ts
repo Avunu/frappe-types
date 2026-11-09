@@ -1,19 +1,19 @@
 /**
  * `frappe.views` — List view, Report view, Query Report and their shared base.
  *
- * Source of truth: frappe **v16.54.0** (git tag `v16.54.0`, branch `version-16`).
- * Re-verified against v16.54.0: the line counts and every citation below are that
+ * Source of truth: frappe **v16.55.2** (git tag `v16.55.2`, branch `version-16`).
+ * Re-verified against v16.55.2: the line counts and every citation below are that
  * tag's (the stamp above is moved by `scripts/remap-citations.mjs --stamp`).
  * Every declaration below was read out of:
  *
  *   frappe/public/js/frappe/list/base_list.js          (1488 lines)
- *   frappe/public/js/frappe/list/list_view.js          (3394 lines)
+ *   frappe/public/js/frappe/list/list_view.js          (3403 lines)
  *   frappe/public/js/frappe/list/list_view_virtualization.js (422 lines, lazy bundle)
  *   frappe/public/js/frappe/list/list_settings.js      ( 487 lines)
  *   frappe/public/js/frappe/list/list_factory.js       ( 121 lines)
  *   frappe/public/js/frappe/list/list_filter/*.js      (saved layouts, lazy bundle)
  *   frappe/public/js/frappe/views/reports/report_view.js  (1936 lines)
- *   frappe/public/js/frappe/views/reports/query_report.js (2535 lines)
+ *   frappe/public/js/frappe/views/reports/query_report.js (2595 lines)
  *   frappe/public/js/frappe/views/reports/report_utils.js ( 354 lines)
  *   frappe/public/js/frappe/views/container.js         ( 118 lines)
  *   frappe/public/js/frappe/views/factory.js           (  53 lines)
@@ -180,26 +180,26 @@ export interface FrappeListDoc extends FrappeListDocFields {
 export interface FrappeListDocFields {
 	/** Always requested — `frappe/public/js/frappe/list/base_list.js:91` puts `frappe.model.std_fields_list` in every query (`frappe/public/js/frappe/list/list_view.js:278` for ListView). */
 	name: string;
-	/** `frappe/public/js/frappe/list/list_view.js:1901` `doc.docstatus || 0`; `frappe/public/js/frappe/views/reports/report_view.js:822-824`. */
+	/** `frappe/public/js/frappe/list/list_view.js:1905` `doc.docstatus || 0`; `frappe/public/js/frappe/views/reports/report_view.js:822-824`. */
 	docstatus?: 0 | 1 | 2;
-	/** `frappe/public/js/frappe/list/list_view.js:1673` `comment_when(doc.modified, true)`. */
+	/** `frappe/public/js/frappe/list/list_view.js:1677` `comment_when(doc.modified, true)`. */
 	modified?: string;
-	/** JSON-encoded array of user ids. `frappe/public/js/frappe/list/list_view.js:1677`, `frappe/public/js/frappe/list/list_view.js:1124`. */
+	/** JSON-encoded array of user ids. `frappe/public/js/frappe/list/list_view.js:1681`, `frappe/public/js/frappe/list/list_view.js:1124`. */
 	_assign?: string | null;
-	/** JSON-encoded array of user ids. `frappe/public/js/frappe/list/list_view.js:1838` `JSON.parse(doc._liked_by)`. */
+	/** JSON-encoded array of user ids. `frappe/public/js/frappe/list/list_view.js:1842` `JSON.parse(doc._liked_by)`. */
 	_liked_by?: string | null;
-	/** JSON-encoded array of user ids. `frappe/public/js/frappe/list/list_view.js:1833` `JSON.parse(doc._seen)`. */
+	/** JSON-encoded array of user ids. `frappe/public/js/frappe/list/list_view.js:1837` `JSON.parse(doc._seen)`. */
 	_seen?: string | null;
-	/** Comma-joined tag names. `frappe/public/js/frappe/list/list_view.js:1431-1432` → `get_tags_html(doc._user_tags, 2, true)`. */
+	/** Comma-joined tag names. `frappe/public/js/frappe/list/list_view.js:1435-1436` → `get_tags_html(doc._user_tags, 2, true)`. */
 	_user_tags?: string | null;
-	/** `frappe/public/js/frappe/list/list_view.js:1692` `doc._comment_count > 99 ? "99+" : doc._comment_count || 0`. */
+	/** `frappe/public/js/frappe/list/list_view.js:1696` `doc._comment_count > 99 ? "99+" : doc._comment_count || 0`. */
 	_comment_count?: number;
 	/**
 	 * Row ordinal, WRITTEN onto the doc during render.
 	 * `frappe/public/js/frappe/list/list_view.js:1075` `doc._idx = idx++;` (`frappe/public/js/frappe/list/list_view_virtualization.js:399` `doc._idx = i;` in virtual mode) —
-	 * consumed as `data-idx` by `generate_button_html` (`frappe/public/js/frappe/list/list_view.js:1721`) /
-	 * `generate_dropdown_html` (`frappe/public/js/frappe/list/list_view.js:1745`) and read back in `setup_action_handler`
-	 * (`frappe/public/js/frappe/list/list_view.js:2167` `this.data[$button.attr("data-idx")]`).
+	 * consumed as `data-idx` by `generate_button_html` (`frappe/public/js/frappe/list/list_view.js:1725`) /
+	 * `generate_dropdown_html` (`frappe/public/js/frappe/list/list_view.js:1749`) and read back in `setup_action_handler`
+	 * (`frappe/public/js/frappe/list/list_view.js:2171` `this.data[$button.attr("data-idx")]`).
 	 */
 	_idx?: number;
 }
@@ -309,18 +309,18 @@ export interface ListFactoryViewOptions extends BaseListOptions {
  * 2. listview_settings — the per-doctype JS customisation hook
  * ------------------------------------------------------------------ */
 
-/** `frappe/public/js/frappe/list/list_view.js:1716-1734` `this.settings.button.get_label(doc)` etc. */
+/** `frappe/public/js/frappe/list/list_view.js:1720-1738` `this.settings.button.get_label(doc)` etc. */
 export interface ListViewSettingsButton<DT extends string = string> {
-	/** `frappe/public/js/frappe/list/list_view.js:1722` — rendered into `title="…"`. */
+	/** `frappe/public/js/frappe/list/list_view.js:1726` — rendered into `title="…"`. */
 	get_description(doc: ListDocOf<DT>): string;
-	/** `frappe/public/js/frappe/list/list_view.js:1723` — rendered as the button's inner HTML. */
+	/** `frappe/public/js/frappe/list/list_view.js:1727` — rendered as the button's inner HTML. */
 	get_label(doc: ListDocOf<DT>): string;
-	/** `frappe/public/js/frappe/list/list_view.js:1728` — falsy renders `<span></span>` instead of the button. */
+	/** `frappe/public/js/frappe/list/list_view.js:1732` — falsy renders `<span></span>` instead of the button. */
 	show(doc: ListDocOf<DT>): boolean;
 	/**
-	 * `frappe/public/js/frappe/list/list_view.js:2164-2171` — the click handler,
+	 * `frappe/public/js/frappe/list/list_view.js:2168-2175` — the click handler,
 	 * called UNGUARDED with the row's doc (`this.settings.button.action(doc)` at
-	 * :2168), so a button without it throws when clicked. Required, as it was on
+	 * :2172), so a button without it throws when clicked. Required, as it was on
 	 * the `FrappeListViewSettingsButton` that typed `frappe.listview_settings`.
 	 */
 	action(doc: ListDocOf<DT>): void;
@@ -330,24 +330,24 @@ export interface ListViewSettingsButton<DT extends string = string> {
  * One entry of `settings.dropdown_button.buttons`.
  *
  * ASYMMETRY WORTH KNOWING: unlike {@link ListViewSettingsButton}, `get_label`
- * here is a **string property, not a function** — `frappe/public/js/frappe/list/list_view.js:1746`
- * interpolates `${button.get_label}` with no call, and so do `frappe/public/js/frappe/list/list_view.js:1756` /
- * `frappe/public/js/frappe/list/list_view.js:1764` for the parent dropdown's own `get_label`.
+ * here is a **string property, not a function** — `frappe/public/js/frappe/list/list_view.js:1750`
+ * interpolates `${button.get_label}` with no call, and so do `frappe/public/js/frappe/list/list_view.js:1760` /
+ * `frappe/public/js/frappe/list/list_view.js:1768` for the parent dropdown's own `get_label`.
  */
 export interface ListViewSettingsDropdownItem<DT extends string = string> {
-	/** A STRING, despite the `get_` prefix. `frappe/public/js/frappe/list/list_view.js:1746`. */
+	/** A STRING, despite the `get_` prefix. `frappe/public/js/frappe/list/list_view.js:1750`. */
 	get_label: string;
-	/** `frappe/public/js/frappe/list/list_view.js:1742` — omitted means "always show". */
+	/** `frappe/public/js/frappe/list/list_view.js:1746` — omitted means "always show". */
 	show?(doc: ListDocOf<DT>): boolean;
-	/** `frappe/public/js/frappe/list/list_view.js:1743`. */
+	/** `frappe/public/js/frappe/list/list_view.js:1747`. */
 	get_description?(doc: ListDocOf<DT>): string;
-	/** `frappe/public/js/frappe/list/list_view.js:2179-2181` `button.action(doc)`. */
+	/** `frappe/public/js/frappe/list/list_view.js:2183-2185` `button.action(doc)`. */
 	action?(doc: ListDocOf<DT>): void;
 }
 
-/** `frappe/public/js/frappe/list/list_view.js:1736-1770`. */
+/** `frappe/public/js/frappe/list/list_view.js:1740-1774`. */
 export interface ListViewSettingsDropdownButton<DT extends string = string> {
-	/** A STRING. `frappe/public/js/frappe/list/list_view.js:1756`, `frappe/public/js/frappe/list/list_view.js:1764`. */
+	/** A STRING. `frappe/public/js/frappe/list/list_view.js:1760`, `frappe/public/js/frappe/list/list_view.js:1768`. */
 	get_label: string;
 	buttons: ListViewSettingsDropdownItem<DT>[];
 }
@@ -370,23 +370,23 @@ export interface ListViewSettings<DT extends string = string> {
 	add_fields?: (string | DocField)[];
 	/** `frappe/public/js/frappe/list/list_view.js:979` `this.settings.before_render && this.settings.before_render()` — NO arguments. */
 	before_render?(): void;
-	/** `frappe/public/js/frappe/list/list_view.js:1718`, `frappe/public/js/frappe/list/list_view.js:1720-1728`. */
+	/** `frappe/public/js/frappe/list/list_view.js:1722`, `frappe/public/js/frappe/list/list_view.js:1724-1732`. */
 	button?: ListViewSettingsButton<DT>;
-	/** `frappe/public/js/frappe/list/list_view.js:1739`. */
+	/** `frappe/public/js/frappe/list/list_view.js:1743`. */
 	dropdown_button?: ListViewSettingsDropdownButton<DT>;
 	/** `frappe/public/js/frappe/list/list_view.js:138-143` / `frappe/public/js/frappe/list/list_view.js:823-828` — 3-tuples are expanded to 4 with `this.doctype` in front. */
 	filters?: (ListFilterTuple | [fieldname: string, operator: string, value: unknown])[];
 	/**
 	 * Per-fieldname cell renderer, returning HTML.
-	 * `frappe/public/js/frappe/list/list_view.js:1552-1554` `this.settings.formatters[fieldname](value, df, doc)`
-	 * (never for the Subject column) and `frappe/public/js/frappe/list/list_view.js:1876-1878` for the Subject text.
+	 * `frappe/public/js/frappe/list/list_view.js:1556-1558` `this.settings.formatters[fieldname](value, df, doc)`
+	 * (never for the Subject column) and `frappe/public/js/frappe/list/list_view.js:1880-1882` for the Subject text.
 	 * `undefined` is allowed because the Subject text treats any falsy result as
-	 * "use `doc.name`" (`frappe/public/js/frappe/list/list_view.js:1881-1883`); in
-	 * any other column it is interpolated as-is (`frappe/public/js/frappe/list/list_view.js:1574`) and
+	 * "use `doc.name`" (`frappe/public/js/frappe/list/list_view.js:1885-1887`); in
+	 * any other column it is interpolated as-is (`frappe/public/js/frappe/list/list_view.js:1578`) and
 	 * renders as the text `undefined`.
 	 */
 	formatters?: Record<string, (value: unknown, df: DocField, doc: ListDocOf<DT>) => string | undefined>;
-	/** `frappe/public/js/frappe/list/list_view.js:1823-1825` — overrides the row's link href. */
+	/** `frappe/public/js/frappe/list/list_view.js:1827-1829` — overrides the row's link href. */
 	get_form_link?(doc: ListDocOf<DT>): string;
 	/**
 	 * `frappe/public/js/frappe/model/indicator.js:8` (existence check in `frappe.has_indicator`) and
@@ -405,7 +405,7 @@ export interface ListViewSettings<DT extends string = string> {
 	 * datatable columns instead.
 	 */
 	onload?(view: ListView | ReportView): void;
-	/** `frappe/public/js/frappe/list/list_view.js:352-353`, `frappe/public/js/frappe/list/list_view.js:2288-2289` — replaces "Add {doctype}". Takes NO arguments. */
+	/** `frappe/public/js/frappe/list/list_view.js:352-353`, `frappe/public/js/frappe/list/list_view.js:2292-2293` — replaces "Add {doctype}". Takes NO arguments. */
 	primary_action?(): void;
 	/**
 	 * `frappe/public/js/frappe/list/base_list.js:556-558` `this.settings.refresh(this)` — fired after every refresh.
@@ -467,17 +467,17 @@ export interface ListViewDBSettings {
 	disable_count?: 0 | 1;
 	/** A doctype field (`frappe/desk/doctype/list_view_settings/list_view_settings.py:25`); no desk JS reads it at v16.50.0. */
 	disable_sidebar_stats?: 0 | 1;
-	/** `frappe/public/js/frappe/list/list_view.js:2304`, `frappe/public/js/frappe/views/reports/report_view.js:79`. */
+	/** `frappe/public/js/frappe/list/list_view.js:2308`, `frappe/public/js/frappe/views/reports/report_view.js:79`. */
 	disable_auto_refresh?: 0 | 1;
-	/** `frappe/public/js/frappe/list/list_view.js:785`, `frappe/public/js/frappe/list/list_view.js:1689`. */
+	/** `frappe/public/js/frappe/list/list_view.js:785`, `frappe/public/js/frappe/list/list_view.js:1693`. */
 	disable_comment_count?: 0 | 1;
-	/** `frappe/public/js/frappe/list/list_view.js:2803` — bulk edit on a workflow doctype. */
+	/** `frappe/public/js/frappe/list/list_view.js:2807` — bulk edit on a workflow doctype. */
 	allow_edit?: 0 | 1;
 	/** `frappe/public/js/frappe/list/list_view.js:150`. */
 	disable_automatic_recency_filters?: 0 | 1;
-	/** `frappe/public/js/frappe/list/list_view.js:1585`, `frappe/public/js/frappe/list/list_view.js:1616`. */
+	/** `frappe/public/js/frappe/list/list_view.js:1589`, `frappe/public/js/frappe/list/list_view.js:1620`. */
 	disable_scrolling?: 0 | 1;
-	/** `frappe/public/js/frappe/list/list_view.js:433`, `frappe/public/js/frappe/list/list_view.js:2298` — feeds `tags_shown`. */
+	/** `frappe/public/js/frappe/list/list_view.js:433`, `frappe/public/js/frappe/list/list_view.js:2302` — feeds `tags_shown`. */
 	show_tags?: 0 | 1;
 	/**
 	 * A JSON-encoded {@link ListSettingsField}`[]` (`{fieldname, label, width?}`).
@@ -550,7 +550,7 @@ export interface ListLayoutField {
  * layout carries `df: { fieldname: "status_field" }` plus the saved `width`
  * (`frappe/public/js/frappe/list/list_view.js:660-662`, `frappe/public/js/frappe/list/list_view.js:701-702`). The header and the cell both write
  * `status_field` as their `data-fieldname` whether or not there is a `df`
- * (`frappe/public/js/frappe/list/list_view.js:1289`, `frappe/public/js/frappe/list/list_view.js:1417`), so the `df` is only ever `{ fieldname, width }`.
+ * (`frappe/public/js/frappe/list/list_view.js:1293`, `frappe/public/js/frappe/list/list_view.js:1421`), so the `df` is only ever `{ fieldname, width }`.
  *
  * The `Tag` member carries `df?: undefined` rather than omitting the key.
  * Omitting it makes the whole union lack a common `df`, and TypeScript then
@@ -558,7 +558,7 @@ export interface ListLayoutField {
  * it ever narrows. With `df?: undefined` the guard compiles, and `col.df` is
  * `PartialDocField | undefined` on an unnarrowed column. Same reason frappe's
  * own `get_header_html` can write `col.df?.fieldname` unconditionally
- * (`frappe/public/js/frappe/list/list_view.js:1282`, `frappe/public/js/frappe/list/list_view.js:1289`).
+ * (`frappe/public/js/frappe/list/list_view.js:1286`, `frappe/public/js/frappe/list/list_view.js:1293`).
  */
 export type ListColumn =
 	/** `frappe/public/js/frappe/list/list_view.js:514-527` — title_field, or the synthetic ID df. Always first; `frappe/public/js/frappe/list/list_view.js:673` when built from a layout. */
@@ -855,7 +855,7 @@ export declare class BaseList {
 	 * `frappe/public/js/frappe/list/base_list.js:575-591`.
 	 *
 	 * Parameter is `unknown`, NOT the response envelope, because
-	 * `QueryReport.prepare_data` (`frappe/public/js/frappe/views/reports/query_report.js:1551-1563`) overrides it with
+	 * `QueryReport.prepare_data` (`frappe/public/js/frappe/views/reports/query_report.js:1556-1568`) overrides it with
 	 * an incompatible parameter — an already-unwrapped result array. Widening
 	 * the base parameter is the only way both overrides type-check; see notes.
 	 */
@@ -1116,7 +1116,7 @@ export interface GroupBySettings {
  * `frappe.ui.GroupBy` — `frappe/public/js/frappe/ui/group_by/group_by.js:3`, the
  * report view's "Add Group" control. It lives in `report.bundle.js`
  * (`frappe/public/js/report.bundle.js:8`), which is in frappe's `app_include_js`
- * (`frappe/hooks.py:30`), so it is defined on every desk page from boot. A
+ * (`frappe/hooks.py:31`), so it is defined on every desk page from boot. A
  * {@link ReportView} builds one in `setup_sort_selector`
  * (`frappe/public/js/frappe/views/reports/report_view.js:120`).
  */
@@ -1378,25 +1378,25 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	 * v16.50.0 REMOVED the text-length estimator that used to fill this from
 	 * `get_column_html` (`textLength * 10 / 1.3`). Now it is only ever written
 	 * from a width somebody chose: a column's `df.width` (a saved layout or the
-	 * settings `fields` JSON) in `get_column_html` (`frappe/public/js/frappe/list/list_view.js:1418-1419`,
-	 * `frappe/public/js/frappe/list/list_view.js:1566-1570`), a header drag in `setup_column_resize` (`frappe/public/js/frappe/list/list_view.js:919`), and
+	 * settings `fields` JSON) in `get_column_html` (`frappe/public/js/frappe/list/list_view.js:1422-1423`,
+	 * `frappe/public/js/frappe/list/list_view.js:1570-1574`), a header drag in `setup_column_resize` (`frappe/public/js/frappe/list/list_view.js:919`), and
 	 * the rendered header's real widths in `capture_column_widths_from_dom`
 	 * (`frappe/public/js/frappe/list/list_view.js:1094-1116`). So it is EMPTY for a list that has no saved widths, however
-	 * many rows have rendered. Consumed by `apply_column_widths` (`frappe/public/js/frappe/list/list_view.js:1584-1595`),
+	 * many rows have rendered. Consumed by `apply_column_widths` (`frappe/public/js/frappe/list/list_view.js:1588-1599`),
 	 * which clamps to 50..400px.
 	 *
 	 * STRICT HAZARD at the call site, not here: indexing it with the natural
 	 * `column_max_widths[col.df && col.df.fieldname]` is TS2538 — the index
 	 * expression is `string | undefined`. Use `col.df?.fieldname ?? ""` (or a
 	 * guard) rather than reaching for an assertion. A Status column is keyed
-	 * `status_field`, not by a docfield name (`frappe/public/js/frappe/list/list_view.js:1417`).
+	 * `status_field`, not by a docfield name (`frappe/public/js/frappe/list/list_view.js:1421`).
 	 */
 	column_max_widths: Record<string, number>;
 	/** `frappe/public/js/frappe/list/list_view.js:37` — `3`. */
 	max_number_of_avatars: number;
 	/** `frappe/public/js/frappe/list/list_view.js:38` — `50`; the real column cap (`frappe/public/js/frappe/list/list_view.js:508`, `frappe/public/js/frappe/list/list_view.js:560`). */
 	max_number_of_fields: number;
-	/** `frappe/public/js/frappe/list/list_view.js:35` — the pre-built `<input>/<a>/<span>` templates. Module-local class, `frappe/public/js/frappe/list/list_view.js:3290`. */
+	/** `frappe/public/js/frappe/list/list_view.js:35` — the pre-built `<input>/<a>/<span>` templates. Module-local class, `frappe/public/js/frappe/list/list_view.js:3294`. */
 	_element_factory: ListViewElementFactory;
 
 	/* ---- virtualization (2000+ rows on one page) ---- */
@@ -1414,10 +1414,10 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	 * `.list-row-checkbox:checked` query can no longer answer "what is selected".
 	 * Every selection path writes through it: `sync_checked_docname`
 	 * (`frappe/public/js/frappe/list/list_view.js:1187-1199`), `set_select_all_checked` (`frappe/public/js/frappe/list/list_view.js:1205-1212`), shift-select
-	 * (`frappe/public/js/frappe/list/list_view.js:2234`), `remove_list_items` (`frappe/public/js/frappe/list/list_view.js:2429`) and `clear_checked_items`
-	 * (`frappe/public/js/frappe/list/list_view.js:2490`); `render_list` prunes it against the new data
+	 * (`frappe/public/js/frappe/list/list_view.js:2238`), `remove_list_items` (`frappe/public/js/frappe/list/list_view.js:2433`) and `clear_checked_items`
+	 * (`frappe/public/js/frappe/list/list_view.js:2494`); `render_list` prunes it against the new data
 	 * (`prune_checked_docnames`, `frappe/public/js/frappe/list/list_view.js:1038`). `get_checked_items`, `on_row_checked`
-	 * and the realtime guard all read it (`frappe/public/js/frappe/list/list_view.js:2482`, `frappe/public/js/frappe/list/list_view.js:2458`, `frappe/public/js/frappe/list/list_view.js:2315`).
+	 * and the realtime guard all read it (`frappe/public/js/frappe/list/list_view.js:2486`, `frappe/public/js/frappe/list/list_view.js:2462`, `frappe/public/js/frappe/list/list_view.js:2319`).
 	 *
 	 * ReportView inherits an EMPTY set and never touches it: its selection lives
 	 * in `datatable.rowmanager` (`frappe/public/js/frappe/views/reports/report_view.js:1389-1402`).
@@ -1430,7 +1430,7 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	filters: ListFilterTuple[];
 	/** `frappe/public/js/frappe/list/list_view.js:276` — `{ [fieldname]: title_fieldname_of_linked_doctype }`; rebuilt per layout at `frappe/public/js/frappe/list/list_view.js:597-600`. */
 	link_field_title_fields: Record<string, string>;
-	/** `frappe/public/js/frappe/list/list_view.js:433` / `frappe/public/js/frappe/list/list_view.js:2298` — a Check field, so `0 | 1`, and UNSET until `refresh_columns`/`setup_tag_visibility` runs. */
+	/** `frappe/public/js/frappe/list/list_view.js:433` / `frappe/public/js/frappe/list/list_view.js:2302` — a Check field, so `0 | 1`, and UNSET until `refresh_columns`/`setup_tag_visibility` runs. */
 	tags_shown?: 0 | 1;
 	/** `frappe/public/js/frappe/list/list_view.js:226`. */
 	actions_menu_items?: ListViewMenuItem[];
@@ -1438,17 +1438,17 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	workflow_action_menu_items?: ListViewMenuItem[];
 	/** `frappe/public/js/frappe/list/list_view.js:228`, filled at `frappe/public/js/frappe/list/list_view.js:238`. */
 	workflow_action_items?: Record<string, JQuery<HTMLElement>>;
-	/** `frappe/public/js/frappe/list/list_view.js:1795`, `frappe/public/js/frappe/list/list_view.js:1804` — the server-side count; `null` when the estimate is unavailable. */
+	/** `frappe/public/js/frappe/list/list_view.js:1799`, `frappe/public/js/frappe/list/list_view.js:1808` — the server-side count; `null` when the estimate is unavailable. */
 	total_count?: number | null;
-	/** `frappe/public/js/frappe/list/list_view.js:1796-1797`. */
+	/** `frappe/public/js/frappe/list/list_view.js:1800-1801`. */
 	count_without_children?: number;
-	/** `frappe/public/js/frappe/list/list_view.js:2302`, `frappe/public/js/frappe/list/list_view.js:2341`. */
+	/** `frappe/public/js/frappe/list/list_view.js:2306`, `frappe/public/js/frappe/list/list_view.js:2345`. */
 	pending_document_refreshes?: unknown[];
-	/** `frappe/public/js/frappe/list/list_view.js:2304`, `frappe/public/js/frappe/list/list_view.js:2332`. */
+	/** `frappe/public/js/frappe/list/list_view.js:2308`, `frappe/public/js/frappe/list/list_view.js:2336`. */
 	realtime_events_setup?: boolean;
 	/**
-	 * `frappe/public/js/frappe/list/list_view.js:2421` — read by `avoid_realtime_update`. Set by ListView's own bulk
-	 * actions (`frappe/public/js/frappe/list/list_view.js:2730`, `frappe/public/js/frappe/list/list_view.js:2813`) and by the Kanban board
+	 * `frappe/public/js/frappe/list/list_view.js:2425` — read by `avoid_realtime_update`. Set by ListView's own bulk
+	 * actions (`frappe/public/js/frappe/list/list_view.js:2734`, `frappe/public/js/frappe/list/list_view.js:2817`) and by the Kanban board
 	 * (`frappe/public/js/frappe/views/kanban/kanban_board.bundle.js:1208`) to suppress realtime churn.
 	 */
 	disable_list_update?: boolean;
@@ -1461,24 +1461,24 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	required_libs?: string | string[];
 
 	/* ---- lazily-resolved check handles ---- *
-	 * All three are assigned inside `on_row_checked` (`frappe/public/js/frappe/list/list_view.js:2453-2459`)
+	 * All three are assigned inside `on_row_checked` (`frappe/public/js/frappe/list/list_view.js:2457-2463`)
 	 * and re-queried from `$result` on every call, not memoised, so a re-rendered
 	 * header is picked up — they are UNDEFINED until the first checkbox
 	 * interaction, and `update_checkbox` (`frappe/public/js/frappe/list/list_view.js:470`) uses
 	 * `if (!this.$checkbox_actions) return` as its guard for that. A pre-assigned
 	 * handle is overwritten on the next call. Declare them OPTIONAL. */
 
-	/** `frappe/public/js/frappe/list/list_view.js:2454` — `$result.find("header .list-header-subject")`. */
+	/** `frappe/public/js/frappe/list/list_view.js:2458` — `$result.find("header .list-header-subject")`. */
 	$list_head_subject?: JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/list/list_view.js:2455` — `$result.find("header .checkbox-actions")`. */
+	/** `frappe/public/js/frappe/list/list_view.js:2459` — `$result.find("header .checkbox-actions")`. */
 	$checkbox_actions?: JQuery<HTMLElement>;
 	/**
-	 * `frappe/public/js/frappe/list/list_view.js:2459` — `$result.find(".list-row-checkbox:checked")`. Only what is IN
+	 * `frappe/public/js/frappe/list/list_view.js:2463` — `$result.find(".list-row-checkbox:checked")`. Only what is IN
 	 * THE DOM right now: with virtualization this is a window, not the selection
 	 * (that is {@link ListView.checked_docnames}).
 	 */
 	$checks?: JQuery<HTMLInputElement>;
-	/** `frappe/public/js/frappe/list/list_view.js:2222`, `frappe/public/js/frappe/list/list_view.js:2240` — the shift-select anchor. */
+	/** `frappe/public/js/frappe/list/list_view.js:2226`, `frappe/public/js/frappe/list/list_view.js:2244` — the shift-select anchor. */
 	$checkbox_cursor?: JQuery<HTMLInputElement>;
 
 	/* ---- methods ---- */
@@ -1510,8 +1510,8 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	make_new_doc(): void;
 	/**
 	 * `frappe/public/js/frappe/list/list_view.js:216-223` — loads `data_import_tools.bundle.js` then opens the import
-	 * dialog for this doctype. Backs the "Import" menu item (`frappe/public/js/frappe/list/list_view.js:2543`) and the
-	 * empty state's import button (`frappe/public/js/frappe/list/list_view.js:2294`); it replaced a route to the Data
+	 * dialog for this doctype. Backs the "Import" menu item (`frappe/public/js/frappe/list/list_view.js:2547`) and the
+	 * empty state's import button (`frappe/public/js/frappe/list/list_view.js:2298`); it replaced a route to the Data
 	 * Import list.
 	 */
 	open_import_dialog(): void;
@@ -1537,7 +1537,7 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	 */
 	refresh(refresh_header?: boolean): Promise<void> | undefined;
 	/**
-	 * `frappe/public/js/frappe/list/list_view.js:469-482`. Called with no args from `on_row_checked` (`frappe/public/js/frappe/list/list_view.js:2473`). The
+	 * `frappe/public/js/frappe/list/list_view.js:469-482`. Called with no args from `on_row_checked` (`frappe/public/js/frappe/list/list_view.js:2477`). The
 	 * "select all" box is ticked when `checked_docnames` covers every loaded row
 	 * (`frappe/public/js/frappe/list/list_view.js:478-481`), not when the DOM checkboxes do.
 	 */
@@ -1614,7 +1614,7 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	 * (`frappe/public/js/frappe/list/list_view.js:1088-1090`; the virtual one does it in `finalize_virtual_rows`).
 	 *
 	 * Called from `render()` (`frappe/public/js/frappe/list/list_view.js:1006`) and `process_document_refreshes`
-	 * (`frappe/public/js/frappe/list/list_view.js:2410`).
+	 * (`frappe/public/js/frappe/list/list_view.js:2414`).
 	 */
 	render_list(): void;
 	/** `frappe/public/js/frappe/list/list_view.js:1094-1116` — folds the header's rendered widths into `column_max_widths` before the rows are torn down; desktop only. */
@@ -1641,7 +1641,7 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	/**
 	 * `frappe/public/js/frappe/list/list_view.js:1187-1199` — mirrors one checkbox's `:checked` state into
 	 * `checked_docnames`. Frappe calls it from every handler that flips a
-	 * checkbox (`frappe/public/js/frappe/list/list_view.js:2097`, `frappe/public/js/frappe/list/list_view.js:2160`, `frappe/public/js/frappe/list/list_view.js:2203`, `frappe/public/js/frappe/list/list_view.js:2211`); a replacement
+	 * checkbox (`frappe/public/js/frappe/list/list_view.js:2101`, `frappe/public/js/frappe/list/list_view.js:2164`, `frappe/public/js/frappe/list/list_view.js:2207`, `frappe/public/js/frappe/list/list_view.js:2215`); a replacement
 	 * renderer that ticks its own checkboxes must call it too or the selection
 	 * is lost.
 	 */
@@ -1652,12 +1652,14 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	/** `frappe/public/js/frappe/list/list_view.js:1250-1252` — `this.$result?.find(".list-count")`, so possibly undefined. */
 	get_count_element(): JQuery<HTMLElement> | undefined;
 	/**
-	 * `frappe/public/js/frappe/list/list_view.js:1254-1319` — returns `undefined` early if `this.columns` is unset (`frappe/public/js/frappe/list/list_view.js:1255-1257`).
+	 * `frappe/public/js/frappe/list/list_view.js:1254-1323` — returns `undefined` early if `this.columns` is unset (`frappe/public/js/frappe/list/list_view.js:1255-1257`).
 	 *
-	 * Every header cell now carries `data-fieldname` (`frappe/public/js/frappe/list/list_view.js:1289`, `frappe/public/js/frappe/list/list_view.js:1294`) —
+	 * Every header cell now carries `data-fieldname` (`frappe/public/js/frappe/list/list_view.js:1293`, `frappe/public/js/frappe/list/list_view.js:1298`) —
 	 * `status_field` for the Status column, the literal string `"undefined"` for
 	 * the Tag column, which has no `df` — and, except on Tag, a
-	 * `.list-col-resize-handle` child (`frappe/public/js/frappe/list/list_view.js:1290-1293`). The drag handler and
+	 * `.list-col-resize-handle` child (`frappe/public/js/frappe/list/list_view.js:1294-1297`), only when the user may resize
+ * columns: `can_edit_layout` of the active saved layout, or the System Manager role on the default layout
+ * (`frappe/public/js/frappe/list/list_view.js:1269-1272`, `frappe/public/js/frappe/list/list_view.js:1295`). The drag handler and
 	 * `capture_column_widths_from_dom` both skip a `data-fieldname` of `"undefined"`
 	 * (`frappe/public/js/frappe/list/list_view.js:891`, `frappe/public/js/frappe/list/list_view.js:1103`).
 	 */
@@ -1665,69 +1667,69 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	get_header_html_skeleton(left?: string, right?: string): string;
 	get_left_html(doc: FrappeListDoc): string;
 	get_right_html(doc: FrappeListDoc): string;
-	/** `frappe/public/js/frappe/list/list_view.js:1393-1397` — `virtual: true` stamps the row `data-virtual-row="1"` (`frappe/public/js/frappe/list/list_view.js:1400`) so the window can find and replace it. */
+	/** `frappe/public/js/frappe/list/list_view.js:1397-1401` — `virtual: true` stamps the row `data-virtual-row="1"` (`frappe/public/js/frappe/list/list_view.js:1404`) so the window can find and replace it. */
 	get_list_row_html(doc: FrappeListDoc, options?: { virtual?: boolean }): string;
-	/** `frappe/public/js/frappe/list/list_view.js:1399-1413`. */
+	/** `frappe/public/js/frappe/list/list_view.js:1403-1417`. */
 	get_list_row_html_skeleton(left?: string, right?: string, options?: { virtual?: boolean }): string;
 	/**
-	 * `frappe/public/js/frappe/list/list_view.js:1415-1577` — the per-cell renderer, returning a
+	 * `frappe/public/js/frappe/list/list_view.js:1419-1581` — the per-cell renderer, returning a
 	 * `<div class="list-row-col …" data-fieldname="…">…</div>` string.
 	 *
 	 * SIDE EFFECT, much smaller than it was: when the column's `df.width` is set
 	 * (desktop only) it raises `this.column_max_widths[fieldname]` to that width
-	 * (`frappe/public/js/frappe/list/list_view.js:1418-1420` for Status, `frappe/public/js/frappe/list/list_view.js:1566-1570` for the rest). The text-length
+	 * (`frappe/public/js/frappe/list/list_view.js:1422-1424` for Status, `frappe/public/js/frappe/list/list_view.js:1570-1574` for the rest). The text-length
 	 * estimator that used to fill `column_max_widths` from every rendered cell is
 	 * gone — a call to this method no longer tells you how wide a column wants
 	 * to be.
 	 *
 	 * `show_in_mobile` is NOT optional in the source (3 declared params) but
-	 * every internal caller passes it explicitly (`frappe/public/js/frappe/list/list_view.js:1365`, `frappe/public/js/frappe/list/list_view.js:1368`).
+	 * every internal caller passes it explicitly (`frappe/public/js/frappe/list/list_view.js:1369`, `frappe/public/js/frappe/list/list_view.js:1372`).
 	 */
 	get_column_html(col: ListColumn, doc: FrappeListDoc, show_in_mobile: boolean): string;
 	/**
-	 * `frappe/public/js/frappe/list/list_view.js:1584-1595`. Guarded by `list_view_settings?.disable_scrolling`. Pins
+	 * `frappe/public/js/frappe/list/list_view.js:1588-1599`. Guarded by `list_view_settings?.disable_scrolling`. Pins
 	 * each `column_max_widths` entry, clamped to 50..400px, as an inline
 	 * `width` and `flex: 0 0 <w>px` on the matching `.list-row-col` — now
-	 * scoped to `this.$result`, not the whole document (`frappe/public/js/frappe/list/list_view.js:1590`).
+	 * scoped to `this.$result`, not the whole document (`frappe/public/js/frappe/list/list_view.js:1594`).
 	 */
 	apply_column_widths(): void;
 	/**
-	 * `frappe/public/js/frappe/list/list_view.js:1597-1632`.
+	 * `frappe/public/js/frappe/list/list_view.js:1601-1636`.
 	 *
 	 * Adds `has-assign-to` / `assign-to-length-N` / `no-assign-to` to `$result`
-	 * (it clears a stale `assign-to-length-N` first, `frappe/public/js/frappe/list/list_view.js:1606`), writes the widest
-	 * comment count to `$result`'s `data-comment-count-length` (`frappe/public/js/frappe/list/list_view.js:1599-1603`),
+	 * (it clears a stale `assign-to-length-N` first, `frappe/public/js/frappe/list/list_view.js:1610`), writes the widest
+	 * comment count to `$result`'s `data-comment-count-length` (`frappe/public/js/frappe/list/list_view.js:1603-1607`),
 	 * may add `disable-scrolling` to `parent.page.main.parent()`, and MEASURES
 	 * `.list-row-container .list-row` plus its `.level-left` / `.level-right`
-	 * widths (`frappe/public/js/frappe/list/list_view.js:1621-1628`) — a DOM contract any replacement renderer must
-	 * still satisfy. It finishes with `sync_right_width()` (`frappe/public/js/frappe/list/list_view.js:1631`).
+	 * widths (`frappe/public/js/frappe/list/list_view.js:1625-1632`) — a DOM contract any replacement renderer must
+	 * still satisfy. It finishes with `sync_right_width()` (`frappe/public/js/frappe/list/list_view.js:1635`).
 	 */
 	update_listview_classes(has_assignto: boolean, assign_to_count: number): void;
 	/**
-	 * `frappe/public/js/frappe/list/list_view.js:1637-1647` — sets `--list-right-width` on `$result` to the widest
+	 * `frappe/public/js/frappe/list/list_view.js:1641-1651` — sets `--list-right-width` on `$result` to the widest
 	 * `.level-right` among the header and the rows, so the columns to their left
 	 * line up; removes it on mobile. Re-run when the count arrives (`frappe/public/js/frappe/list/list_view.js:1225`).
 	 */
 	sync_right_width(): void;
-	/** `frappe/public/js/frappe/list/list_view.js:1649-1668` — `limit === null` means "no limit". */
+	/** `frappe/public/js/frappe/list/list_view.js:1653-1672` — `limit === null` means "no limit". */
 	get_tags_html(user_tags: string | null | undefined, limit?: number | null, colored?: boolean): string;
-	/** `frappe/public/js/frappe/list/list_view.js:1670-1714` — the right-hand meta rail (avatars, comment count, like, modified). */
+	/** `frappe/public/js/frappe/list/list_view.js:1674-1718` — the right-hand meta rail (avatars, comment count, like, modified). */
 	get_meta_html(doc: FrappeListDoc): string;
-	/** `frappe/public/js/frappe/list/list_view.js:1716-1734` — `""` unless `settings.button` is set. */
+	/** `frappe/public/js/frappe/list/list_view.js:1720-1738` — `""` unless `settings.button` is set. */
 	generate_button_html(doc: FrappeListDoc): string;
-	/** `frappe/public/js/frappe/list/list_view.js:1736-1770` — `""` unless `settings.dropdown_button` is set. */
+	/** `frappe/public/js/frappe/list/list_view.js:1740-1774` — `""` unless `settings.dropdown_button` is set. */
 	generate_dropdown_html(doc: FrappeListDoc): string;
 	apply_styles_basedon_dropdown(): void;
 	get_count_str(): Promise<string>;
 	get_form_link(doc: FrappeListDoc): string;
 	get_seen_class(doc: FrappeListDoc): "" | "bold";
 	get_like_html(doc: FrappeListDoc): string;
-	/** `frappe/public/js/frappe/list/list_view.js:1850-1871` — returns a detached `<div>`; callers read `.innerHTML`. */
+	/** `frappe/public/js/frappe/list/list_view.js:1854-1875` — returns a detached `<div>`; callers read `.innerHTML`. */
 	get_subject_element(doc: FrappeListDoc, title: string): HTMLDivElement;
 	get_subject_text(doc: FrappeListDoc, title: string): string;
 	/**
-	 * `frappe/public/js/frappe/list/list_view.js:1893-1914` — the status pill is `frappe.ui.badge.html(...)`
-	 * (`frappe/public/js/frappe/list/list_view.js:1903-1911`): an `.es-badge` with the extra classes `filterable
+	 * `frappe/public/js/frappe/list/list_view.js:1897-1918` — the status pill is `frappe.ui.badge.html(...)`
+	 * (`frappe/public/js/frappe/list/list_view.js:1907-1915`): an `.es-badge` with the extra classes `filterable
 	 * ellipsis` and a `data-filter` attribute. It is no longer the old
 	 * `.indicator-pill` span.
 	 */
@@ -1744,9 +1746,9 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	setup_action_handler(): void;
 	setup_check_events(): void;
 	/**
-	 * `frappe/public/js/frappe/list/list_view.js:2250-2258` — a 300ms debounced `toggle_workflow_actions`, built on first
+	 * `frappe/public/js/frappe/list/list_view.js:2254-2262` — a 300ms debounced `toggle_workflow_actions`, built on first
 	 * call and cached on the instance. Workflow action items now refresh when the
-	 * SELECTION changes — `on_row_checked` (`frappe/public/js/frappe/list/list_view.js:2475-2477`) and ReportView's
+	 * SELECTION changes — `on_row_checked` (`frappe/public/js/frappe/list/list_view.js:2479-2481`) and ReportView's
 	 * `onCheckRow` (`frappe/public/js/frappe/views/reports/report_view.js:328-330`) call this whenever something is selected — instead
 	 * of from a `show.bs.dropdown` hook on the actions menu, which is gone from
 	 * both views. A replacement selection UI has to call it itself.
@@ -1754,29 +1756,29 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	debounced_toggle_workflow_actions(): void;
 	setup_like(): void;
 	setup_new_doc_event(): void;
-	/** `frappe/public/js/frappe/list/list_view.js:2297-2299`. */
+	/** `frappe/public/js/frappe/list/list_view.js:2301-2303`. */
 	setup_tag_visibility(): void;
 	setup_realtime_updates(): void;
 	disable_realtime_updates(): void;
 	process_document_refreshes(): void;
 	avoid_realtime_update(): boolean;
 	remove_list_items(names: string[]): void;
-	/** `frappe/public/js/frappe/list/list_view.js:2437-2451` — re-ticks the rendered rows from `checked_docnames`, then runs `on_row_checked`. */
+	/** `frappe/public/js/frappe/list/list_view.js:2441-2455` — re-ticks the rendered rows from `checked_docnames`, then runs `on_row_checked`. */
 	set_rows_as_checked(): void;
-	/** `frappe/public/js/frappe/list/list_view.js:2453-2478` — re-queries `$list_head_subject` / `$checkbox_actions` on every call; counts from `checked_docnames`. */
+	/** `frappe/public/js/frappe/list/list_view.js:2457-2482` — re-queries `$list_head_subject` / `$checkbox_actions` on every call; counts from `checked_docnames`. */
 	on_row_checked(): void;
 	/**
-	 * `frappe/public/js/frappe/list/list_view.js:2480-2487` — reads `checked_docnames`, NOT the DOM (selected rows can
+	 * `frappe/public/js/frappe/list/list_view.js:2484-2491` — reads `checked_docnames`, NOT the DOM (selected rows can
 	 * be off-screen in virtual mode); `only_docnames` gives the names, otherwise
 	 * the matching docs from `this.data`.
 	 */
 	get_checked_items(only_docnames: true): string[];
 	get_checked_items(only_docnames?: false | 0 | null | undefined): FrappeListDoc[];
 	get_checked_items(only_docnames?: boolean): string[] | FrappeListDoc[];
-	/** `frappe/public/js/frappe/list/list_view.js:2489-2493` — empties `checked_docnames`, unticks the rendered boxes, runs `on_row_checked`. */
+	/** `frappe/public/js/frappe/list/list_view.js:2493-2497` — empties `checked_docnames`, unticks the rendered boxes, runs `on_row_checked`. */
 	clear_checked_items(): void;
 	save_view_user_settings(obj: Partial<ListViewUserSettings>): Promise<unknown>;
-	/** `frappe/public/js/frappe/list/list_view.js:2499` — empty hook; ReportView overrides it (`frappe/public/js/frappe/views/reports/report_view.js:241`). */
+	/** `frappe/public/js/frappe/list/list_view.js:2503` — empty hook; ReportView overrides it (`frappe/public/js/frappe/views/reports/report_view.js:241`). */
 	on_update(...args: unknown[]): void;
 	update_url_with_filters(): void;
 	get_url_with_filters(): string;
@@ -1785,10 +1787,10 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	make_group_by_fields_modal(): void;
 	get_group_by_dropdown_fields(): unknown[];
 	get_view_settings(): ListViewMenuItem;
-	/** `frappe/public/js/frappe/list/list_view.js:2708-2717` — opens the {@link ListSettings} dialog. */
+	/** `frappe/public/js/frappe/list/list_view.js:2712-2721` — opens the {@link ListSettings} dialog. */
 	show_list_settings(): void;
 	get_workflow_action_menu_items(): ListViewMenuItem[];
-	/** `frappe/public/js/frappe/list/list_view.js:2748-2772` — returns early when nothing is selected (`frappe/public/js/frappe/list/list_view.js:2756`), since the debounced call can land after a deselect. */
+	/** `frappe/public/js/frappe/list/list_view.js:2752-2776` — returns early when nothing is selected (`frappe/public/js/frappe/list/list_view.js:2760`), since the debounced call can land after a deselect. */
 	toggle_workflow_actions(): void;
 	get_actions_menu_items(): ListViewMenuItem[];
 	parse_filters_from_route_options(): ListFilterTuple[];
@@ -1798,7 +1800,7 @@ export declare class ListView<TColumn = ListColumn> extends BaseList {
 	 * `Object.assign(frappe.views.ListView.prototype, list_view_virtualization)`
 	 * (`frappe/public/js/list_view_virtualization.bundle.js:4`) runs only when a page first needs it. Frappe itself tests
 	 * `frappe.views.ListView.prototype.render_virtual_rows` for existence
-	 * (`frappe/public/js/frappe/list/list_view.js:1014`, `frappe/public/js/frappe/list/list_view.js:1065`, `frappe/public/js/frappe/list/list_view.js:3376`), so they are declared OPTIONAL: a list
+	 * (`frappe/public/js/frappe/list/list_view.js:1014`, `frappe/public/js/frappe/list/list_view.js:1065`, `frappe/public/js/frappe/list/list_view.js:3380`), so they are declared OPTIONAL: a list
 	 * that never reached `virtualization_threshold` has none of them. Only the
 	 * lifecycle entry points are declared. */
 
@@ -1880,7 +1882,7 @@ export interface ListViewVirtualizationState {
 }
 
 /**
- * `frappe/public/js/frappe/list/list_view.js:3290-3366` — `class ElementFactory`, module-local (NOT exported,
+ * `frappe/public/js/frappe/list/list_view.js:3294-3370` — `class ElementFactory`, module-local (NOT exported,
  * NOT on `frappe`). Reachable only as `listView._element_factory`.
  */
 export interface ListViewElementFactory {
@@ -1890,7 +1892,7 @@ export interface ListViewElementFactory {
 		link: HTMLAnchorElement;
 		like: HTMLSpanElement;
 	};
-	/** `frappe/public/js/frappe/list/list_view.js:3334-3338` — clone with `data-name`; the `.list-row-checkbox[data-name]` contract. */
+	/** `frappe/public/js/frappe/list/list_view.js:3338-3342` — clone with `data-name`; the `.list-row-checkbox[data-name]` contract. */
 	get_checkbox_element(name: string): HTMLInputElement;
 	get_checkboxspan_element(): HTMLSpanElement;
 	get_link_element(name: string, href: string, text: string): HTMLAnchorElement;
@@ -2236,7 +2238,7 @@ export interface ReportView {}
 
 /**
  * A prepared Query Report column — `frappe/public/js/frappe/views/reports/report_utils.js:93-119`
- * (`prepare_field_from_column`) then `frappe/public/js/frappe/views/reports/query_report.js:1524-1547`.
+ * (`prepare_field_from_column`) then `frappe/public/js/frappe/views/reports/query_report.js:1529-1552`.
  *
  * It is a DocField-shaped object with the datatable's column keys layered on
  * top by `Object.assign`, which is why it is declared as an extension rather
@@ -2247,11 +2249,11 @@ export interface QueryReportColumn extends DataTableColumn {
 	label?: string;
 	fieldtype?: FieldType;
 	options?: string | string[];
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1170` — set by report scripts; filtered out of the render. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1175` — set by report scripts; filtered out of the render. */
 	hidden?: boolean;
 }
 
-/** `frappe/public/js/frappe/views/reports/query_report.js:1159-1166` — the raw `frappe.desk.query_report.run` payload. */
+/** `frappe/public/js/frappe/views/reports/query_report.js:1164-1171` — the raw `frappe.desk.query_report.run` payload. */
 export interface QueryReportRawData {
 	columns: (string | QueryReportColumn)[];
 	result: (Record<string, unknown> | unknown[])[];
@@ -2280,7 +2282,7 @@ export interface QueryReportSettings {
 	/** `frappe/public/js/frappe/views/reports/query_report.js:965` — `this.report_settings.after_refresh?.(this)`. */
 	after_refresh?(report: QueryReport): void;
 	/**
-	 * Per-cell renderer. `frappe/public/js/frappe/views/reports/query_report.js:1535-1543`.
+	 * Per-cell renderer. `frappe/public/js/frappe/views/reports/query_report.js:1540-1548`.
 	 *
 	 * SIX parameters, not five: frappe passes `(value, row, column, data,
 	 * format_cell, filter)`, where `format_cell` is the default formatter and
@@ -2301,34 +2303,34 @@ export interface QueryReportSettings {
 		filter?: unknown
 	): string;
 	/**
-	 * `frappe/public/js/frappe/views/reports/query_report.js:1221-1222` — called with the assembled options and must
+	 * `frappe/public/js/frappe/views/reports/query_report.js:1226-1227` — called with the assembled options and must
 	 * RETURN them (the return value replaces the object).
 	 *
 	 * Called on CONSTRUCTION ONLY: `render_datatable` takes the
-	 * `datatable.refresh(data, columns)` reuse path (`frappe/public/js/frappe/views/reports/query_report.js:1197-1203`) whenever the
+	 * `datatable.refresh(data, columns)` reuse path (`frappe/public/js/frappe/views/reports/query_report.js:1202-1208`) whenever the
 	 * existing datatable's `showTotalRow` still matches. It is ALSO called
-	 * speculatively with `{}` from `prepare_columns` (`frappe/public/js/frappe/views/reports/query_report.js:1491-1494`)
+	 * speculatively with `{}` from `prepare_columns` (`frappe/public/js/frappe/views/reports/query_report.js:1496-1499`)
 	 * purely to discover whether `checkboxColumn` is on — so it must tolerate an
 	 * empty object.
 	 */
 	get_datatable_options?(options: Partial<DataTableOptions>): DataTableOptions;
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1230-1232` — receives the live datatable, typically to poke styles. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1235-1237` — receives the live datatable, typically to poke styles. */
 	after_datatable_render?(datatable: DataTable): void;
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1227-1229` — only applied when `typeof … == "number"`. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1232-1234` — only applied when `typeof … == "number"`. */
 	initial_depth?: number;
-	/** `frappe/public/js/frappe/views/reports/query_report.js:825`, `frappe/public/js/frappe/views/reports/query_report.js:1191`, `frappe/public/js/frappe/views/reports/query_report.js:1214` — tree-mode switch. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:825`, `frappe/public/js/frappe/views/reports/query_report.js:1196`, `frappe/public/js/frappe/views/reports/query_report.js:1219` — tree-mode switch. */
 	tree?: boolean;
 	/** `frappe/public/js/frappe/views/reports/query_report.js:826`. */
 	parent_field?: string;
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1279-1281`. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1284-1286`. */
 	get_chart_data?(columns: QueryReportColumn[], result: unknown[]): unknown;
 	/** `frappe/public/js/frappe/views/reports/query_report.js:612`, `frappe/public/js/frappe/views/reports/query_report.js:656`. */
 	separate_check_filters?: boolean;
 	/** `frappe/public/js/frappe/views/reports/query_report.js:657`. */
 	collapsible_filters?: boolean;
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1859`. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1864`. */
 	export_hidden_cols?: boolean;
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1761-1763` — async, may rewrite the print format. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1766-1768` — async, may rewrite the print format. */
 	get_pdf_format?(report: QueryReport, custom_format: string | null): Promise<string | null>;
 	/** Injected by frappe itself at `frappe/public/js/frappe/views/reports/query_report.js:515-516`, not by the report script. */
 	html_format?: string | null;
@@ -2346,7 +2348,7 @@ export interface QueryReportSettings {
  * the control's own docfield.
  */
 export interface QueryReportFilterControl {
-	/** The control's docfield — `frappe/public/js/frappe/views/reports/query_report.js:1611` `f.df.fieldname === fieldname`. */
+	/** The control's docfield — `frappe/public/js/frappe/views/reports/query_report.js:1616` `f.df.fieldname === fieldname`. */
 	df: DocField;
 	/** Merged in from the filter definition — `frappe/public/js/frappe/views/reports/query_report.js:790-796`. */
 	default?: unknown;
@@ -2387,23 +2389,23 @@ export declare class QueryReport extends BaseList {
 	report_doc?: Record<string, unknown>;
 	/** `frappe/public/js/frappe/views/reports/query_report.js:501-502` / `frappe/public/js/frappe/views/reports/query_report.js:517` — `frappe.query_reports[report_name]`. */
 	report_settings: QueryReportSettings;
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1160` — the untouched server payload. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1165` — the untouched server payload. */
 	raw_data: QueryReportRawData;
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1161` — prepared via `prepare_columns`. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1166` — prepared via `prepare_columns`. */
 	columns: QueryReportColumn[];
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1162` — reset by every `prepare_report_data`; the "Add Column" dialog appends (`frappe/public/js/frappe/views/reports/query_report.js:2188`). */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1167` — reset by every `prepare_report_data`; the "Add Column" dialog appends (`frappe/public/js/frappe/views/reports/query_report.js:2198`). */
 	custom_columns: QueryReportColumn[];
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1163` — array-rows normalised to objects keyed by `column.id`. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1168` — array-rows normalised to objects keyed by `column.id`. */
 	data: FrappeListDoc[];
 	linked_doctypes?: unknown;
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1165` — true when any row has an `indent`. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1170` — true when any row has an `indent`. */
 	tree_report: boolean;
 	/**
-	 * `frappe/public/js/frappe/views/reports/query_report.js:1224` `new window.DataTable(this.$report[0], datatable_options)`.
+	 * `frappe/public/js/frappe/views/reports/query_report.js:1229` `new window.DataTable(this.$report[0], datatable_options)`.
 	 *
-	 * WRITABLE and NULLABLE — never set in a constructor, guarded at `frappe/public/js/frappe/views/reports/query_report.js:1198`,
+	 * WRITABLE and NULLABLE — never set in a constructor, guarded at `frappe/public/js/frappe/views/reports/query_report.js:1203`,
 	 * and nulled by frappe itself when a new report loads (`frappe/public/js/frappe/views/reports/query_report.js:172`) or the
-	 * result is too big to show (`frappe/public/js/frappe/views/reports/query_report.js:1182-1185`); consumers legitimately null it
+	 * result is too big to show (`frappe/public/js/frappe/views/reports/query_report.js:1187-1190`); consumers legitimately null it
 	 * to force a rebuild.
 	 */
 	datatable?: DataTable | null;
@@ -2421,7 +2423,7 @@ export declare class QueryReport extends BaseList {
 	execution_time?: number;
 	/**
 	 * `frappe/public/js/frappe/views/reports/query_report.js:613-655` — the built filter CONTROLS, not tuples.
-	 * `get_filter` (`frappe/public/js/frappe/views/reports/query_report.js:1610-1616`) searches them by `f.df.fieldname`
+	 * `get_filter` (`frappe/public/js/frappe/views/reports/query_report.js:1615-1621`) searches them by `f.df.fieldname`
 	 * and `refresh` (`frappe/public/js/frappe/views/reports/query_report.js:790-796`) compares `filter.default === filter.value`.
 	 */
 	filters: QueryReportFilterControl[];
@@ -2437,8 +2439,8 @@ export declare class QueryReport extends BaseList {
 	 */
 	related_reports_dropdown?: JQuery<HTMLElement> | null;
 
-	/* ---- DOM handles: frappe/public/js/frappe/views/reports/query_report.js:2361-2382 ---- */
-	/** `frappe/public/js/frappe/views/reports/query_report.js:2379` `$('<div class="report-wrapper">')` — the datatable mount. */
+	/* ---- DOM handles: frappe/public/js/frappe/views/reports/query_report.js:2371-2392 ---- */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:2389` `$('<div class="report-wrapper">')` — the datatable mount. */
 	$report: JQuery<HTMLElement>;
 	$status: JQuery<HTMLElement>;
 	$report_message: JQuery<HTMLElement>;
@@ -2480,16 +2482,16 @@ export declare class QueryReport extends BaseList {
 	 * report loaded yet.
 	 */
 	set_related_reports_dropdown(): Promise<void> | undefined;
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1159-1166`. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1164-1171`. */
 	prepare_report_data(data: QueryReportRawData): void;
 	/**
-	 * `frappe/public/js/frappe/views/reports/query_report.js:1168-1235` — constructs OR refreshes `this.datatable`, and ends by
-	 * calling `setup_link_side_panel()` (`frappe/public/js/frappe/views/reports/query_report.js:1234`). Above `max_report_rows` it
-	 * destroys the datatable instead and shows a message (`frappe/public/js/frappe/views/reports/query_report.js:1176-1189`).
+	 * `frappe/public/js/frappe/views/reports/query_report.js:1173-1240` — constructs OR refreshes `this.datatable`, and ends by
+	 * calling `setup_link_side_panel()` (`frappe/public/js/frappe/views/reports/query_report.js:1239`). Above `max_report_rows` it
+	 * destroys the datatable instead and shows a message (`frappe/public/js/frappe/views/reports/query_report.js:1181-1194`).
 	 */
 	render_datatable(): void;
 	/**
-	 * `frappe/public/js/frappe/views/reports/query_report.js:1237-1244` — delegated `click.side-panel` on `$report` for
+	 * `frappe/public/js/frappe/views/reports/query_report.js:1242-1249` — delegated `click.side-panel` on `$report` for
 	 * `a[data-doctype][data-name]`, opening the linked doc in the side panel via
 	 * `frappe.ui.handle_link_cell_click(e, this.datatable)` (`frappe/public/js/frappe/views/reports/link_side_panel.js:16-41`; see
 	 * {@link ReportView.setup_link_side_panel} for its preconditions). It `.off`s
@@ -2504,10 +2506,10 @@ export declare class QueryReport extends BaseList {
 	hide_loading_screen(): void;
 	get_chart_options(data: QueryReportRawData): unknown;
 	render_chart(options: unknown): void;
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1475-1549`. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1480-1554`. */
 	prepare_columns(columns: (string | QueryReportColumn)[]): QueryReportColumn[];
 	/**
-	 * `frappe/public/js/frappe/views/reports/query_report.js:1551-1563`.
+	 * `frappe/public/js/frappe/views/reports/query_report.js:1556-1568`.
 	 *
 	 * DISCREPANCY: this overrides `BaseList.prepare_data(r)` (the call response)
 	 * with a completely different parameter (the already-unwrapped result rows)
@@ -2515,7 +2517,7 @@ export declare class QueryReport extends BaseList {
 	 */
 	prepare_data(data: (Record<string, unknown> | unknown[])[]): FrappeListDoc[];
 	get_visible_columns(): QueryReportColumn[];
-	/** `frappe/public/js/frappe/views/reports/query_report.js:1575-1608` — `raise` makes missing mandatory filters throw. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:1580-1613` — `raise` makes missing mandatory filters throw. */
 	get_filter_values(raise?: boolean): Record<string, unknown>;
 	get_filter(fieldname: string, warn?: boolean): unknown;
 	get_filter_value(fieldname: string, warn?: boolean): unknown;
@@ -2546,7 +2548,7 @@ export declare class QueryReport extends BaseList {
 	toggle_print_buttons(show: boolean): void;
 	toggle_primary_button_disabled(disable: boolean): void;
 	/**
-	 * `frappe/public/js/frappe/views/reports/query_report.js:2285-2301`, called from the "Add Column" dialog (`frappe/public/js/frappe/views/reports/query_report.js:2162-2207`).
+	 * `frappe/public/js/frappe/views/reports/query_report.js:2295-2311`, called from the "Add Column" dialog (`frappe/public/js/frappe/views/reports/query_report.js:2172-2217`).
 	 * `custom_column` is an ARRAY of one column (it goes straight into
 	 * `prepare_columns`, which maps over it); `custom_data` is the server's
 	 * `get_data_for_custom_field` reply, a map of linked docname → value; and
@@ -2562,13 +2564,13 @@ export declare class QueryReport extends BaseList {
 	get_linked_doctypes(): unknown;
 	add_translate_data_checkbox(): void;
 	/**
-	 * `frappe/public/js/frappe/views/reports/query_report.js:2558-2569` — datatable-driven, like ReportView's:
+	 * `frappe/public/js/frappe/views/reports/query_report.js:2568-2579` — datatable-driven, like ReportView's:
 	 * `this.datatable.rowmanager.getCheckedRows()` indexes into `this.data`.
 	 */
 	get_checked_items(only_docnames: true): string[];
 	get_checked_items(only_docnames?: false | 0 | null | undefined): FrappeListDoc[];
 	get_checked_items(only_docnames?: boolean): string[] | FrappeListDoc[];
-	/** `frappe/public/js/frappe/views/reports/query_report.js:2571-2573` — a getter aliasing `get_filter_values`, kept for back-compat. */
+	/** `frappe/public/js/frappe/views/reports/query_report.js:2581-2583` — a getter aliasing `get_filter_values`, kept for back-compat. */
 	readonly get_values: (raise?: boolean) => Record<string, unknown>;
 }
 /** Augmentation seam — see {@link ListView}. */
@@ -2594,7 +2596,7 @@ export interface ListSettingsField {
  *
  * NOT on the `frappe` global: it is an ES-module default export, reachable only
  * via a deep import or indirectly through
- * {@link ListView.show_list_settings} (`frappe/public/js/frappe/list/list_view.js:2708-2717`).
+ * {@link ListView.show_list_settings} (`frappe/public/js/frappe/list/list_view.js:2712-2721`).
  */
 export declare class ListSettings {
 	/** `frappe/public/js/frappe/list/list_settings.js:2-25` — throws when `doctype` is missing (`frappe/public/js/frappe/list/list_settings.js:3-5`). */
@@ -2870,11 +2872,11 @@ export interface FrappeViewsNamespace {
 	KanbanBoardColumn?: unknown;
 	/** `views/kanban/kanban_view.js` */
 	KanbanView?: unknown;
-	/** `views/kanban_v2/kanban_page.js` — the grouped board (`frappe/public/js/frappe/views/kanban_v2/kanban_page.js:2026`). */
+	/** `views/kanban_v2/kanban_page.js` — the grouped board (`frappe/public/js/frappe/views/kanban_v2/kanban_page.js:2034`). */
 	KanbanV2GroupedBoard?: unknown;
 	/** `views/kanban_v2/kanban_page.js` — the page controller (`frappe/public/js/frappe/views/kanban_v2/kanban_page.js:74`). */
 	KanbanV2Page?: unknown;
-	/** `views/kanban_v2/kanban_page.js` — the view `ListFactory` builds for a v2 board (`frappe/public/js/frappe/views/kanban_v2/kanban_page.js:2211`, `frappe/public/js/frappe/list/list_factory.js:34`). */
+	/** `views/kanban_v2/kanban_page.js` — the view `ListFactory` builds for a v2 board (`frappe/public/js/frappe/views/kanban_v2/kanban_page.js:2219`, `frappe/public/js/frappe/list/list_factory.js:34`). */
 	KanbanV2View?: unknown;
 	/** `views/kanban_v2/kanban_settings.bundle.js` — `async (page) => …` (`frappe/public/js/frappe/views/kanban_v2/kanban_settings.bundle.js:4`). */
 	open_kanban_settings?: unknown;
@@ -3079,7 +3081,7 @@ export interface FileView {}
  * onto the instance (`$.extend(this, opts)`,
  * `frappe/public/js/frappe/views/communication.js:13`); these are the ones it
  * reads. frappe's own callers: a form's `frm.email_doc`
- * (`frappe/public/js/frappe/form/form.js:1480-1488`), the timeline's reply
+ * (`frappe/public/js/frappe/form/form.js:1641-1649`), the timeline's reply
  * (`frappe/public/js/frappe/form/footer/form_timeline.js:560-612`), the error
  * report (`frappe/public/js/frappe/request.js:604-612`), the Inbox's New Email
  * (`frappe/public/js/frappe/views/inbox/inbox_view.js:208`, no options at all).
@@ -3091,7 +3093,7 @@ export interface FileView {}
  * (`frappe/public/js/frappe/form/footer/form_timeline.js:559-573`), and
  * `frm.email_doc` passes the doc's `email` (or `email_id`, `contact_email`),
  * which may be absent, and its own `message` argument
- * (`frappe/public/js/frappe/form/form.js:1480-1488`).
+ * (`frappe/public/js/frappe/form/form.js:1641-1649`).
  */
 export interface CommunicationComposerOptions {
 	/** The form the email is about: its doc, files, email field, timeline and `get_email_recipients` hook are read throughout. */
@@ -3498,7 +3500,7 @@ export interface FrappeViewsGlobals {
 }
 
 /**
- * `frappe.get_list_view(doctype)` — `frappe/public/js/frappe/list/list_view.js:3285-3288`.
+ * `frappe.get_list_view(doctype)` — `frappe/public/js/frappe/list/list_view.js:3289-3292`.
  *
  * Looks up `frappe.views.list_view["List/<doctype>/List"]`, so it only ever
  * finds the *List* view of a doctype, never its Report view.
@@ -3546,24 +3548,24 @@ export type CurrentPage = Container | null;
 /**
  * Class names emitted by `ListView.get_header_html` / `get_header_html_skeleton`
  * / `get_list_row_html_skeleton` / `get_column_html` / `get_meta_html`
- * (`frappe/public/js/frappe/list/list_view.js:1254-1714`) and read back by frappe's own handlers.
+ * (`frappe/public/js/frappe/list/list_view.js:1254-1718`) and read back by frappe's own handlers.
  *
  * Load-bearing read sites:
- *  - `list-row-checkbox`      `frappe/public/js/frappe/list/list_view.js:2218-2243` (shift-select), `frappe/public/js/frappe/list/list_view.js:1182`
- *                             (`find_checkbox_by_docname`), `frappe/public/js/frappe/list/list_view.js:2445`
- *                             (`set_rows_as_checked`), `frappe/public/js/frappe/list/list_view.js:2459` (the `:checked`
+ *  - `list-row-checkbox`      `frappe/public/js/frappe/list/list_view.js:2222-2247` (shift-select), `frappe/public/js/frappe/list/list_view.js:1182`
+ *                             (`find_checkbox_by_docname`), `frappe/public/js/frappe/list/list_view.js:2449`
+ *                             (`set_rows_as_checked`), `frappe/public/js/frappe/list/list_view.js:2463` (the `:checked`
  *                             query). The SELECTION is `checked_docnames`, not this DOM.
- *  - `list-header-subject`    `frappe/public/js/frappe/list/list_view.js:2192`, `frappe/public/js/frappe/list/list_view.js:2197`, `frappe/public/js/frappe/list/list_view.js:2454`
- *  - `checkbox-actions`       `frappe/public/js/frappe/list/list_view.js:2193`, `frappe/public/js/frappe/list/list_view.js:2196`, `frappe/public/js/frappe/list/list_view.js:2455`
- *  - `list-check-all`         `frappe/public/js/frappe/list/list_view.js:472`, `frappe/public/js/frappe/list/list_view.js:2192-2201`, `frappe/public/js/frappe/list/list_view.js:2465`
- *  - `list-header-meta`       `frappe/public/js/frappe/list/list_view.js:2468-2469` (`"{0} items selected"`)
+ *  - `list-header-subject`    `frappe/public/js/frappe/list/list_view.js:2196`, `frappe/public/js/frappe/list/list_view.js:2201`, `frappe/public/js/frappe/list/list_view.js:2458`
+ *  - `checkbox-actions`       `frappe/public/js/frappe/list/list_view.js:2197`, `frappe/public/js/frappe/list/list_view.js:2200`, `frappe/public/js/frappe/list/list_view.js:2459`
+ *  - `list-check-all`         `frappe/public/js/frappe/list/list_view.js:472`, `frappe/public/js/frappe/list/list_view.js:2196-2205`, `frappe/public/js/frappe/list/list_view.js:2469`
+ *  - `list-header-meta`       `frappe/public/js/frappe/list/list_view.js:2472-2473` (`"{0} items selected"`)
  *  - `list-count`             `frappe/public/js/frappe/list/list_view.js:1251` (`get_count_element`)
- *  - `list-liked-by-me`       `frappe/public/js/frappe/list/list_view.js:856` (adds `liked`), `frappe/public/js/frappe/list/list_view.js:2269` (click)
+ *  - `list-liked-by-me`       `frappe/public/js/frappe/list/list_view.js:856` (adds `liked`), `frappe/public/js/frappe/list/list_view.js:2273` (click)
  *  - `list-row-container` / `list-row` / `level-left` / `level-right`
- *                             `frappe/public/js/frappe/list/list_view.js:1621-1628` (`update_listview_classes` MEASURES them),
- *                             `frappe/public/js/frappe/list/list_view.js:1642` (`sync_right_width`)
- *  - `list-row-col[data-fieldname]`  `frappe/public/js/frappe/list/list_view.js:1590` (`apply_column_widths`)
- *  - `list-col-resize-handle` the header drag handle: emitted at `frappe/public/js/frappe/list/list_view.js:1292`,
+ *                             `frappe/public/js/frappe/list/list_view.js:1625-1632` (`update_listview_classes` MEASURES them),
+ *                             `frappe/public/js/frappe/list/list_view.js:1646` (`sync_right_width`)
+ *  - `list-row-col[data-fieldname]`  `frappe/public/js/frappe/list/list_view.js:1594` (`apply_column_widths`)
+ *  - `list-col-resize-handle` the header drag handle: emitted at `frappe/public/js/frappe/list/list_view.js:1296` (only when `can_resize`, `frappe/public/js/frappe/list/list_view.js:1269-1272`),
  *                             matched by `setup_column_resize` at `frappe/public/js/frappe/list/list_view.js:886`
  *  - `list-virtual-spacer`    emitted and cleared by the virtualization bundle
  *                             (`frappe/public/js/frappe/list/list_view_virtualization.js:385-405`), also cleared in `render_list` (`frappe/public/js/frappe/list/list_view.js:1043`)
@@ -3572,7 +3574,7 @@ export type CurrentPage = Container | null;
  *  - `no-result`              `frappe/public/js/frappe/list/base_list.js:362`, toggled at `frappe/public/js/frappe/list/base_list.js:618`
  *
  * `es-badge` is the status pill (and a Select cell's pill): both come from
- * `frappe.ui.badge.html` (`frappe/public/js/frappe/list/list_view.js:1506`, `frappe/public/js/frappe/list/list_view.js:1903`; markup `frappe/public/js/frappe/ui/components/badge.js:60`, `frappe/public/js/frappe/ui/components/badge.js:77`). It
+ * `frappe.ui.badge.html` (`frappe/public/js/frappe/list/list_view.js:1510`, `frappe/public/js/frappe/list/list_view.js:1907`; markup `frappe/public/js/frappe/ui/components/badge.js:60`, `frappe/public/js/frappe/ui/components/badge.js:77`). It
  * REPLACES `indicator-pill`, which ListView no longer emits.
  */
 export type FrappeListClassName =
@@ -3632,23 +3634,23 @@ export type FrappeListClassName =
 /**
  * Attribute contracts on list markup.
  *
- *  - `data-sort-by`   written by `get_header_html` (`frappe/public/js/frappe/list/list_view.js:1264`, `frappe/public/js/frappe/list/list_view.js:1285`),
- *                     read by `setup_sort_by` (`frappe/public/js/frappe/list/list_view.js:2077`)
- *  - `data-name`      written by `ElementFactory` (`frappe/public/js/frappe/list/list_view.js:3336`, `frappe/public/js/frappe/list/list_view.js:3346`,
- *                     `frappe/public/js/frappe/list/list_view.js:3356`), read by `get_checkbox_docname` as
+ *  - `data-sort-by`   written by `get_header_html` (`frappe/public/js/frappe/list/list_view.js:1264`, `frappe/public/js/frappe/list/list_view.js:1289`),
+ *                     read by `setup_sort_by` (`frappe/public/js/frappe/list/list_view.js:2081`)
+ *  - `data-name`      written by `ElementFactory` (`frappe/public/js/frappe/list/list_view.js:3340`, `frappe/public/js/frappe/list/list_view.js:3350`,
+ *                     `frappe/public/js/frappe/list/list_view.js:3360`), read by `get_checkbox_docname` as
  *                     `attr("data-name")` then `data().name` (`frappe/public/js/frappe/list/list_view.js:1168`) and
  *                     URI-decoded only if that parses (`frappe/public/js/frappe/list/list_view.js:1173-1177`)
- *  - `data-fieldname` header cells (`frappe/public/js/frappe/list/list_view.js:1294`; the literal `"undefined"` for
- *                     the Tag column) and row cells (`frappe/public/js/frappe/list/list_view.js:1423`, `frappe/public/js/frappe/list/list_view.js:1573`);
- *                     consumed by `apply_column_widths` (`frappe/public/js/frappe/list/list_view.js:1590`),
+ *  - `data-fieldname` header cells (`frappe/public/js/frappe/list/list_view.js:1298`; the literal `"undefined"` for
+ *                     the Tag column) and row cells (`frappe/public/js/frappe/list/list_view.js:1427`, `frappe/public/js/frappe/list/list_view.js:1577`);
+ *                     consumed by `apply_column_widths` (`frappe/public/js/frappe/list/list_view.js:1594`),
  *                     `capture_column_widths_from_dom` (`frappe/public/js/frappe/list/list_view.js:1099`) and the
  *                     column drag (`frappe/public/js/frappe/list/list_view.js:890`)
- *  - `data-filter`    `frappe/public/js/frappe/list/list_view.js:1511`, `frappe/public/js/frappe/list/list_view.js:1516`, `frappe/public/js/frappe/list/list_view.js:1530`, `frappe/public/js/frappe/list/list_view.js:1909`; read by
- *                     `setup_filterable` (`frappe/public/js/frappe/list/list_view.js:2060`)
- *  - `data-idx`       `frappe/public/js/frappe/list/list_view.js:1721`, `frappe/public/js/frappe/list/list_view.js:1745`; read at `frappe/public/js/frappe/list/list_view.js:2167`, `frappe/public/js/frappe/list/list_view.js:2175`
- *  - `data-parent`    `frappe/public/js/frappe/list/list_view.js:2204` — group-by child checkboxes
- *  - `data-doctype` / `data-liked-by` — `frappe/public/js/frappe/list/list_view.js:3306`, `frappe/public/js/frappe/list/list_view.js:3361`
- *  - `data-virtual-row` `frappe/public/js/frappe/list/list_view.js:1400` — stamps a row the virtualization window owns;
+ *  - `data-filter`    `frappe/public/js/frappe/list/list_view.js:1515`, `frappe/public/js/frappe/list/list_view.js:1520`, `frappe/public/js/frappe/list/list_view.js:1534`, `frappe/public/js/frappe/list/list_view.js:1913`; read by
+ *                     `setup_filterable` (`frappe/public/js/frappe/list/list_view.js:2064`)
+ *  - `data-idx`       `frappe/public/js/frappe/list/list_view.js:1725`, `frappe/public/js/frappe/list/list_view.js:1749`; read at `frappe/public/js/frappe/list/list_view.js:2171`, `frappe/public/js/frappe/list/list_view.js:2179`
+ *  - `data-parent`    `frappe/public/js/frappe/list/list_view.js:2208` — group-by child checkboxes
+ *  - `data-doctype` / `data-liked-by` — `frappe/public/js/frappe/list/list_view.js:3310`, `frappe/public/js/frappe/list/list_view.js:3365`
+ *  - `data-virtual-row` `frappe/public/js/frappe/list/list_view.js:1404` — stamps a row the virtualization window owns;
  *                     read by the bundle (`frappe/public/js/frappe/list/list_view_virtualization.js:295`, `frappe/public/js/frappe/list/list_view_virtualization.js:358`, `frappe/public/js/frappe/list/list_view_virtualization.js:386`)
  *  - `data-row-index` — the datatable's, read by `ReportView.update_row` (`frappe/public/js/frappe/views/reports/report_view.js:291`)
  *
@@ -3775,9 +3777,9 @@ export type FrappeDatatableClassName =
  *                                    (`frappe/desk/page/desktop/desktop.html:47`, `frappe/desk/page/desktop/desktop_icons.html:37`) are in both;
  *                                    `.desktop-search-wrapper` only in
  *                                    `desktop_icons.html` (`frappe/desk/page/desktop/desktop_icons.html:11`).
- *                                    Handlers bind by selector at `frappe/desk/page/desktop/desktop.js:233` (the
- *                                    notifications wrapper), `frappe/desk/page/desktop/desktop.js:238` (fills the
- *                                    avatar) and `frappe/desk/page/desktop/desktop.js:285` (the avatar's dropdown),
+ *                                    Handlers bind by selector at `frappe/desk/page/desktop/desktop.js:258` (the
+ *                                    notifications wrapper), `frappe/desk/page/desktop/desktop.js:263` (fills the
+ *                                    avatar) and `frappe/desk/page/desktop/desktop.js:310` (the avatar's dropdown),
  *                                    and `frappe/public/js/desktop_icons.bundle.js:163`, `frappe/public/js/desktop_icons.bundle.js:288`, `frappe/public/js/desktop_icons.bundle.js:304` toggle
  *                                    `data-mode` on the wrapper, so MOVING these nodes
  *                                    preserves behaviour while CLONING them would not.
@@ -3811,9 +3813,9 @@ export type FrappeDeskSelector =
 /**
  * SVG sprite ids referenced by list/report markup. Each is defined in the Lucide
  * sprite the desk loads (`frappe/hooks.py:39-45` `app_include_icons`):
- * `#icon-heart` — the like button, emitted at `frappe/public/js/frappe/list/list_view.js:1312` and `frappe/public/js/frappe/list/list_view.js:3328`, styled by
+ * `#icon-heart` — the like button, emitted at `frappe/public/js/frappe/list/list_view.js:1316` and `frappe/public/js/frappe/list/list_view.js:3332`, styled by
  * `frappe/public/scss/common/icons.scss:18,41` (`frappe/public/icons/lucide/icons.svg:5181`); `#icon-table` — the
- * query report's loading state (`frappe/public/js/frappe/views/reports/query_report.js:1264`, `frappe/public/icons/lucide/icons.svg:9803`); `#icon-menu` — the page
+ * query report's loading state (`frappe/public/js/frappe/views/reports/query_report.js:1269`, `frappe/public/icons/lucide/icons.svg:9803`); `#icon-menu` — the page
  * head's sidebar toggle (`frappe/public/js/frappe/ui/page.html:7`, `frappe/public/icons/lucide/icons.svg:6314`).
  *
  * `#icon-small-file` is gone from the union: it is defined only in the timeless
@@ -3856,7 +3858,7 @@ export interface FrappeQueryReportGlobals {
 	 * `frappe/public/js/frappe/widgets/chart_widget.js:469` reassigns it.
 	 *
 	 * Its `datatable` member is itself `DataTable | null | undefined`
-	 * ({@link QueryReport.datatable}) — `frappe/public/js/frappe/views/reports/query_report.js:1168-1235` builds it on
+	 * ({@link QueryReport.datatable}) — `frappe/public/js/frappe/views/reports/query_report.js:1173-1240` builds it on
 	 * first render and callers null it to force a rebuild.
 	 */
 	query_report?: QueryReport;
