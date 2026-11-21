@@ -36,7 +36,7 @@ jobs:
   flake:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || fromJSON('["self-hosted","nixos"]') }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       # `determinate: false` — this flake carries no Determinate-only nixConfig
       # (FlakeHub substituters, lazy trees), so the default `true` buys nothing

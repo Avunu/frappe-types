@@ -18,6 +18,8 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+    cooldown:
+      default-days: 7
 
   # typescript, @types/node, @types/jquery. `importNpmLock` reads package-lock.json
   # directly, so a bump here needs no companion Nix change — there is no vendor hash
@@ -37,6 +39,8 @@ updates:
       # oldest TypeScript the README supports, on purpose. Moving it is a decision
       # about that floor, not a routine bump.
       - dependency-name: "typescript-5.8"
+    cooldown:
+      default-days: 7
 
   # ── Nix flake inputs, including the frappe source itself ─────────────────────────
   #

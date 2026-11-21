@@ -111,7 +111,7 @@ jobs:
       sha: ${{ steps.rp.outputs.sha }}
     steps:
       - id: rp
-        uses: googleapis/release-please-action@v5
+        uses: googleapis/release-please-action@v5.0.0
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
@@ -158,8 +158,8 @@ jobs:
       pull-requests: read
       statuses: write # the commit status that surfaces this on the release PR
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: "24"
 
