@@ -4,9 +4,8 @@ version: 2
 # .github/workflows/dependabot-auto-merge.yml turns on auto-merge and the `flake` check
 # on `version-*` is what actually decides. Nothing here relaxes a check.
 #
-# Bumps use the `chore` type so they never cut a release on their own: release-please
-# only bumps on `fix:`/`feat:`, so dependency updates ride along with the next real
-# release instead of forcing one.
+# Bumps use the `fix(deps)` type, so each merged bump ships as a patch release: release-please
+# only bumps on `fix:`/`feat:`, and `fix(deps)` counts as `fix:`.
 
 updates:
   - package-ecosystem: "github-actions"
@@ -14,7 +13,7 @@ updates:
     schedule:
       interval: "daily"
     commit-message:
-      prefix: "chore"
+      prefix: "fix(deps)"
     groups:
       actions:
         patterns: ["*"]
@@ -29,7 +28,7 @@ updates:
     schedule:
       interval: "daily"
     commit-message:
-      prefix: "chore"
+      prefix: "fix(deps)"
     groups:
       npm:
         patterns: ["*"]
@@ -67,7 +66,7 @@ updates:
       interval: "weekly"
       day: "monday"
     commit-message:
-      prefix: "chore"
+      prefix: "fix(deps)"
     # Ungrouped: one pull request per flake input, so a frappe bump (which needs the
     # review above) is never bundled with a routine nixpkgs or tooling bump.
     open-pull-requests-limit: 5
