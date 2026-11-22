@@ -52,7 +52,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ inputs.sha || github.sha }}
 
@@ -65,7 +65,7 @@ jobs:
       # string npm's own troubleshooting page tells you to read as "the workflow filename
       # does not match" — in favour of a raw 401. npm defaults to registry.npmjs.org
       # anyway, nothing here uses a scoped registry, and `cache: npm` does not need it.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: "24"
           cache: npm
