@@ -27,6 +27,125 @@ What changed in frappe, in the places this typeset depends on, between the tag i
 
 <!-- NEW SECTIONS GO DIRECTLY BELOW THIS LINE, newest first -->
 
+## v16.54.0 -> v16.60.2
+
+- Baseline: `v16.54.0` (commit 2fcb9397a1, 2026-10-27), read from git.
+- Audited: `v16.60.2` (commit 2df0425571, 2026-11-18), read from git.
+- 1036 commits in `v16.54.0..v16.60.2`.
+- Produced by `node scripts/audit-drift.mjs --at v16.60.2 --from v16.54.0 --report md`.
+
+### Surface changes
+
+#### scss.bundles: each `*.bundle.scss` entry file and its `@import`s
+
+- `frappe/public/scss/*.bundle.scss`
+  - added `frappe/public/scss/bottom_sheet.bundle.scss`
+  - added `frappe/public/scss/desk_charts.bundle.scss`
+  - added `frappe/public/scss/optional_sections.bundle.scss`
+- `frappe/public/scss/bottom_sheet.bundle.scss`
+  - added `frappe/public/css/espresso/components/bottom_sheet.css`
+- `frappe/public/scss/desk_charts.bundle.scss`
+  - added `frappe/public/css/espresso/components/stat_card.css`
+- `frappe/public/scss/email.bundle.scss`
+  - added `./common/quill_content.scss`
+- `frappe/public/scss/optional_sections.bundle.scss`
+  - added `frappe/public/css/espresso/components/optional_sections.css`
+- `frappe/public/scss/print_format.bundle.scss`
+  - added `./common/quill_content.scss`
+
+#### hooks.includes: the include lists `frappe/hooks.py` assigns
+
+No change.
+
+#### icons: sprites, icon-font leftovers, `frappe.utils` helpers
+
+- `frappe/public/icons/lucide/icons.svg`
+  - symbols: 1853 -> 1862
+  - distinct: 1853 -> 1862
+  - idsSha256: 7cc980a1c851... -> 3a33c47f304e...
+  - prefix icon-: 1853 -> 1862
+- `frappe/public/icons/module-icons.svg`
+  - symbols: 24 -> 28
+  - distinct: 24 -> 28
+  - idsSha256: a2905934df18... -> fd534be980de...
+  - prefix icon-: 24 -> 28
+
+In the audited tree, changed or not:
+
+- `frappe/public/icons/lucide/icons.svg`: 1862 symbols, 1862 distinct ids
+- `frappe/public/icons/timeless/icons.svg`: 141 symbols, 141 distinct ids
+- `frappe/public/icons/espresso/icons.svg`: 275 symbols, 261 distinct ids
+- `frappe/public/icons/desktop_icons/alphabets.svg`: 26 symbols, 26 distinct ids
+- `frappe/public/icons/module-icons.svg`: 28 symbols, 28 distinct ids
+- `frappe/public/css/octicons`: absent
+- `frappe/public/css/fonts/fontawesome`: present
+- bundles importing an icon-font stylesheet: none
+
+#### bundles: `*.bundle.*` entry files under `frappe/public`
+
+- `frappe/public/**/*.bundle.{js,ts,scss,css}`
+  - added `frappe/public/js/attachment_queue_review.bundle.js`
+  - added `frappe/public/js/bottom_sheet.bundle.js`
+  - added `frappe/public/js/desk_charts.bundle.js`
+  - added `frappe/public/js/flow_launcher.bundle.js`
+  - added `frappe/public/js/grid_import.bundle.js`
+  - added `frappe/public/js/mobile_nav.bundle.js`
+  - added `frappe/public/js/optional_sections.bundle.js`
+  - added `frappe/public/js/upload_first.bundle.js`
+  - added `frappe/public/js/upload_first_review.bundle.js`
+  - added `frappe/public/js/web_form_request.bundle.js`
+  - added `frappe/public/scss/bottom_sheet.bundle.scss`
+  - added `frappe/public/scss/desk_charts.bundle.scss`
+  - added `frappe/public/scss/optional_sections.bundle.scss`
+
+#### boot: `bootinfo` keys assigned in `frappe/boot.py`
+
+- `frappe/boot.py: bootinfo.<key> =`
+  - added `link_settings`
+  - added `setup_wizard_url`
+  - added `studio_apps`
+  - added `web_form_request_forms`
+
+### Citation integrity
+
+- 5376 full-path citations (5265 name a line) in 19 declaration files, covering 305 distinct frappe files.
+- Of those files: 110 changed since `v16.54.0`, 0 deleted, 195 unchanged.
+- Cited line anchors whose text differs between the two trees: 4 of 10 (40.0%) counting each line once; 6 of 12 (50.0%) counting every citation.
+  A line is compared by number, trimmed. A range contributes its two endpoints. 0 anchor(s) were past the end of the file at `v16.54.0` already and are left out.
+  5369 citation(s) (8309 anchors) were left out of that comparison: `citation-anchors.json` records that their numbers already follow the audited tree (scripts/remap-citations.mjs moved them), so the count above is of the citations still on the baseline's numbering.
+- Not checked: 1546 citation(s) with a line number whose path is relative or belongs to another repo (by first path segment, (bare): 1290, model: 100, utils: 47, carbon_frappe: 27, tables: 24, node_modules: 15, erpnext: 10, form: 9, 11 more). A relative citation such as `grid.js:412` means what its file's header says it means, and that is prose, so a file cited ONLY that way is neither resolved nor reported as deleted.
+
+#### Top 25 changed cited files by churn (lines added + deleted)
+
+| churn | file | citations | cited lines changed |
+| --- | --- | ---: | ---: |
+| +461/-236 (697) | `frappe/public/js/frappe/views/kanban_v2/kanban_page.js` | 4 | - |
+| +475/-140 (615) | `frappe/public/js/frappe/list/list_view.js` | 360 | 1/1 |
+| +302/-253 (555) | `frappe/public/js/frappe/ui/user_settings_dialog.js` | 2 | - |
+| +236/-163 (399) | `frappe/public/js/frappe/views/reports/query_report.js` | 135 | - |
+| +360/-0 (360) | `frappe/public/js/frappe/ui/island/chart/legacy_config.js` | 1 | - |
+| +244/-35 (279) | `frappe/public/js/frappe/form/form.js` | 135 | - |
+| +259/-16 (275) | `frappe/email/doctype/email_account/email_account_list.js` | 1 | - |
+| +218/-25 (243) | `frappe/website/doctype/web_form/web_form.py` | 13 | - |
+| +117/-97 (214) | `frappe/public/js/frappe/ui/sidebar/sidebar.js` | 135 | - |
+| +182/-21 (203) | `frappe/public/js/frappe/widgets/chart_widget.js` | 5 | - |
+| +40/-119 (159) | `frappe/printing/page/print/print.js` | 33 | - |
+| +148/-4 (152) | `frappe/public/js/frappe/views/pageview.js` | 10 | - |
+| +80/-60 (140) | `frappe/desk/page/desktop/desktop.js` | 4 | - |
+| +71/-65 (136) | `frappe/public/js/frappe/ui/toolbar/awesome_bar.js` | 6 | - |
+| +130/-2 (132) | `frappe/public/js/frappe/ui/chart.js` | 14 | - |
+| +83/-37 (120) | `frappe/public/js/frappe/ui/sort_selector.js` | 22 | - |
+| +19/-100 (119) | `frappe/public/js/frappe/form/grid.js` | 197 | - |
+| +41/-53 (94) | `frappe/public/js/frappe/list/base_list.js` | 131 | - |
+| +76/-17 (93) | `frappe/core/doctype/user/user.py` | 4 | - |
+| +72/-19 (91) | `frappe/desk/search.py` | 1 | - |
+| +65/-26 (91) | `frappe/public/js/frappe/utils/utils.js` | 71 | - |
+| +61/-28 (89) | `frappe/sessions.py` | 17 | - |
+| +75/-13 (88) | `frappe/core/doctype/file/file.py` | 2 | - |
+| +68/-19 (87) | `frappe/public/js/frappe/ui/page.js` | 202 | - |
+| +44/-42 (86) | `frappe/public/js/frappe/web_form/web_form.js` | 72 | 0/2 |
+
+
 ## v16.50.0 -> v16.54.0
 
 - Baseline: `v16.50.0` (commit f20f92d297, 2026-10-06), read from git.

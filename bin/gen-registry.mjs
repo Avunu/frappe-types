@@ -166,6 +166,7 @@ export const FIELDTYPES = Object.freeze({
 	Image: { kind: "none" },
 	Fold: { kind: "none" },
 	Heading: { kind: "none" },
+	"Vue Component": { kind: "none" },
 
 	// table_fields — frappe/model/__init__.py:101
 	Table: { kind: "table" },

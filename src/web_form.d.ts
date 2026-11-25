@@ -93,7 +93,7 @@ export interface WebFormListViewColumn {
  * (`frappe/website/doctype/web_form/templates/web_form.html:188`,
  * `frappe/website/doctype/web_form/templates/web_list.html:30`): `as_dict(no_nulls=True)`
  * of the Web Form, plus the page flags merged in by
- * `frappe/website/doctype/web_form/web_form.py:304-313`.
+ * `frappe/website/doctype/web_form/web_form.py:341-350`.
  *
  * Only the keys frappe's own web form scripts read are named. Every other
  * field of the Web Form doctype is there too, under the open signature.
@@ -120,17 +120,17 @@ export interface WebFormDocFields {
 	name: string;
 	/** The doctype the web form writes — read at `frappe/public/js/frappe/web_form/webform_script.js:30`. */
 	doc_type: string;
-	/** `frappe/website/doctype/web_form/web_form.py:306` from `frappe/website/router.py:51` — present (and `true`) only on the list route. */
+	/** `frappe/website/doctype/web_form/web_form.py:343` from `frappe/website/router.py:51` — present (and `true`) only on the list route. */
 	is_list?: boolean;
-	/** `frappe/website/doctype/web_form/web_form.py:306` from `frappe/website/router.py:53` — present (and `true`) only on `/new`. */
+	/** `frappe/website/doctype/web_form/web_form.py:343` from `frappe/website/router.py:53` — present (and `true`) only on `/new`. */
 	is_new?: boolean;
-	/** Always present: initialised `False` at `frappe/website/doctype/web_form/web_form.py:196-197`, copied in at `:306`. */
+	/** Always present: initialised `False` at `frappe/website/doctype/web_form/web_form.py:233-234`, copied in at `:306`. */
 	in_edit_mode: boolean;
-	/** Always present: initialised `False` at `frappe/website/doctype/web_form/web_form.py:196-197`, copied in at `:306`. */
+	/** Always present: initialised `False` at `frappe/website/doctype/web_form/web_form.py:233-234`, copied in at `:306`. */
 	in_view_mode: boolean;
-	/** `frappe/website/doctype/web_form/web_form.py:310-313` — set when the page was opened through a Web Form Request. */
+	/** `frappe/website/doctype/web_form/web_form.py:347-350` — set when the page was opened through a Web Form Request. */
 	is_web_form_request?: boolean;
-	/** `frappe/website/doctype/web_form/web_form.py:313`; read at `frappe/public/js/frappe/web_form/web_form_list.js:120`. */
+	/** `frappe/website/doctype/web_form/web_form.py:350`; read at `frappe/public/js/frappe/web_form/web_form_list.js:120`. */
 	web_form_request_key?: string;
 	/** The form's fields, as docfields; `setup_fields` normalises them before render (`frappe/public/js/frappe/web_form/webform_script.js:59-63`). */
 	web_form_fields: DocField[];
@@ -141,25 +141,25 @@ export interface WebFormDocFields {
 	/**
 	 * The page's URL path, without the leading `/` (a Data field); the success
 	 * page and the delete redirect build links from it
-	 * (`frappe/public/js/frappe/web_form/web_form.js:485`, `:521`).
+	 * (`frappe/public/js/frappe/web_form/web_form.js:487`, `:521`).
 	 */
 	route?: string;
-	/** Offer "Edit your response" after a save (`frappe/public/js/frappe/web_form/web_form.js:483`). */
+	/** Offer "Edit your response" after a save (`frappe/public/js/frappe/web_form/web_form.js:485`). */
 	allow_edit?: FrappeCheck;
-	/** `frappe/public/js/frappe/web_form/web_form.js:493`, `:523`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:495`, `:523`. */
 	allow_multiple?: FrappeCheck;
-	/** `frappe/public/js/frappe/web_form/web_form.js:493`, `:520`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:495`, `:520`. */
 	show_list?: FrappeCheck;
 	/**
 	 * Save without the mandatory checks: `validate_section` passes at once
-	 * (`frappe/public/js/frappe/web_form/web_form.js:219`), `save()` collects
+	 * (`frappe/public/js/frappe/web_form/web_form.js:234`), `save()` collects
 	 * the values with errors ignored (:401), and the submit button stays
 	 * visible on every page of a multi-step form (:364).
 	 */
 	allow_incomplete?: FrappeCheck;
 	/**
 	 * Where `handle_success` sends the browser, five seconds after a save
-	 * (`frappe/public/js/frappe/web_form/web_form.js:470-474`); without it the
+	 * (`frappe/public/js/frappe/web_form/web_form.js:472-476`); without it the
 	 * success page is rendered instead. A Data field, so absent when unset.
 	 */
 	success_url?: string;
@@ -175,9 +175,9 @@ export interface WebFormDocFields {
 /**
  * What `WebForm#handle_success` and `#render_success_page` receive: `r.message`
  * of the save request — for frappe's own `save()`, the saved document the
- * accept endpoint returns (`frappe/website/doctype/web_form/web_form.py:953-954`).
+ * accept endpoint returns (`frappe/website/doctype/web_form/web_form.py:1058-1059`).
  * frappe reads only its `name`, to link to the response
- * (`frappe/public/js/frappe/web_form/web_form.js:483-500`). A `string` when the
+ * (`frappe/public/js/frappe/web_form/web_form.js:485-502`). A `string` when the
  * payments app's `accept_payment` is on: `handle_success` then navigates to it
  * as a URL (:457-460).
  *
@@ -263,8 +263,8 @@ export interface WebForm extends FieldGroup, Omit<WebFormDocFields, "web_form_fi
 	 * `prepare()` copies `web_form_doc` onto the instance
 	 * (`frappe/public/js/frappe/web_form/web_form.js:17`), but `web_form_doc`
 	 * carries `is_new` only on the `/new` route
-	 * (`frappe/website/doctype/web_form/web_form.py:306` copies the key only when
-	 * present, `frappe/utils/data.py:2653-2659`). Everywhere else nothing shadows
+	 * (`frappe/website/doctype/web_form/web_form.py:343` copies the key only when
+	 * present, `frappe/utils/data.py:2662-2668`). Everywhere else nothing shadows
 	 * the inherited `FieldGroup#is_new` METHOD
 	 * (`frappe/public/js/frappe/ui/field_group.js:289-291`), so the property is a
 	 * function — truthy. frappe's own `if (this.is_new || …)`
@@ -276,7 +276,7 @@ export interface WebForm extends FieldGroup, Omit<WebFormDocFields, "web_form_fi
 	/**
 	 * `frappe/public/js/frappe/web_form/web_form.js:19` — `reference_doc || {}`.
 	 * `save()` copies the form's values onto it and stamps `doctype` and
-	 * `web_form_name` before posting it (`frappe/public/js/frappe/web_form/web_form.js:409-411`).
+	 * `web_form_name` before posting it (`frappe/public/js/frappe/web_form/web_form.js:411-413`).
 	 */
 	doc: FrappeDocBase & { web_form_name?: string };
 	/** From the constructor options (`frappe/public/js/frappe/web_form/web_form.js:8`); emptied and rendered into by `make()` (:23). */
@@ -286,24 +286,25 @@ export interface WebForm extends FieldGroup, Omit<WebFormDocFields, "web_form_fi
 	/** `frappe/public/js/frappe/web_form/web_form.js:13`, `:86` — true when the form has page breaks. */
 	is_multi_step_form: boolean;
 	/**
-	 * `frappe/public/js/frappe/web_form/web_form.js:75-85` — the page's
+	 * `frappe/public/js/frappe/web_form/web_form.js:75-87` — the page's
 	 * `.page-break` elements that contain a form, a jQuery set (where
 	 * `Layout#page_breaks` is an array). Assigned by `make()`.
 	 */
 	page_breaks: JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/web_form/web_form.js:96-98` — the "Next" button, made only on a multi-step form. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:111-113` — the "Next" button, made only on a multi-step form. */
 	$next_button?: JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/web_form/web_form.js:100-102` — the "Previous" button, made only on a multi-step form. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:115-117` — the "Previous" button, made only on a multi-step form. */
 	$previous_button?: JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/web_form/web_form.js:305-307` — the progress dots, made only on an editable multi-step form. */
-	$slide_progress?: JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/web_form/web_form.js:390`, `:222` — set once a submit was attempted, which turns on mandatory highlighting. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:309-324` — the page stepper (a `frappe.ui.Stepper`), created on the first `render_stepper()` of a multi-step form. Replaces the 16.55 progress dots (`$slide_progress`). */
+	stepper?: unknown;
+	/** `frappe/public/js/frappe/web_form/web_form.js:392`, `:222` — set once a submit was attempted, which turns on mandatory highlighting. */
 	primary_action_fulfilled?: boolean;
 
 	/**
 	 * `frappe/public/js/frappe/web_form/web_form.js:16-20` — copies every key of
 	 * `web_form_doc` onto the controller, takes its `web_form_fields` as the
-	 * fields to render, and keeps `doc` as the document. Call before `make()`.
+	 * fields to render (through `with_first_page_heading`, `web_form.js:18, 98-102`, which turns
+	 * a leading Page Break into a Section Break), and keeps `doc` as the document. Call before `make()`.
 	 */
 	prepare(web_form_doc: WebFormDoc, doc: FrappeDocBase): void;
 	/**
@@ -325,63 +326,65 @@ export interface WebForm extends FieldGroup, Omit<WebFormDocFields, "web_form_fi
 
 	/**
 	 * A validation hook the client script assigns. `save()` calls it first
-	 * (`frappe/public/js/frappe/web_form/web_form.js:391-398`): a falsy return
+	 * (`frappe/public/js/frappe/web_form/web_form.js:393-400`): a falsy return
 	 * other than `undefined` shows "Couldn't save" and stops the save.
 	 */
 	validate?: () => boolean | undefined | void;
 	/** A hook the client script assigns; `make()` calls it last (`frappe/public/js/frappe/web_form/web_form.js:42`). */
 	after_load?: () => void;
-	/** A hook the client script assigns; called after a successful save (`frappe/public/js/frappe/web_form/web_form.js:434`). */
+	/** A hook the client script assigns; called after a successful save (`frappe/public/js/frappe/web_form/web_form.js:436`). */
 	after_save?: () => void;
 
 	/** `frappe/public/js/frappe/web_form/web_form.js:54-64` — gives every field without a `change` handler one that refreshes dependencies and marks the form dirty. */
 	setup_listeners(): void;
 	/** `frappe/public/js/frappe/web_form/web_form.js:66-72` — sets `frappe.form_dirty` and shows the "Not Saved" badge, on an editable form only. */
 	make_form_dirty(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:74-87` — drops empty page breaks and sets `page_breaks` / `is_multi_step_form`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:74-102` — drops empty page breaks and sets `page_breaks` / `is_multi_step_form`. */
 	set_page_breaks(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:89-150` — adds the Previous / Next buttons of a multi-step form. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:104-165` — adds the Previous / Next buttons of a multi-step form. */
 	setup_previous_next_button(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:152-155` — `set_values(doc)` when `doc` has a `name`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:167-170` — `set_values(doc)` when `doc` has a `name`. */
 	set_field_values(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:157-169` — field defaults, then `doc`, then the URL query, through `set_values`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:172-184` — field defaults, then `doc`, then the URL query, through `set_values`. */
 	set_default_values(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:171-173` — binds `save()` to the form's `submit`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:186-188` — binds `save()` to the form's `submit`. */
 	setup_primary_action(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:175-177`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:190-192`. */
 	setup_discard_action(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:179-181`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:194-196`. */
 	setup_delete_action(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:183-197` — confirms when dirty, then leaves the page. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:198-212` — confirms when dirty, then leaves the page. */
 	discard_form(): false;
-	/** `frappe/public/js/frappe/web_form/web_form.js:199-216` — confirms, deletes the document on the server, then redirects. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:214-231` — confirms, deletes the document on the server, then redirects. */
 	delete_form(): false;
-	/** `frappe/public/js/frappe/web_form/web_form.js:218-277` — checks the visible page's mandatory fields. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:233-294` — checks the visible page's mandatory fields. */
 	validate_section(): boolean;
-	/** `frappe/public/js/frappe/web_form/web_form.js:279-290` — shows the page at `current_section`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:296-307` — shows the page at `current_section`. */
 	toggle_section(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:292-326`. */
-	render_progress_dots(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:328-337`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:309-324` — creates or advances the page stepper (replaces the 16.55 `render_progress_dots`). */
+	render_stepper(): void;
+	/** `frappe/public/js/frappe/web_form/web_form.js:326-328` — the page labels the stepper shows. */
+	get_page_labels(): string[];
+	/** `frappe/public/js/frappe/web_form/web_form.js:330-339`. */
 	toggle_buttons(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:339-346` — whether the page after `section` has no visible control. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:341-348` — whether the page after `section` has no visible control. */
 	is_next_section_empty(section: number): boolean;
-	/** `frappe/public/js/frappe/web_form/web_form.js:348-355` — whether the page before `section` has no visible control. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:350-357` — whether the page before `section` has no visible control. */
 	is_previous_section_empty(section: number): boolean;
-	/** `frappe/public/js/frappe/web_form/web_form.js:357-360`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:359-362`. */
 	show_save_and_hide_next_button(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:362-365`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:364-367`. */
 	show_next_and_hide_save_button(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:367-369`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:369-371`. */
 	toggle_previous_button(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:371-373` — the jQuery SELECTOR (a string) of page `idx`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:373-375` — the jQuery SELECTOR (a string) of page `idx`. */
 	get_page(idx: number): string;
-	/** `frappe/public/js/frappe/web_form/web_form.js:375-377`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:377-379`. */
 	show_form_page(): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:379-385`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:381-387`. */
 	hide_form_pages(): void;
 	/**
-	 * `frappe/public/js/frappe/web_form/web_form.js:387-454`. Validates, then
+	 * `frappe/public/js/frappe/web_form/web_form.js:389-456`. Validates, then
 	 * posts to `frappe.website.doctype.web_form.web_form.accept`. Always returns
 	 * `false` (it is a submit handler); the outcome arrives through
 	 * `handle_success`, `after_save` and the `"after_save"` event. Does nothing
@@ -389,9 +392,9 @@ export interface WebForm extends FieldGroup, Omit<WebFormDocFields, "web_form_fi
 	 */
 	save(): false;
 	/**
-	 * `frappe/public/js/frappe/web_form/web_form.js:456-478` — called by
+	 * `frappe/public/js/frappe/web_form/web_form.js:458-480` — called by
 	 * `save()` with `r.message` of the accept call (:432): the saved document
-	 * (`frappe/website/doctype/web_form/web_form.py:953-954`). Hides the form,
+	 * (`frappe/website/doctype/web_form/web_form.py:1058-1059`). Hides the form,
 	 * shows the success page, then redirects to `success_url` after five
 	 * seconds or calls `render_success_page(data)`. With the payments app's
 	 * `accept_payment` on an unpaid document it first navigates to `data` as a
@@ -399,17 +402,17 @@ export interface WebForm extends FieldGroup, Omit<WebFormDocFields, "web_form_fi
 	 */
 	handle_success(data: WebFormSaveResult): void;
 	/**
-	 * `frappe/public/js/frappe/web_form/web_form.js:480-502` — adds the "Edit
+	 * `frappe/public/js/frappe/web_form/web_form.js:482-504` — adds the "Edit
 	 * your response" / "View your response" links for `data.name` to the
 	 * success page, as `allow_edit`, `login_required`, `allow_multiple` and
 	 * `show_list` allow.
 	 */
 	render_success_page(data: WebFormSaveResult): void;
-	/** `frappe/public/js/frappe/web_form/web_form.js:504-508` — `?web_form_request_key=…`, or `""`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:506-510` — `?web_form_request_key=…`, or `""`. */
 	get_request_query(): string;
-	/** `frappe/public/js/frappe/web_form/web_form.js:510-516`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:512-518`. */
 	get_discard_url(): string;
-	/** `frappe/public/js/frappe/web_form/web_form.js:518-533`. */
+	/** `frappe/public/js/frappe/web_form/web_form.js:520-535`. */
 	get_delete_redirect_url(): string;
 }
 

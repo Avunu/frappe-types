@@ -68,7 +68,7 @@
  * rather than the module level: `FrappeCore` and `FrappeModelMetaGlobals` both
  * declared them with different signatures, which made {@link Frappe}'s `extends`
  * clause a hard `TS2320` and meant no composite `Frappe` type could be formed at
- * all. `./model` owns them now (`frappe/public/js/frappe/model/model.js:904-906` only *aliases* them
+ * all. `./model` owns them now (`frappe/public/js/frappe/model/model.js:906-908` only *aliases* them
  * onto the root); the generic parameter and every note from the `core.d.ts`
  * copy were folded into {@link FrappeModelMetaGlobals}.
  *
@@ -916,7 +916,7 @@ export interface FrappeStandardShortcut {
 /**
  * One section of the shortcut-help dialog, as built by
  * `frappe.ui.keys.get_shortcut_groups` —
- * `frappe/public/js/frappe/ui/keyboard.js:87-97`.
+ * `frappe/public/js/frappe/ui/keyboard.js:109-119`.
  */
 export interface FrappeShortcutGroup {
 	/** Already translated: `__("Global Shortcuts")`, `__("Page Shortcuts")` or `__("Grid Shortcuts")`. */
@@ -928,35 +928,35 @@ export interface FrappeShortcutGroup {
  * A raw handler registered with {@link FrappeUiKeysNamespace.on}.
  *
  * `add_shortcut` monkey-patches the page onto the function object
- * (`frappe/public/js/frappe/ui/keyboard.js:68` `handler.page = page`) so that
+ * (`frappe/public/js/frappe/ui/keyboard.js:67` `handler.page = page`) so that
  * {@link FrappeUiKeysNamespace.off} can filter by page
- * (`frappe/public/js/frappe/ui/keyboard.js:198-201`) — hence the
+ * (`frappe/public/js/frappe/ui/keyboard.js:220-223`) — hence the
  * callable-plus-property form.
  */
 export interface FrappeKeyHandler {
 	(e: JQuery.KeyDownEvent): boolean | void;
-	/** frappe/public/js/frappe/ui/keyboard.js:68. Absent on handlers registered through `on()` directly. */
+	/** frappe/public/js/frappe/ui/keyboard.js:67. Absent on handlers registered through `on()` directly. */
 	page?: Page;
 }
 
-/** Argument of `frappe.ui.keys.add_shortcut` — `frappe/public/js/frappe/ui/keyboard.js:32-40`. */
+/** Argument of `frappe.ui.keys.add_shortcut` — `frappe/public/js/frappe/ui/keyboard.js:35-43`. */
 export interface FrappeShortcutOptions {
 	shortcut: string;
 	/**
 	 * Returning anything other than `false` calls `preventDefault()` — the
 	 * condition is `prevent_default || prevent_default === undefined`, so a truthy
 	 * return or no return at all prevents, and `false` does not
-	 * (`frappe/public/js/frappe/ui/keyboard.js:59-64`).
+	 * (`frappe/public/js/frappe/ui/keyboard.js:58-63`).
 	 */
 	action?: (e: JQuery.KeyDownEvent) => boolean | void;
 	description?: string;
-	/** The handler only fires while this page's wrapper is visible (`frappe/public/js/frappe/ui/keyboard.js:58`). */
+	/** The handler only fires while this page's wrapper is visible (`frappe/public/js/frappe/ui/keyboard.js:57`). */
 	page?: Page;
-	/** `frappe/public/js/frappe/ui/keyboard.js:41-46` — a jQuery target REPLACES `action` with a click on `target[0]`. */
+	/** `frappe/public/js/frappe/ui/keyboard.js:44-49` — a jQuery target REPLACES `action` with a click on `target[0]`. */
 	target?: JQuery<HTMLElement>;
-	/** Defaults to `() => true` (`frappe/public/js/frappe/ui/keyboard.js:47-49`). */
+	/** Defaults to `() => true` (`frappe/public/js/frappe/ui/keyboard.js:50-52`). */
 	condition?: () => boolean;
-	/** Defaults to `false` — the shortcut is skipped while an input has focus (`frappe/public/js/frappe/ui/keyboard.js:39,52-55`). */
+	/** Defaults to `false` — the shortcut is skipped while an input has focus (`frappe/public/js/frappe/ui/keyboard.js:42,54`). */
 	ignore_inputs?: boolean;
 }
 
@@ -999,14 +999,14 @@ export interface AltShortcutGroup {
  * `frappe/public/js/frappe/ui/alt_keyboard_shortcuts.js:1`.
  */
 export interface FrappeUiKeysNamespace {
-	/** frappe/public/js/frappe/ui/keyboard.js:4,189-192. A key with no registered handler reads back `undefined`. */
+	/** frappe/public/js/frappe/ui/keyboard.js:4,211-214. A key with no registered handler reads back `undefined`. */
 	handlers: Record<string, FrappeKeyHandler[] | undefined>;
-	/** frappe/public/js/frappe/ui/keyboard.js:286-312 — keyCode → key name, with A-Z filled in at frappe/public/js/frappe/ui/keyboard.js:310-312. */
+	/** frappe/public/js/frappe/ui/keyboard.js:308-334 — keyCode → key name, with A-Z filled in at frappe/public/js/frappe/ui/keyboard.js:332-334. */
 	key_map: Record<number, string | undefined>;
-	/** frappe/public/js/frappe/ui/keyboard.js:23-24, appended to by `add_shortcut` (frappe/public/js/frappe/ui/keyboard.js:75-81). */
+	/** frappe/public/js/frappe/ui/keyboard.js:26-27, appended to by `add_shortcut` (frappe/public/js/frappe/ui/keyboard.js:75-81). */
 	standard_shortcuts: FrappeStandardShortcut[];
 	/**
-	 * frappe/public/js/frappe/ui/keyboard.js:143,148,162 — guards the
+	 * frappe/public/js/frappe/ui/keyboard.js:165,170,184 — guards the
 	 * shortcut-help dialog against double opens. Unset until the dialog has been
 	 * shown once.
 	 */
@@ -1015,61 +1015,61 @@ export interface FrappeUiKeysNamespace {
 	shortcut_groups: WeakMap<object, AltShortcutGroup>;
 	/** frappe/public/js/frappe/ui/alt_keyboard_shortcuts.js:95. */
 	AltShortcutGroup: new () => AltShortcutGroup;
-	/** frappe/public/js/frappe/ui/keyboard.js:6-21. Binds the single `keydown` listener on `window`. */
+	/** frappe/public/js/frappe/ui/keyboard.js:6-24. Binds the single `keydown` listener on `window`. */
 	setup(): void;
 	/**
-	 * frappe/public/js/frappe/ui/keyboard.js:165-186 — normalises an event into the
+	 * frappe/public/js/frappe/ui/keyboard.js:187-208 — normalises an event into the
 	 * lowercased string handlers are registered under. Modifiers are prepended
 	 * one after another — `ctrl+` first (for `ctrlKey` **or** `metaKey`), then
-	 * `shift+`, then `alt+` (`frappe/public/js/frappe/ui/keyboard.js:169-180`) — so the order in the result is
-	 * `alt+shift+ctrl+k`, and `shift+ctrl+r` for the registration at `frappe/public/js/frappe/ui/keyboard.js:279`, NOT
+	 * `shift+`, then `alt+` (`frappe/public/js/frappe/ui/keyboard.js:191-202`) — so the order in the result is
+	 * `alt+shift+ctrl+k`, and `shift+ctrl+r` for the registration at `frappe/public/js/frappe/ui/keyboard.js:301`, NOT
 	 * `ctrl+shift+r`. A keyCode with no `key_map` entry falls back to
-	 * `String.fromCharCode` (`frappe/public/js/frappe/ui/keyboard.js:167`).
+	 * `String.fromCharCode` (`frappe/public/js/frappe/ui/keyboard.js:189`).
 	 */
 	get_key(e: JQuery.KeyDownEvent | KeyboardEvent): string;
 	/**
-	 * frappe/public/js/frappe/ui/keyboard.js:25-31 — each `+`-separated part
+	 * frappe/public/js/frappe/ui/keyboard.js:28-34 — each `+`-separated part
 	 * title-cased. On macOS only (`frappe.utils.is_mac()`), the leading
 	 * `Ctrl+` / `Alt+` / `Shift+` become `⌘` / `⌥` / `⇧` **with the `+` consumed**,
 	 * so `"ctrl+shift+k"` reads `⌘⇧K`; elsewhere the label stays `Ctrl+Shift+K`.
 	 */
 	get_shortcut_label(shortcut: string): string;
 	/**
-	 * frappe/public/js/frappe/ui/keyboard.js:32-82. Replaces any handler already
+	 * frappe/public/js/frappe/ui/keyboard.js:35-82. Replaces any handler already
 	 * registered for the same `page` — and **without a `page` that means every
 	 * handler on that key**, because it calls {@link FrappeUiKeysNamespace.off}
 	 * (`frappe/public/js/frappe/ui/keyboard.js:70`) and `off` drops all handlers when given no page.
 	 */
 	add_shortcut(opts?: FrappeShortcutOptions): void;
-	/** frappe/public/js/frappe/ui/keyboard.js:188-193. */
+	/** frappe/public/js/frappe/ui/keyboard.js:210-215. */
 	on(key: string, handler: FrappeKeyHandler): void;
 	/**
-	 * frappe/public/js/frappe/ui/keyboard.js:195-202. **Calling it without a `page`
+	 * frappe/public/js/frappe/ui/keyboard.js:217-224. **Calling it without a `page`
 	 * removes every handler for that key** — the filter predicate returns `false`
 	 * for all of them.
 	 */
 	off(key: string, page?: Page): void;
 	/**
-	 * frappe/public/js/frappe/ui/keyboard.js:84-98 — always three groups, in the
+	 * frappe/public/js/frappe/ui/keyboard.js:106-120 — always three groups, in the
 	 * order Global / Page / Grid. "Page" is the standard shortcuts whose `page`
 	 * is `window.cur_page.page.page`, "Grid" those whose `page` is
-	 * `window.cur_page.page.frm` (`frappe/public/js/frappe/ui/keyboard.js:85-86,91,95`); both are empty when
+	 * `window.cur_page.page.frm` (`frappe/public/js/frappe/ui/keyboard.js:107-108,113,117`); both are empty when
 	 * there is no current page.
 	 */
 	get_shortcut_groups(): FrappeShortcutGroup[];
 	/**
-	 * frappe/public/js/frappe/ui/keyboard.js:100-140 — the `<h5>` + table markup for
+	 * frappe/public/js/frappe/ui/keyboard.js:122-162 — the `<h5>` + table markup for
 	 * one group. Entries failing their `condition` or lacking a `description`
 	 * are dropped, and entries sharing a description are merged into one row with
-	 * their keys joined by ` / ` (`frappe/public/js/frappe/ui/keyboard.js:103-115`). Returns `""` for an empty list or
-	 * when no row survives (`frappe/public/js/frappe/ui/keyboard.js:101,134`). The labels and descriptions are
-	 * HTML-escaped (`frappe/public/js/frappe/ui/keyboard.js:122-127`); **`heading` is inserted as-is** (`frappe/public/js/frappe/ui/keyboard.js:136`).
+	 * their keys joined by ` / ` (`frappe/public/js/frappe/ui/keyboard.js:125-137`). Returns `""` for an empty list or
+	 * when no row survives (`frappe/public/js/frappe/ui/keyboard.js:123,156`). The labels and descriptions are
+	 * HTML-escaped (`frappe/public/js/frappe/ui/keyboard.js:144-149`); **`heading` is inserted as-is** (`frappe/public/js/frappe/ui/keyboard.js:158`).
 	 */
 	generate_shortcuts_html(shortcuts: FrappeStandardShortcut[], heading: string): string;
 	/**
-	 * frappe/public/js/frappe/ui/keyboard.js:142-163 — opens the "Keyboard
+	 * frappe/public/js/frappe/ui/keyboard.js:164-185 — opens the "Keyboard
 	 * Shortcuts" dialog, one section per {@link FrappeUiKeysNamespace.get_shortcut_groups}
-	 * entry. A no-op while one is already open (`is_dialog_shown`, `frappe/public/js/frappe/ui/keyboard.js:143`).
+	 * entry. A no-op while one is already open (`is_dialog_shown`, `frappe/public/js/frappe/ui/keyboard.js:165`).
 	 */
 	show_keyboard_shortcut_dialog(): void;
 	/** frappe/public/js/frappe/ui/alt_keyboard_shortcuts.js:7-13. Creates the group on first use. */
@@ -1113,11 +1113,11 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	/**
 	 * frappe/public/js/frappe/ui/dialog.js:8 — the modal stack. `show()` pushes onto
 	 * it and the hide handler pops it, and `window.cur_dialog` is always its top
-	 * (`frappe/public/js/frappe/ui/dialog.js:112-120,127-128`).
+	 * (`frappe/public/js/frappe/ui/dialog.js:115-123,130-131`).
 	 */
 	open_dialogs: Dialog[];
 	/**
-	 * frappe/public/js/frappe/ui/dialog.js:408-417. Acts on `window.cur_dialog`, and
+	 * frappe/public/js/frappe/ui/dialog.js:456-465. Acts on `window.cur_dialog`, and
 	 * does nothing without one: a dialog that is not `minimizable` is **hidden**;
 	 * a minimizable one is **minimised** (`toggle_minimize()`) unless it already is.
 	 * It never un-minimises.
@@ -1129,9 +1129,9 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	keys: FrappeUiKeysNamespace;
 	/** frappe/public/js/frappe/ui/theme_switcher.js:3. */
 	ThemeSwitcher: typeof FrappeThemeSwitcher;
-	/** frappe/public/js/frappe/ui/chart.js:6 — frappe's only in-tree `frappe.Chart` subclass. */
+	/** frappe/public/js/frappe/ui/chart.js:130 — a frappe-charts `Chart` subclass (not of `frappe.Chart`). @deprecated frappe warns once: call `frappe.ui.chart` instead (chart.js:131-135). */
 	RealtimeChart: typeof FrappeRealtimeChart;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:56 — the v16 module sidebar; instance at `frappe.app.sidebar`. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:69 — the v16 module sidebar; instance at `frappe.app.sidebar`. */
 	Sidebar: typeof FrappeSidebar;
 	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:1 — one instance, `frappe.app.sidebar.sidebar_header`. */
 	SidebarHeader: typeof FrappeSidebarHeader;
@@ -1164,7 +1164,7 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	 */
 	badge: FrappeBadgeFunction;
 	/**
-	 * frappe/public/js/frappe/ui/components/button.js:119-209 — the Espresso button:
+	 * frappe/public/js/frappe/ui/components/button.js:124-214 — the Espresso button:
 	 * a wired element, a markup string (`.html`), or an existing `<button>` dressed
 	 * in place (`.dress`).
 	 */
@@ -1176,15 +1176,15 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	/**
 	 * frappe/public/js/frappe/form/footer/base_timeline.js:158 — the timeline
 	 * class the form's activity timeline extends. Loaded on every desk page with
-	 * `form.bundle.js` (frappe/hooks.py:29). See {@link BaseTimeline}.
+	 * `form.bundle.js` (frappe/hooks.py:46). See {@link BaseTimeline}.
 	 */
 	BaseTimeline: typeof BaseTimeline;
-	/** frappe/public/js/frappe/ui/sort_selector.js:1, in the desk bundle (frappe/public/js/desk.bundle.js:124). See {@link SortSelector}. */
+	/** frappe/public/js/frappe/ui/sort_selector.js:1, in the desk bundle (frappe/public/js/desk.bundle.js:130). See {@link SortSelector}. */
 	SortSelector: typeof SortSelector;
 	/**
 	 * frappe/public/js/frappe/ui/group_by/group_by.js:3. Defined by
 	 * `report.bundle.js` (frappe/public/js/report.bundle.js:8), which is in
-	 * frappe's `app_include_js` (frappe/hooks.py:31) and so loads on every desk
+	 * frappe's `app_include_js` (frappe/hooks.py:48) and so loads on every desk
 	 * page, before any app script (frappe/www/desk.py:68,
 	 * frappe/www/desk.html:76-78). See {@link GroupBy}.
 	 */
@@ -1192,7 +1192,7 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	/**
 	 * frappe/public/js/frappe/views/reports/link_side_panel.js:16-41 — the click
 	 * handler both report views bind to Link cells, discarding its result
-	 * (frappe/public/js/frappe/views/reports/report_view.js:416-420) — handed
+	 * (frappe/public/js/frappe/views/reports/report_view.js:433-437) — handed
 	 * back to jQuery, a `false` would cancel the click. Previews the
 	 * linked document in the {@link SidePanel} and returns `true`, or returns
 	 * `false` and lets the click route as usual: when split view is off, on a
@@ -1208,21 +1208,20 @@ export interface FrappeUiNamespace extends FrappeUiThemeSlice, FrappeUiPageSlice
 	 * frappe/public/js/frappe/views/reports/link_side_panel.js:8-12 — whether a
 	 * Link cell click previews: never on mobile, otherwise the desk setting
 	 * `report_split_view`, on when unset. Defined at desk boot by
-	 * `report.bundle.js` (frappe/hooks.py:31).
+	 * `report.bundle.js` (frappe/hooks.py:48).
 	 */
 	split_view_enabled: () => boolean;
 	/** frappe/public/js/frappe/ui/side_panel.js:399. Lazy, from `side_panel.bundle.js`. See {@link SidePanel}. */
 	SidePanel?: typeof SidePanel;
 	/**
-	 * frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:180. Lazy:
+	 * frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:169. Lazy:
 	 * the desk requires `file_uploader.bundle.js` at start-up without waiting
 	 * for it (frappe/public/js/frappe/upload.js:4-10), so narrow it before `new`.
 	 * See {@link FrappeFileUploader}.
 	 *
 	 * Writing it takes any class that accepts the options: frappe only `new`s
 	 * it (frappe/public/js/frappe/form/controls/attach.js:58, :72,
-	 * frappe/public/js/frappe/form/sidebar/attachments.js:663,
-	 * frappe/public/js/frappe/form/grid.js:1631) and reads nothing off the
+	 * frappe/public/js/frappe/form/sidebar/attachments.js:700) and reads nothing off the
 	 * instance outside the bundle. The static `UploadOptions` is read only
 	 * through the class's own `this.constructor`
 	 * (frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:78), so a
@@ -1282,10 +1281,12 @@ export interface Frappe
 	 */
 	views: FrappeViewsNamespace;
 	/**
-	 * `frappe/public/js/frappe/ui/chart.js:4` — frappe-charts' `Chart`, assigned
-	 * as a plain writable property (which is what makes carbon_frappe's
-	 * shim-and-patch legal). Note the constructor **returns a different object**;
+	 * `frappe/public/js/frappe/ui/chart.js:7-12` — a deprecated subclass of frappe-charts' `Chart`,
+	 * assigned as a plain writable property (which is what makes carbon_frappe's
+	 * shim-and-patch legal). Constructing it console.warns once ("use frappe.ui.chart",
+	 * `chart.js:9, 14-18`). Note the constructor **returns a different object**;
 	 * see {@link FrappeChartConstructor}.
+	 * @deprecated Use `frappe.ui.chart(el, config)`.
 	 */
 	Chart: FrappeChartConstructor;
 	/**

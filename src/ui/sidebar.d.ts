@@ -21,7 +21,7 @@
  * wants a real header has to read the sidebar's state — which shell is on
  * screen, which app owns it, what its items are — rather than the boot payload,
  * because the sidebar is the thing that resolves a route to a shell
- * (`set_workspace_sidebar`, frappe/public/js/frappe/ui/sidebar/sidebar.js:831-842).
+ * (`set_workspace_sidebar`, frappe/public/js/frappe/ui/sidebar/sidebar.js:841-852).
  * That is the consumer these declarations were verified for.
  *
  * ## The model changed between 16.33 and 16.50
@@ -31,7 +31,7 @@
  * `app_data[].workspaces`, and kept the answer in `frappe.current_app`. All of
  * that is gone. 16.50 has one identity, the **shell**: the key of
  * `frappe.boot.module_sidebars`, which is a `Sidebar` document's name or, for a
- * computed sidebar, its module name (frappe/boot.py:610-648). The shell on
+ * computed sidebar, its module name (frappe/boot.py:671-709). The shell on
  * screen is {@link FrappeSidebar.current_module}; the app that owns it is
  * *derived* from it by {@link FrappeSidebar.get_sidebar_app}, never stored. The
  * old `SidebarEditor` (a class in the deleted `sidebar_editor.js`) is replaced
@@ -42,7 +42,7 @@
  *
  * 1. **The constructor can return early.** The constructor bails when
  *    `!frappe.boot.setup_complete`
- *    (frappe/public/js/frappe/ui/sidebar/sidebar.js:58-60), so on a
+ *    (frappe/public/js/frappe/ui/sidebar/sidebar.js:71-73), so on a
  *    setup-wizard session `frappe.app.sidebar` is an instance with **no**
  *    constructor-assigned fields — `wrapper`, `items`, `sidebar_expanded`, … are
  *    all absent, while the prototype methods still exist. Every field the
@@ -54,23 +54,23 @@
  *    `setup()` triggers `$(document).trigger("sidebar_setup", { sidebar })`
  *    first and only afterwards assigns `current_module`, loads the data,
  *    refreshes the header and renders
- *    (frappe/public/js/frappe/ui/sidebar/sidebar.js:228-238). A handler bound
+ *    (frappe/public/js/frappe/ui/sidebar/sidebar.js:241-251). A handler bound
  *    to that event sees the *previous* shell. Code that needs the new state
  *    hooks {@link FrappeSidebar.make_sidebar} instead: it is the render step of
- *    `setup()` (frappe/public/js/frappe/ui/sidebar/sidebar.js:235), and a saved
+ *    `setup()` (frappe/public/js/frappe/ui/sidebar/sidebar.js:248), and a saved
  *    Edit Sidebar dialog re-enters it through `setup(current_module)`
- *    (frappe/public/js/frappe/ui/sidebar/sidebar_manager.js:843).
+ *    (frappe/public/js/frappe/ui/sidebar/sidebar_manager.js:849).
  *
  * 3. **The header and the dock are not rebuilt per shell.** One
  *    {@link FrappeSidebarHeader} lives for the life of the desk (its dropdown
  *    binds to the element it was given, so a header rebuilt on every
  *    navigation would leave its menu on a detached node —
- *    frappe/public/js/frappe/ui/sidebar/sidebar.js:269-278), and one
+ *    frappe/public/js/frappe/ui/sidebar/sidebar.js:282-291), and one
  *    {@link FrappeDock} is created lazily by `refresh_dock()`
- *    (frappe/public/js/frappe/ui/sidebar/sidebar.js:319-324). `setup()` is
+ *    (frappe/public/js/frappe/ui/sidebar/sidebar.js:332-337). `setup()` is
  *    skipped when the shell did not change, so the router's `"change"` handler
  *    refreshes both on **every** navigation
- *    (frappe/public/js/frappe/ui/sidebar/sidebar.js:255-260). Code that mirrors
+ *    (frappe/public/js/frappe/ui/sidebar/sidebar.js:268-273). Code that mirrors
  *    the header must follow that handler, not `setup()`.
  */
 
@@ -87,12 +87,12 @@ import type { FrappeNotifications } from "./notifications";
  * `Sidebar Item.type` —
  * `frappe/desk/doctype/sidebar_item/sidebar_item.json` (Select options
  * `Link\nSection Break\nSpacer`, default `"Link"`; also
- * frappe/desk/doctype/sidebar_item/sidebar_item.py:38). The live payload of a
+ * frappe/desk/doctype/sidebar_item/sidebar_item.py:39). The live payload of a
  * stock site carries only `Link` and `Section Break`, but the doctype allows
  * `Spacer`, and `filter_sidebar_items` explicitly lets it through unpermissioned
- * (frappe/desk/doctype/sidebar/sidebar.py:2077-2082), so it is part of the
+ * (frappe/desk/doctype/sidebar/sidebar.py:2115-2120), so it is part of the
  * union. Rendering picks `frappe.ui.sidebar_item.Type<TitleCased>` from it
- * (frappe/public/js/frappe/ui/sidebar/sidebar.js:685-687); the client adds a
+ * (frappe/public/js/frappe/ui/sidebar/sidebar.js:695-697); the client adds a
  * fourth, `Button`, for its own standard rows, which never reach the payload.
  *
  * The 16.33 `"Sidebar Item Group"` type is gone: it is a separate doctype now
@@ -103,16 +103,16 @@ export type FrappeSidebarItemType = "Link" | "Section Break" | "Spacer";
 /**
  * `Sidebar Item.link_type` — same JSON (Select options, default `"DocType"`).
  * Drives `frappe.ui.sidebar_item.get_route`
- * (frappe/public/js/frappe/ui/sidebar/sidebar_item.js:63-143).
+ * (frappe/public/js/frappe/ui/sidebar/sidebar_item.js:63-146).
  */
 export type FrappeSidebarItemLinkType = "DocType" | "Page" | "Report" | "Workspace" | "Dashboard" | "URL";
 
 /**
  * The kinds of thing a desk route can name — the keys of
  * `frappe.boot.canonical_shell` (`ROUTABLE_ENTITY_KINDS`,
- * frappe/desk/doctype/sidebar/sidebar.py:2268) and the answers of
+ * frappe/desk/doctype/sidebar/sidebar.py:2307) and the answers of
  * {@link FrappeSidebar.link_type_from_route}
- * (frappe/public/js/frappe/ui/sidebar/sidebar.js:1137-1142). `Workspace` and
+ * (frappe/public/js/frappe/ui/sidebar/sidebar.js:1157-1162). `Workspace` and
  * `URL` are deliberately absent: a workspace is resolved through
  * `module_sidebars[shell].workspaces`, and a URL names no shell.
  */
@@ -122,101 +122,108 @@ export type FrappeSidebarEntityKind = "DocType" | "Report" | "Page" | "Dashboard
  * One row of `frappe.boot.module_sidebars[<shell>].items`.
  *
  * Server shape: `filter_sidebar_items`
- * (frappe/desk/doctype/sidebar/sidebar.py:2084-2102), which copies the Sidebar
+ * (frappe/desk/doctype/sidebar/sidebar.py:2087-2145), which copies the Sidebar
  * Item child row field by field — so a value is whatever the doctype stored:
  * `null` for an unset Data/Select/Dynamic Link field, and for a Check that a
  * *computed* sidebar row never set (the live payload carries `null` Checks
  * alongside `0 | 1`). `label` is passed through `_()`
- * (frappe/desk/doctype/sidebar/sidebar.py:2086) and so arrives **translated**;
+ * (frappe/desk/doctype/sidebar/sidebar.py:2124) and so arrives **translated**;
  * nothing else is.
  *
  * `report` is added by `attach_report`
- * (frappe/desk/doctype/sidebar/sidebar.py:2117-2148) only for an enabled,
+ * (frappe/desk/doctype/sidebar/sidebar.py:2156-2187) only for an enabled,
  * existing Report link. `nested_items` and `parent` are **client-side**
  * additions made by `nest_section_items()`
- * (frappe/public/js/frappe/ui/sidebar/sidebar.js:208-227): a `Section Break`
+ * (frappe/public/js/frappe/ui/sidebar/sidebar.js:221-240): a `Section Break`
  * row collects the `child` rows that follow it into `nested_items`, and each of
  * those gets `parent`. The nesting is exactly one level deep, and **every** row
  * gets `nested_items = []`
- * (frappe/public/js/frappe/ui/sidebar/sidebar.js:214), not only Section Breaks.
+ * (frappe/public/js/frappe/ui/sidebar/sidebar.js:227), not only Section Breaks.
  *
  * A row hidden by a customization never reaches the payload
- * (frappe/desk/doctype/sidebar/sidebar.py:1606-1618), so there is no `hidden`
+ * (frappe/desk/doctype/sidebar/sidebar.py:1643-1655), so there is no `hidden`
  * member here.
  */
 export interface FrappeSidebarItem {
 	/**
-	 * frappe/desk/doctype/sidebar/sidebar.py:2085 — the row's identity
-	 * (`item_key`, frappe/desk/doctype/sidebar/sidebar.py:954-979): for a row
+	 * frappe/desk/doctype/sidebar/sidebar.py:2123 — the row's identity
+	 * (`item_key`, frappe/desk/doctype/sidebar/sidebar.py:989-1014): for a row
 	 * that links somewhere, `type|link_type|link_to|url|filters` joined by `|`
-	 * (`LINKED_IDENTITY_FIELDS`, frappe/desk/doctype/sidebar/sidebar.py:86), e.g.
+	 * (`LINKED_IDENTITY_FIELDS`, frappe/desk/doctype/sidebar/sidebar.py:89), with
+	 * `|<route>` appended only when the row has a `route` (Page rows). E.g.
 	 * `"Link|Workspace|Accounting||"`; for a row that links nowhere, a
 	 * 10-character hash of its type and label. A customization names a row by
 	 * it.
 	 */
 	key: string;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2086 — `_(item.label)`, translated. */
+	/**
+	 * frappe/desk/doctype/sidebar/sidebar.py:2136 — a relative path inside a Page
+	 * (Page rows only; validated by `validate_item_route`, sidebar.py:963-987); `null`
+	 * otherwise.
+	 */
+	route?: string | null;
+	/** frappe/desk/doctype/sidebar/sidebar.py:2124 — `_(item.label)`, translated. */
 	label: string;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2087. Dynamic Link on `link_type`; `null` for Section Breaks / Spacers. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2125. Dynamic Link on `link_type`; `null` for Section Breaks / Spacers. */
 	link_to: string | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2088. A Section Break arrives as `"DocType"` (the column default) or `null`, depending on how its sidebar was shipped. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2126. A Section Break arrives as `"DocType"` (the column default) or `null`, depending on how its sidebar was shipped. */
 	link_type: FrappeSidebarItemLinkType | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2089. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2127. */
 	type: FrappeSidebarItemType;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2090 — an Icon field (a lucide / frappe sprite name or an emoji). */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2128 — an Icon field (a lucide / frappe sprite name or an emoji). */
 	icon: string | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2091 — nested under the preceding Section Break when `1`. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2129 — nested under the preceding Section Break when `1`. */
 	child: FrappeCheck | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2092 — Section Break only; default `1`. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2130 — Section Break only; default `1`. */
 	collapsible: FrappeCheck | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2093 — Section Break only: rendered as a collapsible group rather than a labelled divider. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2131 — Section Break only: rendered as a collapsible group rather than a labelled divider. */
 	indent: FrappeCheck | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2094 — Section Break only. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2132 — Section Break only. */
 	keep_closed: FrappeCheck | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2095 — `link_type === "URL"` only. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2133 — `link_type === "URL"` only. */
 	url: string | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2096 — swaps the icon for a chevron (frappe/public/js/frappe/ui/sidebar/sidebar_item.js:301-307). */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2134 — swaps the icon for a chevron (frappe/public/js/frappe/ui/sidebar/sidebar_item.js:306-312). */
 	show_arrow: FrappeCheck | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2097 — a JSON string of filters, parsed by `filters_as_options` (frappe/public/js/frappe/ui/sidebar/sidebar_item.js:40-55). */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2135 — a JSON string of filters, parsed by `filters_as_options` (frappe/public/js/frappe/ui/sidebar/sidebar_item.js:40-55). */
 	filters: string | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2098 — a JSON string, parsed at frappe/public/js/frappe/ui/sidebar/sidebar_item.js:109,125. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2137 — a JSON string, parsed at frappe/public/js/frappe/ui/sidebar/sidebar_item.js:106,122. */
 	route_options: string | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2099 — the `navigate_to_tab` column, renamed. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2138 — the `navigate_to_tab` column, renamed. */
 	tab: string | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2100. `URL` rows only; `1` means the link opens in a new tab. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2139. `URL` rows only; `1` means the link opens in a new tab. */
 	open_in_new_tab: FrappeCheck | null;
 	/**
-	 * frappe/desk/doctype/sidebar/sidebar.py:2101 — this row claims its `link_to`
+	 * frappe/desk/doctype/sidebar/sidebar.py:2140 — this row claims its `link_to`
 	 * for the shell: what `frappe.boot.entity_module` is built from
-	 * (frappe/boot.py:682-686).
+	 * (frappe/boot.py:743-747).
 	 */
 	is_default_module: FrappeCheck | null;
 	/**
-	 * frappe/desk/doctype/sidebar/sidebar.py:2192 — set to `1` on rows no
+	 * frappe/desk/doctype/sidebar/sidebar.py:2231 — set to `1` on rows no
 	 * document holds (a user's private pages appended by
 	 * `append_derived_items`): shown as a link only, never arrangeable. Absent
 	 * otherwise.
 	 */
 	derived?: FrappeCheck;
-	/** frappe/desk/doctype/sidebar/sidebar.py:2143-2146 — only for an existing, enabled Report link. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:2182-2185 — only for an existing, enabled Report link. */
 	report?: { report_type: string; ref_doctype: string | null };
-	/** Client-side, frappe/public/js/frappe/ui/sidebar/sidebar.js:214. `[]` on every row until nested. */
+	/** Client-side, frappe/public/js/frappe/ui/sidebar/sidebar.js:227. `[]` on every row until nested. */
 	nested_items?: FrappeSidebarItem[];
-	/** Client-side, frappe/public/js/frappe/ui/sidebar/sidebar.js:220. Set on nested `child` rows only. */
+	/** Client-side, frappe/public/js/frappe/ui/sidebar/sidebar.js:233. Set on nested `child` rows only. */
 	parent?: FrappeSidebarItem;
 }
 
 /**
  * One value of `frappe.boot.module_sidebars`, keyed by **shell** in exact case
- * (frappe/boot.py:610-648, `get_module_sidebars`). The entry carries its own key
+ * (frappe/boot.py:671-709, `get_module_sidebars`). The entry carries its own key
  * (`name`). Server shape: `ResolvedSidebar.as_boot_entry`
- * (frappe/desk/doctype/sidebar/sidebar.py:1545-1566).
+ * (frappe/desk/doctype/sidebar/sidebar.py:1582-1603).
  *
  * This replaces the 16.33 `frappe.boot.workspace_sidebar_item` (keyed by the
  * lowercased sidebar title) and, with it, `module_wise_workspaces` and
  * `default_workspace_map`. The payload is permission-filtered per user, and a
  * shell with nothing navigable left in it is dropped
- * (frappe/desk/doctype/sidebar/sidebar.py:1644-1645), so an app's shell can be
+ * (frappe/desk/doctype/sidebar/sidebar.py:1681-1682), so an app's shell can be
  * missing.
  *
  * The runtime also *replaces* this object: saving a workspace swaps in the
@@ -224,50 +231,50 @@ export interface FrappeSidebarItem {
  * so do not hold a reference across a workspace edit.
  */
 export interface FrappeModuleSidebar {
-	/** frappe/desk/doctype/sidebar/sidebar.py:1552 — the shell identity; the same string as the payload key. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:1589 — the shell identity; the same string as the payload key. */
 	name: string;
 	/**
-	 * frappe/desk/doctype/sidebar/sidebar.py:1553 — the Module Def the sidebar
+	 * frappe/desk/doctype/sidebar/sidebar.py:1590 — the Module Def the sidebar
 	 * belongs to. Equal to `name` unless the sidebar was renamed. Customizations
 	 * are anchored to this, not to `name`
-	 * (frappe/desk/doctype/sidebar/sidebar.py:1601-1605).
+	 * (frappe/desk/doctype/sidebar/sidebar.py:1638-1642).
 	 */
 	module: string;
 	/**
-	 * frappe/desk/doctype/sidebar/sidebar.py:1554 — `_(label)`
-	 * (frappe/desk/doctype/sidebar/sidebar.py:1660), **translated**; the Sidebar's
+	 * frappe/desk/doctype/sidebar/sidebar.py:1591 — `_(label)`
+	 * (frappe/desk/doctype/sidebar/sidebar.py:1697), **translated**; the Sidebar's
 	 * title, which an app or a customization may override.
 	 */
 	label: string;
 	/**
-	 * frappe/desk/doctype/sidebar/sidebar.py:1555 — the owning app's `app_name`,
+	 * frappe/desk/doctype/sidebar/sidebar.py:1592 — the owning app's `app_name`,
 	 * from the document or, failing that, the module's placement
-	 * (frappe/desk/doctype/sidebar/sidebar.py:1667). `null` for a module no app
+	 * (frappe/desk/doctype/sidebar/sidebar.py:1704). `null` for a module no app
 	 * lists. A companion app's value is *not* resolved to its host here; use
 	 * {@link FrappeSidebar.rail_host_for} for that.
 	 */
 	app: string | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:1556. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:1593. */
 	header_icon: string | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:1557,1673 — computed per user: the onboarding this module offers them, or `null`. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:1594,1710 — computed per user: the onboarding this module offers them, or `null`. */
 	module_onboarding: string | null;
-	/** frappe/desk/doctype/sidebar/sidebar.py:1558 — `1` when any customization layer applied. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:1595 — `1` when any customization layer applied. */
 	customized: FrappeCheck;
 	/**
-	 * frappe/desk/doctype/sidebar/sidebar.py:1559-1563 — `1` when the items were
+	 * frappe/desk/doctype/sidebar/sidebar.py:1596-1600 — `1` when the items were
 	 * computed from the module's contents rather than shipped by an app. A
 	 * doctype missing from a shipped sidebar was left out on purpose; one missing
 	 * from a computed sidebar may only have fallen past the display limit.
 	 */
 	computed: FrappeCheck;
 	/**
-	 * frappe/desk/doctype/sidebar/sidebar.py:1564 — the workspaces stored under
+	 * frappe/desk/doctype/sidebar/sidebar.py:1601 — the workspaces stored under
 	 * this shell. `module_for_workspace`
-	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:1151-1157) reads it, and no
+	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:1171-1177) reads it, and no
 	 * workspace-to-shell map is shipped alongside.
 	 */
 	workspaces: string[];
-	/** frappe/desk/doctype/sidebar/sidebar.py:1565. */
+	/** frappe/desk/doctype/sidebar/sidebar.py:1602. */
 	items: FrappeSidebarItem[];
 }
 
@@ -288,7 +295,7 @@ export interface FrappeDockRow {
 	link_type: FrappeDockLinkType;
 	link_to: string | null;
 	url: string | null;
-	/** An icon name; the row's own label and icon win over what it opens (frappe/public/js/frappe/ui/sidebar/sidebar.js:1009-1011). */
+	/** An icon name; the row's own label and icon win over what it opens (frappe/public/js/frappe/ui/sidebar/sidebar.js:1027-1029). */
 	icon: string | null;
 	title: string | null;
 }
@@ -299,7 +306,7 @@ export interface FrappeDockRow {
  * (`resolve_app_dock`, frappe/desk/doctype/dock/dock.py:901-935). Order is the
  * arrangement. Unlike `app_data[].dock`, a hidden row stays in the list with
  * `hidden: 1` (the manager's Hidden pane needs it) and the client drops it
- * (frappe/public/js/frappe/ui/sidebar/sidebar.js:1023). An entry the app ships
+ * (frappe/public/js/frappe/ui/sidebar/sidebar.js:1041). An entry the app ships
  * that no layer names is **absent** here, and the client keeps it in the app's
  * own order behind these.
  */
@@ -311,11 +318,11 @@ export interface FrappeArrangedDockRow extends FrappeDockRow {
 /**
  * A dock row resolved for drawing — what
  * {@link FrappeSidebar.collect_dock_entries} returns
- * (frappe/public/js/frappe/ui/sidebar/sidebar.js:984-1014, `dock_entry`). Built
+ * (frappe/public/js/frappe/ui/sidebar/sidebar.js:1002-1032, `dock_entry`). Built
  * client-side; never in the boot payload.
  */
 export interface FrappeDockEntry {
-	/** The row's `link_type`; a row without one is dropped (frappe/public/js/frappe/ui/sidebar/sidebar.js:1002). */
+	/** The row's `link_type`; a row without one is dropped (frappe/public/js/frappe/ui/sidebar/sidebar.js:1020). */
 	link_type: FrappeDockLinkType;
 	link_to: string | null;
 	url: string | null;
@@ -323,12 +330,12 @@ export interface FrappeDockEntry {
 	 * The shell the entry opens: the row's `link_to` for a `Sidebar` row, the
 	 * shell storing the workspace (else the workspace's own `module`) for a
 	 * `Workspace` row, `null` for a `URL` row
-	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:994-999).
+	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:1012-1017).
 	 */
 	module: string | null;
-	/** `row.title || page.title || sidebar.label || row.link_to || row.url` (frappe/public/js/frappe/ui/sidebar/sidebar.js:1010). */
+	/** `row.title || page.title || sidebar.label || row.link_to || row.url` (frappe/public/js/frappe/ui/sidebar/sidebar.js:1028). */
 	label: string | null;
-	/** `row.icon || page.icon || frappe.get_module_icon(module)` (frappe/public/js/frappe/ui/sidebar/sidebar.js:1011). */
+	/** `row.icon || page.icon || frappe.get_module_icon(module)` (frappe/public/js/frappe/ui/sidebar/sidebar.js:1029). */
 	icon: string | null;
 	/** The `frappe.boot.workspaces.pages` row of a `Workspace` entry, else `null`. */
 	page: FrappeBootWorkspacePage | null;
@@ -341,31 +348,31 @@ export interface FrappeDockEntry {
 /**
  * One row of a `frappe.ui.Dropdown` menu as `SidebarHeader` builds them. The
  * row contract is `MenuItem` in
- * frappe/public/js/frappe/ui/components/menu.js:35-51 (that file calls itself
+ * frappe/public/js/frappe/ui/components/menu.js:35-52 (that file calls itself
  * "not a public API"; `frappe.ui.Dropdown` is not declared by this package, so
  * the rows are typed here from what the header produces). `name` is the header's
  * own addition. `icon`, `href` and `image` are nullable because the
  * Navbar-Settings and help rows copy site-authored Data fields straight across
- * (frappe/public/js/frappe/ui/sidebar/sidebar_header.js:136-148,300-309).
+ * (frappe/public/js/frappe/ui/sidebar/sidebar_header.js:136-148,298-307).
  */
 export interface FrappeSidebarMenuItem {
 	name?: string | undefined;
 	label: string;
 	icon?: string | null | undefined;
-	/** An image URL for a mark no icon name can stand in for — an app's logo (frappe/public/js/frappe/ui/sidebar/sidebar_header.js:209-211). */
+	/** An image URL for a mark no icon name can stand in for — an app's logo (frappe/public/js/frappe/ui/sidebar/sidebar_header.js:206-208). */
 	image?: string | undefined;
 	href?: string | null | undefined;
 	/** `"_blank"` for an off-site `href` (frappe/public/js/frappe/ui/sidebar/sidebar_header.js:96-99). */
 	target?: string | undefined;
 	/** Called with the click event; the header's own rows ignore it. */
 	onclick?: (() => unknown) | undefined;
-	/** Re-checked on every open (frappe/public/js/frappe/ui/components/menu.js:101). */
+	/** Re-checked on every open (frappe/public/js/frappe/ui/components/menu.js:94). */
 	condition?: (() => boolean) | undefined;
 	/** A nested panel: rows, or sections of rows. */
 	submenu?: Array<FrappeSidebarMenuItem | FrappeSidebarMenuGroup> | undefined;
 }
 
-/** A section of rows — `MenuGroup` in frappe/public/js/frappe/ui/components/menu.js:53-58. The panel draws a rule between neighbouring groups and drops a group whose rows are all hidden. */
+/** A section of rows — `MenuGroup` in frappe/public/js/frappe/ui/components/menu.js:54-59. The panel draws a rule between neighbouring groups and drops a group whose rows are all hidden. */
 export interface FrappeSidebarMenuGroup {
 	group: string;
 	options: FrappeSidebarMenuItem[];
@@ -379,7 +386,7 @@ export interface FrappeSidebarMenuGroup {
  * `frappe.ui.SidebarHeader` — frappe/public/js/frappe/ui/sidebar/sidebar_header.js:1.
  * The module icon + title block at the top of the sidebar and the menu behind
  * it. **One instance for the life of the desk**
- * (`Sidebar.refresh_header`, frappe/public/js/frappe/ui/sidebar/sidebar.js:270-278);
+ * (`Sidebar.refresh_header`, frappe/public/js/frappe/ui/sidebar/sidebar.js:283-291);
  * a shell change only rewrites its text (`refresh()`), so a menu attached to
  * `wrapper` stays valid across shells. In 16.33 it was re-created on every
  * `setup()`.
@@ -391,20 +398,20 @@ export declare class FrappeSidebarHeader {
 	sidebar: FrappeSidebar;
 	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:4 — `$(".body-sidebar")`, looked up globally at construction. */
 	sidebar_wrapper: JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:15,338 — {@link get_display_title}. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:15,336 — {@link get_display_title}. */
 	title: string | undefined;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:371-373 — an HTML string (a sprite `<svg>` or a letter tile). */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:369-371 — an HTML string (a sprite `<svg>` or a letter tile). */
 	header_icon: string;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:346 — `$(".sidebar-header")`, assigned by `make()`. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:344 — `$(".sidebar-header")`, assigned by `make()`. */
 	wrapper: JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:347. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:345. */
 	$header_title: JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:348. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:346. */
 	$header_logo: JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:349. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:347. */
 	$drop_icon: JQuery<HTMLElement>;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar_header.js:255 — the
+	 * frappe/public/js/frappe/ui/sidebar/sidebar_header.js:253 — the
 	 * `frappe.ui.Dropdown` {@link attach_menu} returned. Opaque here: that class
 	 * is not declared by this package.
 	 */
@@ -416,18 +423,18 @@ export declare class FrappeSidebarHeader {
 	 * nodes. Called on every navigation by the sidebar's router handler.
 	 */
 	refresh(): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:336-351. Removes any previous `.sidebar-header` and prepends a fresh one. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:334-349. Removes any previous `.sidebar-header` and prepends a fresh one. */
 	make(): void;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar_header.js:360-366. The shell's
+	 * frappe/public/js/frappe/ui/sidebar/sidebar_header.js:358-364. The shell's
 	 * `label`, else `current_module`, else the owning app's title. 16.33 showed
 	 * the app title and fell back to the module.
 	 */
 	get_display_title(): string | undefined;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:368-374 — assigns {@link header_icon}. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:366-372 — assigns {@link header_icon}. */
 	set_header_icon(): void;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar_header.js:389-393. On a docked
+	 * frappe/public/js/frappe/ui/sidebar/sidebar_header.js:387-391. On a docked
 	 * app the module's icon; on a dock-less app the app's own logo, since nothing
 	 * else on screen names the app. HTML.
 	 */
@@ -440,24 +447,27 @@ export declare class FrappeSidebarHeader {
 	 */
 	menu_items(): FrappeSidebarMenuGroup[];
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar_header.js:157-232. The module /
+	 * frappe/public/js/frappe/ui/sidebar/sidebar_header.js:157-230. The module /
 	 * app switcher. Empty of module rows where there is a rail to switch with:
 	 * on a docked app with a hover-capable pointer it is just "All apps"
 	 * (frappe/public/js/frappe/ui/sidebar/sidebar_header.js:167-169). Otherwise a
 	 * "Modules" submenu (only when the app has more than one navigable module,
 	 * frappe/public/js/frappe/ui/sidebar/sidebar_header.js:178) and an "Apps"
-	 * submenu of every `on_apps_screen` app by `sequence_id`.
+	 * submenu of `frappe.utils.get_apps_screen_apps()`: every `on_apps_screen` app by
+	 * `sequence_id`, with Studio Apps (`frappe.boot.studio_apps`, by title) spliced in ahead of
+	 * Framework (`frappe/public/js/frappe/utils/utils.js:1421-1436`). App rows also carry a
+	 * `letter` mark.
 	 */
 	switcher_items(): FrappeSidebarMenuItem[];
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:235-242 — the apps screen, `href: "/desk"`. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:233-240 — the apps screen, `href: "/desk"`. */
 	all_apps_item(): FrappeSidebarMenuItem;
 	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:107-121 — Navbar Settings rows plus a nested "Help" row when it has any content. */
 	system_items(): FrappeSidebarMenuItem[];
 	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:132-151 — `Navbar Settings.settings_dropdown`, minus hidden rows. */
 	navbar_items(): FrappeSidebarMenuItem[];
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:295-315 — the page's help links, then `Navbar Settings.help_dropdown`. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:293-313 — the page's help links, then `Navbar Settings.help_dropdown`. */
 	get_help_siblings(): FrappeSidebarMenuGroup[];
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:317-334 — registered `frappe.help.help_links` for the current route, as rows. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:315-332 — registered `frappe.help.help_links` for the current route, as rows. */
 	get_custom_help_links(): FrappeSidebarMenuItem[];
 	/**
 	 * frappe/public/js/frappe/ui/sidebar/sidebar_header.js:96-99. An in-site
@@ -466,21 +476,21 @@ export declare class FrappeSidebarHeader {
 	 */
 	link_fields(url: string): { href: string; target?: "_blank" };
 
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:253-256 — attaches the menu to {@link wrapper} once. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:251-254 — attaches the menu to {@link wrapper} once. */
 	setup_menu(): void;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar_header.js:263-272. Hangs this
+	 * frappe/public/js/frappe/ui/sidebar/sidebar_header.js:261-270. Hangs this
 	 * header's menu on an element and returns the `frappe.ui.Dropdown` it
 	 * created (opaque, see {@link menu}). Each element gets its own dropdown,
 	 * created once; its rows come from {@link menu_items} on every open. The dock
 	 * calls it for the copy on its own header.
 	 */
 	attach_menu(wrapper: JQuery<HTMLElement> | HTMLElement | string): unknown;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:277-287 — toggles `.active-sidebar` on the header row while its menu is open. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:275-285 — toggles `.active-sidebar` on the header row while its menu is open. */
 	toggle_active(wrapper: JQuery<HTMLElement> | HTMLElement | string, active: boolean): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:395-404. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:393-402. */
 	setup_hover(): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:410-417 — binds or drops the header's hover, following whether the panel is expanded. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar_header.js:408-415 — binds or drops the header's hover, following whether the panel is expanded. */
 	toggle_width(expand: boolean): void;
 }
 
@@ -501,7 +511,7 @@ export declare class FrappeDock {
 	static REVEAL_EDGE: number;
 	/** frappe/public/js/frappe/ui/sidebar/dock.js:7 — pixels past which a floating dock hides again. */
 	static HIDE_BAND: number;
-	/** frappe/public/js/frappe/ui/sidebar/dock.js:155-157 — `matchMedia("(any-hover: hover)")`; a touch screen cannot summon a floating dock. */
+	/** frappe/public/js/frappe/ui/sidebar/dock.js:162-164 — `matchMedia("(any-hover: hover)")`; a touch screen cannot summon a floating dock. */
 	static pointer_can_reveal(): boolean;
 
 	/** frappe/public/js/frappe/ui/sidebar/dock.js:9-20. Builds the DOM (`make()`). */
@@ -510,17 +520,17 @@ export declare class FrappeDock {
 	sidebar: FrappeSidebar;
 	/** frappe/public/js/frappe/ui/sidebar/dock.js:11. */
 	is_open: boolean;
-	/** frappe/public/js/frappe/ui/sidebar/dock.js:12,263 — whether the app has entries and the page allows a dock. */
+	/** frappe/public/js/frappe/ui/sidebar/dock.js:12,270 — whether the app has entries and the page allows a dock. */
 	enabled: boolean;
 	/** frappe/public/js/frappe/ui/sidebar/dock.js:14 — the user's preference (`desk_settings.dock_mode !== "Floating"`). */
 	pinned: boolean;
 	/** frappe/public/js/frappe/ui/sidebar/dock.js:15,76-90 — whether the preference applies on the page on screen. */
 	is_pinned: boolean;
-	/** frappe/public/js/frappe/ui/sidebar/dock.js:16,218 — the element to hand focus back to when the dock closes. */
+	/** frappe/public/js/frappe/ui/sidebar/dock.js:16,225 — the element to hand focus back to when the dock closes. */
 	opener: Element | null;
-	/** frappe/public/js/frappe/ui/sidebar/dock.js:262 — `sidebar.get_sidebar_app()`; assigned by `refresh()`. */
+	/** frappe/public/js/frappe/ui/sidebar/dock.js:269 — `sidebar.get_sidebar_app()`; assigned by `refresh()`. */
 	app?: FrappeBootAppEntry | null | undefined;
-	/** frappe/public/js/frappe/ui/sidebar/dock.js:264 — whether a page and a shell were both known at the last `refresh()`. */
+	/** frappe/public/js/frappe/ui/sidebar/dock.js:271 — whether a page and a shell were both known at the last `refresh()`. */
 	resolved?: boolean;
 	/** frappe/public/js/frappe/ui/sidebar/dock.js:23-41 — `#desk-dock`. */
 	$dock: JQuery<HTMLElement>;
@@ -532,7 +542,7 @@ export declare class FrappeDock {
 	/**
 	 * frappe/public/js/frappe/ui/sidebar/dock.js:63-66 — stores the preference and
 	 * re-applies it. Called by the user-settings dialog
-	 * (frappe/public/js/frappe/ui/user_settings_dialog.js:447).
+	 * (frappe/public/js/frappe/ui/user_settings_dialog.js:602).
 	 */
 	set_pinned(pinned: boolean): void;
 	/** frappe/public/js/frappe/ui/sidebar/dock.js:70-74. */
@@ -543,21 +553,21 @@ export declare class FrappeDock {
 	 * pinned or the page does not allow the sidebar.
 	 */
 	apply_pin(): void;
-	/** frappe/public/js/frappe/ui/sidebar/dock.js:234-238. A no-op while disabled or already open. */
+	/** frappe/public/js/frappe/ui/sidebar/dock.js:241-245. A no-op while disabled or already open. */
 	open(): void;
-	/** frappe/public/js/frappe/ui/sidebar/dock.js:240-252. A no-op while pinned or already closed. */
+	/** frappe/public/js/frappe/ui/sidebar/dock.js:247-259. A no-op while pinned or already closed. */
 	close(): void;
-	/** frappe/public/js/frappe/ui/sidebar/dock.js:212-221 — the `shift+ctrl+/` shortcut. */
+	/** frappe/public/js/frappe/ui/sidebar/dock.js:219-228 — the `shift+ctrl+/` shortcut. */
 	toggle_from_keyboard(): void;
-	/** frappe/public/js/frappe/ui/sidebar/dock.js:223-225. */
+	/** frappe/public/js/frappe/ui/sidebar/dock.js:230-232. */
 	holds_focus(): boolean;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/dock.js:261-292. Re-reads the owning
+	 * frappe/public/js/frappe/ui/sidebar/dock.js:268-299. Re-reads the owning
 	 * app, redraws the logo and the entries, skipping the rebuild when nothing
 	 * drawn changed. Called up to three times per navigation.
 	 */
 	refresh(): void;
-	/** frappe/public/js/frappe/ui/sidebar/dock.js:340-349 — defaults to `sidebar.collect_dock_entries(this.app)`. */
+	/** frappe/public/js/frappe/ui/sidebar/dock.js:347-356 — defaults to `sidebar.collect_dock_entries(this.app)`. */
 	render_entries(entries?: FrappeDockEntry[]): void;
 }
 
@@ -666,11 +676,12 @@ export interface FrappeSidebarPanelRegistry {
  * What {@link FrappeSidebarItemNamespace.get_route} reads of an item. Narrower
  * than {@link FrappeSidebarItem} because callers pass partial objects
  * (`{ type: "Link", link_type: "Workspace", link_to }`,
- * frappe/public/js/frappe/ui/sidebar/sidebar.js:965-969). `route` and
+ * frappe/public/js/frappe/ui/sidebar/sidebar.js:983-987). `route` and
  * `doctype_layout` are read
- * (frappe/public/js/frappe/ui/sidebar/sidebar_item.js:100,131) but nothing in
- * the 16.50 server payload sets them, so they exist only for callers that
- * build an item themselves.
+ * (frappe/public/js/frappe/ui/sidebar/sidebar_item.js:101-107,128). `route` is set by the
+ * server since 16.60 (`Sidebar Item.route`, sidebar.py:2136) for Page rows. `doctype_layout`
+ * is read at sidebar_item.js:128, and nothing in the server payload sets it, so it exists
+ * only for callers that build an item themselves.
  */
 export interface FrappeSidebarRouteItem {
 	type: FrappeSidebarItemType;
@@ -695,7 +706,7 @@ export interface FrappeSidebarRouteItem {
  */
 export interface FrappeSidebarItemNamespace {
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar_item.js:57-143. Resolves a
+	 * frappe/public/js/frappe/ui/sidebar/sidebar_item.js:57-146. Resolves a
 	 * sidebar item to a desk path, or `undefined` for anything that is not a
 	 * `Link` row or for a Report row with no `report` block
 	 * (frappe/public/js/frappe/ui/sidebar/sidebar_item.js:65,79); `null` for a
@@ -703,7 +714,9 @@ export interface FrappeSidebarItemNamespace {
 	 * the caller must say: left out, the path carries no shell and the desk
 	 * writes one in on arrival
 	 * (frappe/public/js/frappe/ui/sidebar/sidebar_item.js:57-62). A `URL` row's
-	 * path is returned untouched. Shared by the rendered rows, the dock and the
+	 * path is returned untouched, and so is a `Page` row whose page is a `system_page`
+	 * (from `frappe.boot.page_info`), since a system page opens in no shell
+	 * (`frappe/public/js/frappe/ui/sidebar/sidebar_item.js:139-143`). Shared by the rendered rows, the dock and the
 	 * landing-route ladder.
 	 */
 	get_route(
@@ -745,7 +758,7 @@ export interface FrappeArrangementEditor {
  * (frappe/public/js/frappe/ui/toolbar/awesome_bar.js:6), the search modal behind
  * the sidebar's Search row (`.navbar-modal-search-mobile`). Created by the
  * first `Page` when `desk_settings.search_bar` is on
- * (frappe/public/js/frappe/ui/page.js:77-80), so it is absent on a user who
+ * (frappe/public/js/frappe/ui/page.js:78-81), so it is absent on a user who
  * turned search off and before the first page exists. Only the open/close
  * surface is declared.
  */
@@ -766,14 +779,14 @@ export interface FrappeAwesomeBar {
 // ---------------------------------------------------------------------------
 
 /**
- * `frappe.ui.Sidebar` — frappe/public/js/frappe/ui/sidebar/sidebar.js:56. The
+ * `frappe.ui.Sidebar` — frappe/public/js/frappe/ui/sidebar/sidebar.js:69. The
  * single instance is `frappe.app.sidebar`
  * (`frappe/public/js/frappe/desk.js:91`).
  *
  * `$sidebar` is assigned twice: `make_dom()` sets it to `.sidebar-items`
- * (frappe/public/js/frappe/ui/sidebar/sidebar.js:391) and the constructor then
+ * (frappe/public/js/frappe/ui/sidebar/sidebar.js:404) and the constructor then
  * overwrites it with `.body-sidebar`
- * (frappe/public/js/frappe/ui/sidebar/sidebar.js:68), which is the value every
+ * (frappe/public/js/frappe/ui/sidebar/sidebar.js:81), which is the value every
  * later read sees.
  *
  * Declared, not modelled: the members a theme or an embedding app reaches are
@@ -782,37 +795,37 @@ export interface FrappeAwesomeBar {
  */
 export declare class FrappeSidebar {
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:57-73. Takes no parameters
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:70-86. Takes no parameters
 	 * (`frappe/public/js/frappe/desk.js:91` passes `{}`, which is ignored).
 	 * **Returns early when `!frappe.boot.setup_complete`**
-	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:58-60), leaving every field
+	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:71-73), leaving every field
 	 * below unassigned.
 	 */
 	constructor(opts?: unknown);
 
 	// -- constructor state (absent after the setup_complete early return) -----
 
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:380-390 — the rendered `sidebar.html` root, `.body-sidebar-container`, hidden until a page allows it and prepended to `<body>`. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:393-403 — the rendered `sidebar.html` root, `.body-sidebar-container`, hidden until a page allows it and prepended to `<body>`. */
 	wrapper?: JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:68 — `.body-sidebar` (see the class note on the double assignment). */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:81 — `.body-sidebar` (see the class note on the double assignment). */
 	$sidebar?: JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:66 — `.sidebar-items`, emptied by `empty()` on every render. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:79 — `.sidebar-items`, emptied by `empty()` on every render. */
 	$items_container?: JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:663 — `.standard-items-band`, host of the Search / Notification rows; assigned by the first `add_standard_items()`. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:673 — `.standard-items-band`, host of the Search / Notification rows; assigned by the first `add_standard_items()`. */
 	$standard_items_band?: JQuery<HTMLElement>;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:62,80 —
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:75,93 —
 	 * `frappe.boot.module_sidebars`, re-read on every `setup()`.
 	 */
 	all_sidebar_items?: Record<string, FrappeModuleSidebar>;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:65,79,226 — the current
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:78,92,239 — the current
 	 * shell's top-level rows after `nest_section_items()`; `[]` until the first
 	 * `setup()`.
 	 */
 	sidebar_items?: FrappeSidebarItem[];
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:69,677. The `sidebar_item`
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:82,687. The `sidebar_item`
 	 * objects for the current shell's top-level rows: reset by {@link empty} on
 	 * every render, then filled by `add_item()`. A section's children live in
 	 * that section's own `items`, and the standard Search / Notification buttons
@@ -820,7 +833,7 @@ export declare class FrappeSidebar {
 	 * never reset it, so it grew across shell switches. Typed opaque.
 	 */
 	items?: unknown[];
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:72,669 — `add_standard_items()` runs once per instance. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:85,679 — `add_standard_items()` runs once per instance. */
 	standard_items_setup?: boolean;
 	/**
 	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:587-590 — whether the panel
@@ -836,17 +849,17 @@ export declare class FrappeSidebar {
 	// -- per-shell state (assigned by setup()) --------------------------------
 
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:230 — the **shell** on
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:243 — the **shell** on
 	 * screen: a key of `frappe.boot.module_sidebars`. Absent until the first
 	 * `setup()`. This replaces 16.33's `sidebar_title` / `workspace_title`
 	 * (a workspace title, lowercased for the lookup).
 	 */
 	current_module?: string;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:78 —
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:91 —
 	 * `frappe.boot.module_sidebars[current_module]`; `undefined` for an unknown
 	 * shell (the assignment sits in a try that logs and swallows,
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:76-84).
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:89-97).
 	 */
 	sidebar_data?: FrappeModuleSidebar | undefined;
 	/**
@@ -856,23 +869,23 @@ export declare class FrappeSidebar {
 	 * and reassigned on every `find_active_item()`.
 	 */
 	active_item?: JQuery<HTMLElement> | null;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:276 — created once, then refreshed (see the header note). */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:289 — created once, then refreshed (see the header note). */
 	sidebar_header?: FrappeSidebarHeader;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:321 — created by the first `refresh_dock()`. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:334 — created by the first `refresh_dock()`. */
 	dock?: FrappeDock;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:673 — only when
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:683 — only when
 	 * `frappe.boot.desk_settings.notifications` and the user is not Guest
-	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:672). Created by the first
+	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:682). Created by the first
 	 * `setup()`, through `add_standard_items()`
-	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:668).
+	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:678).
 	 */
 	notifications?: FrappeNotifications;
 
 	// -- lifecycle -------------------------------------------------------------
 
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:228-238. Switches the sidebar
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:241-251. Switches the sidebar
 	 * to the shell `current_module`: fires `sidebar_setup` (**before** any state
 	 * changes), assigns it, loads the data, refreshes the header and
 	 * {@link make_sidebar}s. The argument is a key of
@@ -880,58 +893,58 @@ export declare class FrappeSidebar {
 	 */
 	setup(current_module: string): void;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:75-85 — adds the standard
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:88-98 — adds the standard
 	 * items once, then reads `sidebar_data`, `sidebar_items` and
 	 * `all_sidebar_items` and nests the section items. Swallows errors
-	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:82-84).
+	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:95-97).
 	 */
 	load_sidebar_data(): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:208-227. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:221-240. */
 	nest_section_items(): void;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:616-627. Empties
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:615-626. Empties
 	 * `.sidebar-items`, re-renders `sidebar_items`, marks the active row and
 	 * applies the expanded/collapsed state. The render step of `setup()` and the
 	 * one place the sidebar DOM is rebuilt.
 	 */
 	make_sidebar(): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:628-640. Renders "No Sidebar Items" for an empty list. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:627-639. Renders "No Sidebar Items" for an empty list. */
 	create_sidebar(items: FrappeSidebarItem[] | undefined): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:610-615 — clears `.sidebar-items` and resets {@link items}. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:611-614 — clears `.sidebar-items` and resets {@link items}. */
 	empty(): void;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:326-333. Re-applies page
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:339-346. Re-applies page
 	 * visibility, then re-resolves the shell and refreshes the header and dock.
 	 * Returns early when the page allows neither the sidebar nor the dock.
 	 */
 	refresh(): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:372-376 — shows or hides the wrapper, then refreshes the dock. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:385-389 — shows or hides the wrapper, then refreshes the dock. */
 	toggle(hide: boolean): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:270-278 — creates the one header, or refreshes it. A no-op until `current_module` is set. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:283-291 — creates the one header, or refreshes it. A no-op until `current_module` is set. */
 	refresh_header(): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:319-324 — creates the dock on first use, then refreshes it. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:332-337 — creates the dock on first use, then refreshes it. */
 	refresh_dock(): void;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:359-370 — the only place that
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:372-383 — the only place that
 	 * turns the sidebar or the dock on. Both start hidden and are shown once the
 	 * page on screen allows them (`page.hide_sidebar`, `page.hide_dock`).
 	 */
 	apply_page_visibility(): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:337-339 — `frappe.container.page.page`, or `undefined` before the first page. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:350-352 — `frappe.container.page.page`, or `undefined` before the first page. */
 	current_page(): unknown;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:342-346. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:355-359. */
 	page_allows_sidebar(): boolean;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:353-356. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:366-369. */
 	page_allows_dock(): boolean;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:349-351 — `frappe.is_mobile()`: only a drawer closes; on a desktop the panel folds. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:362-364 — `frappe.is_mobile()`: only a drawer closes; on a desktop the panel folds. */
 	panel_can_close(): boolean;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:315-317 — whether there is a rail to draw: the owning app has at least one permitted entry. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:328-330 — whether there is a rail to draw: the owning app has at least one permitted entry. */
 	dock_enabled(): boolean;
 
 	// -- owning app ------------------------------------------------------------
 
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:282-289. The `app_data` entry
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:295-302. The `app_data` entry
 	 * that owns the shell on screen, read from the sidebar's own `app` (resolved
 	 * through {@link rail_host_for}) rather than from the route. `null` when no
 	 * shell is current or the shell is in no app; `undefined` when the shell
@@ -941,24 +954,24 @@ export declare class FrappeSidebar {
 	 */
 	get_sidebar_app(): FrappeBootAppEntry | null | undefined;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:292-296. The `app_name` that
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:305-309. The `app_name` that
 	 * owns `shell`, by name (a companion resolved to its host), or `null` for a
 	 * shell in no app.
 	 */
 	app_for_sidebar(shell: string | null | undefined): string | null;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:87-89. A companion app's rail
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:100-102. A companion app's rail
 	 * is its host's: `frappe.boot.app_rail_host[app_name]`, else the app itself.
 	 */
 	rail_host_for(app_name: string): string;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:300-305. Whether moving to
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:313-318. Whether moving to
 	 * `entity_shell` leaves the app `shell` belongs to; the shell on screen does
 	 * not survive that.
 	 */
 	crosses_app(shell: string | null | undefined, entity_shell: string | null | undefined): boolean;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:308-312. The real Module Def
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:321-325. The real Module Def
 	 * behind the shell on screen (the shell is named after its sidebar, which
 	 * may have been renamed); `null` before the first `setup()`.
 	 */
@@ -966,31 +979,31 @@ export declare class FrappeSidebar {
 
 	// -- width ------------------------------------------------------------------
 
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:711-717 — `open()` / `close()` by current state. Also bound to `Ctrl+/` by `setup_events()` (frappe/public/js/frappe/ui/sidebar/sidebar.js:262-266). */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:721-727 — `open()` / `close()` by current state. Also bound to `Ctrl+/` by `setup_events()` (frappe/public/js/frappe/ui/sidebar/sidebar.js:275-279). */
 	toggle_width(): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:791-796. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:801-806. */
 	open(): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:784-790. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:794-800. */
 	close(): void;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:798-804. Folds the panel for
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:808-814. Folds the panel for
 	 * the page on screen without saving that as the viewer's choice; the print
 	 * view calls it on `show` (frappe/printing/page/print/print.js:12).
 	 */
 	fold_for_page(): void;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:806-813. Undoes
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:816-823. Undoes
 	 * {@link fold_for_page} and re-reads the saved state; the print view calls it
 	 * on `hide` (frappe/printing/page/print/print.js:10).
 	 */
 	unfold_after_leaving_page(): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:800,808 — set by {@link fold_for_page}, cleared by {@link unfold_after_leaving_page}; absent until the first fold. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:810,818 — set by {@link fold_for_page}, cleared by {@link unfold_after_leaving_page}; absent until the first fold. */
 	folded_for_page?: boolean;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:742-764. Applies
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:752-774. Applies
 	 * `sidebar_expanded` to the DOM and fires
 	 * `$(document).trigger("sidebar-expand", { sidebar_expand })`
-	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:761-763), where
+	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:771-773), where
 	 * `sidebar_expand` is whether the panel is *not* a rail. Replaces 16.33's
 	 * `expand_sidebar()`.
 	 */
@@ -998,7 +1011,7 @@ export declare class FrappeSidebar {
 	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:577-584 — re-reads the saved state, then applies it. */
 	restore_expanded_state(): void;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:721-728. Beside a pinned dock
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:731-738. Beside a pinned dock
 	 * a collapsed sidebar hides instead of folding to a rail.
 	 */
 	hides_when_collapsed(): boolean;
@@ -1024,27 +1037,28 @@ export declare class FrappeSidebar {
 	// -- shell resolution -----------------------------------------------------
 
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:831-842. Picks the shell for
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:841-852. Picks the shell for
 	 * the current route and calls {@link select_shell} only when it differs from
 	 * `current_module`, then re-lights the active row. Takes no argument (16.33
 	 * took the router). Registered as the router's `"change"` handler
-	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:255-260).
+	 * (frappe/public/js/frappe/ui/sidebar/sidebar.js:268-273).
 	 */
 	set_workspace_sidebar(): void;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:844-850. `/desk` alone
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:854-860. `/desk` alone
 	 * (an empty route) answers {@link default_shell}; a route the server's map
 	 * does not know keeps the shell on screen.
 	 */
 	shell_for_current_route(route: readonly string[]): string | null;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:853-855. The shell for a route
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:863-865. The shell for a route
 	 * that names nothing: `frappe.boot.home_shell`, else the first key of
 	 * `module_sidebars`, else `null`.
 	 */
 	default_shell(): string | null;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:883-916. The shell a URL for
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:896-934. `null` for a route that opens a
+	 * `system_page` (the sidebar on screen is left alone). Otherwise the shell a URL for
 	 * this route should name, by a ladder: a private page's own owner shell; the
 	 * shell storing a workspace; the URL's own shell if it can show the route;
 	 * the shell on screen if it can; finally `frappe.boot.canonical_shell`. On a
@@ -1053,43 +1067,44 @@ export declare class FrappeSidebar {
 	 * the Private shell.
 	 */
 	shell_for_route(route: readonly string[]): string | null;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:858-863 — `frappe.router.current_shell`, if that shell can show the route. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:868-873 — `frappe.router.current_shell`, if that shell can show the route. */
 	shell_from_url(route: readonly string[]): string | null;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:867-879. A shell can show a
-	 * route if it lists the entity, or belongs to the same app as the entity's
-	 * canonical shell. `listed_only` drops the second test.
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:867-881. A `shared_page`
+	 * (`frappe.router.page_info_for(route).shared_page`) is shown by every known shell.
+	 * Otherwise a shell can show a route if it lists the entity, or belongs to the same
+	 * app as the entity's canonical shell. `listed_only` drops the second test.
 	 */
 	shell_can_show(
 		shell: string | null | undefined,
 		route: readonly string[],
 		opts?: { listed_only?: boolean }
 	): boolean;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:920-925 — `frappe.boot.canonical_shell[kind][entity]`, where an entity opens when nothing else states a shell. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:938-943 — `frappe.boot.canonical_shell[kind][entity]`, where an entity opens when nothing else states a shell. */
 	canonical_shell_for(route: readonly string[], entity?: string | null): string | null;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:927-931 — {@link setup} when `module` differs from the shell on screen. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:945-949 — {@link setup} when `module` differs from the shell on screen. */
 	select_shell(module: string | null | undefined): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:934-940 — selects the shell, then opens its landing page. A no-op for an unknown shell. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:952-958 — selects the shell, then opens its landing page. A no-op for an unknown shell. */
 	open_module(module: string): void;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:944-956. Opens a shell's
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:962-974. Opens a shell's
 	 * landing page: a landing outside `/desk/` opens in a new tab with
 	 * `noopener`. Returns whether the desk navigated.
 	 */
 	open_landing(module: string, opts?: { replace?: boolean }): boolean;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:959-971 — opens a workspace by name, in the shell that lists it. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:977-989 — opens a workspace by name, in the shell that lists it. */
 	open_workspace(name: string | null | undefined): void;
 
 	// -- landing routes and the dock -----------------------------------------
 
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:1092-1101. A shell's home: the
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:1110-1119. A shell's home: the
 	 * route of the first item in its sidebar that has one; `null` for an unknown
 	 * shell or one with none.
 	 */
 	module_landing_route(module: string | null | undefined): string | null;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:1043-1054. Where an app's
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:1061-1072. Where an app's
 	 * icon leads, always into the app: an `app_route` outside the desk as is;
 	 * otherwise the route of the first non-`URL` rail entry that lands in the
 	 * desk ({@link is_desk_route}), else the `app_route`, else its first
@@ -1097,48 +1112,48 @@ export declare class FrappeSidebar {
 	 * the first rail entry whatever it led to.
 	 */
 	app_landing_route(app: FrappeBootAppEntry | null | undefined): string | null;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1057-1060 — whether a path's first segment is `desk` or the old `app` prefix. Throws on a nullish route. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1075-1078 — whether a path's first segment is `desk` or the old `app` prefix. Throws on a nullish route. */
 	is_desk_route(route: string): boolean;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:974-980. The app's dock
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:992-998. The app's dock
 	 * entries resolved for the rail, in arrangement order, hidden ones dropped. A
 	 * shell in no app (`app` falsy) yields none.
 	 */
 	collect_dock_entries(app: FrappeBootAppEntry | null | undefined): FrappeDockEntry[];
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:984-1014. Resolves a stored
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:1002-1032. Resolves a stored
 	 * dock row to a label, icon, shell and route; `null` for a row that resolves
 	 * to nothing (an unknown workspace or shell, a `URL` row with no `url`).
 	 */
 	dock_entry(row: FrappeDockRow | null | undefined): FrappeDockEntry | null;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1026-1034 — selects the entry's shell and navigates to the entry's route. It no longer opens the sidebar, so a collapsed one stays collapsed. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1044-1052 — selects the entry's shell and navigates to the entry's route. It no longer opens the sidebar, so a collapsed one stays collapsed. */
 	open_dock_entry(entry: FrappeDockEntry | null | undefined): void;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:1063-1076. Where a dock
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:1081-1094. Where a dock
 	 * entry leads: a `Sidebar` row opens its shell's landing route; any other row
 	 * routes through `frappe.ui.sidebar_item.get_route`.
 	 */
 	dock_entry_route(entry: FrappeDockEntry | null | undefined): string | null | undefined;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1037-1039 — `"<link_type>|<link_to>|<url>"`, never the label, so relabelling cannot detach a row. Matches `dock_key` on the server (frappe/desk/doctype/dock/dock.py:938-949). */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1055-1057 — `"<link_type>|<link_to>|<url>"`, never the label, so relabelling cannot detach a row. Matches `dock_key` on the server (frappe/desk/doctype/dock/dock.py:938-949). */
 	dock_entry_key(entry: Pick<FrappeDockEntry, "link_type" | "link_to" | "url">): string;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1105-1113 — a workspace entry is active only on that workspace, a shell entry while its shell shows, a URL entry never. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1123-1131 — a workspace entry is active only on that workspace, a shell entry while its shell shows, a URL entry never. */
 	is_active_entry(entry: FrappeDockEntry | null | undefined): boolean;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1079-1085 — the app's shells (its `module_sidebars` entries' `name`s) in payload order. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1097-1103 — the app's shells (its `module_sidebars` entries' `name`s) in payload order. */
 	navigable_app_modules(app: FrappeBootAppEntry | null | undefined): string[];
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1087-1089. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1105-1107. */
 	first_navigable_module(app: FrappeBootAppEntry | null | undefined): string | undefined;
 
 	// -- route → entity -----------------------------------------------------------
 
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:1137-1142. The kind of
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:1157-1162. The kind of
 	 * entity a route names; the inverse of `sidebar_item.get_route`. `Report`
 	 * and `Dashboard` for `query-report` / `dashboard-view` routes, `Page` for a
 	 * route in `frappe.boot.page_info`, otherwise `DocType`.
 	 */
 	link_type_from_route(route: readonly string[]): FrappeSidebarEntityKind;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:1159-1174. The entity a route
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:1179-1194. The entity a route
 	 * names: the report / dashboard after `query-report` / `dashboard-view`, a
 	 * page's own route name, the only segment of a one-segment route, the third
 	 * of a private-workspace route, otherwise the second segment (`["List",
@@ -1146,23 +1161,23 @@ export declare class FrappeSidebar {
 	 */
 	entity_from_route(route: readonly string[]): string | undefined;
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:1178-1193. Every shell whose
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:1198-1213. Every shell whose
 	 * sidebar links `link_to` (of `link_type`, when given), across apps, the
 	 * owning shell (`entity_module`) first.
 	 */
 	get_modules_linking(link_to: string, link_type?: FrappeSidebarItemLinkType | null): string[];
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1196-1199 — `frappe.boot.entity_module[link_to]`: the shell an `is_default_module` row claims the entity for. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1216-1219 — `frappe.boot.entity_module[link_to]`: the shell an `is_default_module` row claims the entity for. */
 	module_for_entity(link_to: string | null | undefined): string | undefined;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1151-1157 — the shell whose `workspaces` holds `name`, or `null`. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1171-1177 — the shell whose `workspaces` holds `name`, or `null`. */
 	module_for_workspace(name: string | null | undefined): string | null;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1145-1149. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:1165-1169. */
 	shell_lists_workspace(shell: string | null | undefined, name: string | null | undefined): boolean;
 
 	// -- menus -------------------------------------------------------------------
 
 	/**
-	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:416-511. The user menu (My
-	 * Space, Settings, Manage Dock, Reload, Logout), shared by the sidebar's
+	 * frappe/public/js/frappe/ui/sidebar/sidebar.js:429-511. The user menu (My
+	 * Space, My Settings, Manage Dock, Reload, Logout), built by `user_menu_options()` (sidebar.js:443), shared by the sidebar's
 	 * user button and the dock's avatar. Builds a `frappe.ui.Dropdown` on
 	 * `parent` and returns nothing.
 	 */
@@ -1172,6 +1187,6 @@ export declare class FrappeSidebar {
 		side?: "top" | "right" | "bottom" | "left";
 		align?: "start" | "center" | "end";
 	}): void;
-	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:408-413. */
+	/** frappe/public/js/frappe/ui/sidebar/sidebar.js:421-426. */
 	setup_user_menu(): void;
 }

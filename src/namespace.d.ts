@@ -279,7 +279,7 @@ declare global {
 				type ControlPassword = ControlPasswordClass;
 				/** `frappe.ui.form.ControlPercent` — `frappe/public/js/frappe/form/controls/percent.js:1`. */
 				type ControlPercent = ControlPercentClass;
-				/** `frappe.ui.form.ControlPhone` — `frappe/public/js/frappe/form/controls/phone.js:4`. */
+				/** `frappe.ui.form.ControlPhone` — `frappe/public/js/frappe/form/controls/phone.js:5`. */
 				type ControlPhone = ControlPhoneClass;
 				/** `frappe.ui.form.ControlRating` — `frappe/public/js/frappe/form/controls/rating.js:1`. */
 				type ControlRating = ControlRatingClass;
@@ -328,7 +328,7 @@ declare global {
 			type ListViewSettings<DT extends string = string> = ListViewSettingsShape<DT>;
 			/** `frappe.views.BaseList` — `frappe/public/js/frappe/list/base_list.js:5`. */
 			type BaseList = BaseListClass;
-			/** `frappe.views.ListView` — `frappe/public/js/frappe/list/list_view.js:6`. */
+			/** `frappe.views.ListView` — `frappe/public/js/frappe/list/list_view.js:11`. */
 			type ListView = ListViewClass;
 			/** `frappe.views.GanttView` — `frappe/public/js/frappe/views/gantt/gantt_view.js:13`. */
 			type GanttView = GanttViewClass;
@@ -350,7 +350,7 @@ declare global {
 			type QueryReportSettings = QueryReportSettingsShape;
 			/** A prepared query report column, as `formatter` receives it. */
 			type QueryReportColumn = QueryReportColumnShape;
-			/** One filter control of a query report, as `frappe.query_report.get_filter(...)` returns it (`frappe/public/js/frappe/views/reports/query_report.js:1615-1621`). */
+			/** One filter control of a query report, as `frappe.query_report.get_filter(...)` returns it (`frappe/public/js/frappe/views/reports/query_report.js:1627-1633`). */
 			type QueryReportFilter = QueryReportFilterControlShape;
 		}
 	}

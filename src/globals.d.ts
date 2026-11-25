@@ -90,7 +90,7 @@ export type TranslationArgs = ArrayLike<unknown>;
  * 2. **`replace` is ignored unless it is a truthy object** (translate.js:20).
  *    frappe's own grid passes the empty string as a placeholder for "no
  *    replacements": `__("Edit", "", "Edit grid row")`
- *    (frappe/public/js/frappe/form/grid_row.js:339). Hence `string` is in the
+ *    (frappe/public/js/frappe/form/grid_row.js:343). Hence `string` is in the
  *    union — it type-checks *and* is a no-op, matching runtime.
  * 3. **`context` is the third argument, defaulting to `null`.** It selects the
  *    `` `${key}:${context}` `` message variant (translate.js:13). frappe passes
@@ -137,17 +137,17 @@ export interface TranslateFunction {
  *
  * Read/write shape, verified in frappe/public/js/frappe/model/model.js:
  * - `locals[dt][dn]` is a document —
- *   frappe/public/js/frappe/model/model.js:153,472,542,627.
+ *   frappe/public/js/frappe/model/model.js:155,474,544,629.
  * - `locals[dt][dn][fieldname]` is a field value —
- *   frappe/public/js/frappe/model/model.js:472,517.
+ *   frappe/public/js/frappe/model/model.js:474,519.
  * - `delete locals[doctype][name]` —
- *   frappe/public/js/frappe/model/model.js:676,698.
+ *   frappe/public/js/frappe/model/model.js:678,700.
  * - `locals.DocType[doctype]` is the DocType meta —
- *   frappe/public/js/frappe/model/model.js:216,329 and its flags
- *   `.istable` (model.js:394), `.is_submittable` (model.js:389) and `.is_tree`
- *   (model.js:404); also frappe/public/js/frappe/model/meta.js:14.
+ *   frappe/public/js/frappe/model/model.js:218,331 and its flags
+ *   `.istable` (model.js:396), `.is_submittable` (model.js:391) and `.is_tree`
+ *   (model.js:406); also frappe/public/js/frappe/model/meta.js:14.
  *
- * **`":" + doctype` buckets.** frappe/public/js/frappe/model/model.js:491 reads
+ * **`":" + doctype` buckets.** frappe/public/js/frappe/model/model.js:493 reads
  * `locals[doctype] || locals[":" + doctype]`, and
  * frappe/public/js/frappe/model/sync.js:49-57 writes `locals[":Print Format"]`.
  * What it stores there (frappe/public/js/frappe/model/sync.js:52-55) is a copy
@@ -165,7 +165,7 @@ export interface TranslateFunction {
 export interface LocalsStore {
 	/**
 	 * DocType metadata cache — `locals.DocType[doctype]`.
-	 * provide.js:34, model.js:216, meta.js:14.
+	 * provide.js:34, model.js:218, meta.js:14.
 	 */
 	DocType: Record<string, DocTypeMeta | undefined>;
 	/**
@@ -186,7 +186,7 @@ export interface LocalsStore {
  * (`window.cur_frm = null;`), assigned in `Form.refresh()` at
  * frappe/public/js/frappe/form/form.js:453 (`cur_frm = this;`), and cleared
  * back to `null` when a non-form page shows —
- * frappe/public/js/frappe/views/pageview.js:99.
+ * frappe/public/js/frappe/views/pageview.js:123.
  *
  * The class is `frappe.ui.form.Form = class FrappeForm`
  * (frappe/public/js/frappe/form/form.js:64).
@@ -221,7 +221,7 @@ export type CurrentForm = Form | null;
  * (frappe/public/js/frappe/list/list_factory.js:24-38), and that class does NOT
  * extend `ListView` — it is a plain class with `doctype`, `view_name`,
  * `parent`, `page`, `show()` and `get_search_params()`
- * (frappe/public/js/frappe/views/kanban_v2/kanban_page.js:2219-2246). On such a
+ * (frappe/public/js/frappe/views/kanban_v2/kanban_page.js:2436-2463). On such a
  * board `cur_list` is therefore not a `ListView` at all, whatever `views.d.ts`'s
  * `CurrentListView` says.
  *
@@ -239,10 +239,10 @@ export type { CurrentListView };
  * `window.cur_dialog` — the top-most open `frappe.ui.Dialog`.
  *
  * Initialised to `null` at frappe/public/js/frappe/ui/dialog.js:6. Set to the
- * dialog instance on `shown.bs.modal` (frappe/public/js/frappe/ui/dialog.js:127)
+ * dialog instance on `shown.bs.modal` (frappe/public/js/frappe/ui/dialog.js:130)
  * and popped back to either the next dialog on the `frappe.ui.open_dialogs`
  * stack or `null` on `hide.bs.modal`
- * (frappe/public/js/frappe/ui/dialog.js:115-119).
+ * (frappe/public/js/frappe/ui/dialog.js:118-122).
  *
  * Because it is a stack top, callers always null-check — e.g.
  * frappe/public/js/frappe/views/container.js:65 and
@@ -263,7 +263,7 @@ export type CurrentDialog = Dialog | null;
  * value is the *Container*, not a page. The page div is reached as
  * `cur_page.page` — see frappe/public/js/onboarding_tours/onboarding_tours.js:125
  * (`cur_page?.page?.querySelector(...)`) and
- * frappe/public/js/frappe/ui/keyboard.js:85-86 (`window.cur_page?.page?.page` /
+ * frappe/public/js/frappe/ui/keyboard.js:107-108 (`window.cur_page?.page?.page` /
  * `window.cur_page?.page?.frm`), which is why the optional chaining exists
  * upstream.
  *
@@ -433,12 +433,12 @@ export interface DeskTemplateGlobals {
  *
  * | member | source | why non-empty |
  * | --- | --- | --- |
- * | `Grid#wrapper` | `form/grid.js:173` | `$(template).appendTo(this.parent)` |
+ * | `Grid#wrapper` | `form/grid.js:171` | `$(template).appendTo(this.parent)` |
  * | `GridRow#wrapper` | `form/grid_row.js:25` | `$('<div class="grid-row"></div>')` |
  * | `GridRow#row` | `form/grid_row.js:26` | `$('<div class="data-row row m-0"></div>').appendTo(…)` |
- * | `ListView#$result` | `list/base_list.js:352` | ``$(`<div class="result">`)`` |
+ * | `ListView#$result` | `list/base_list.js:356` | ``$(`<div class="result">`)`` |
  * | `ReportView#$datatable_wrapper` | `views/reports/report_view.js:94` | `$('<div class="datatable-wrapper">')` |
- * | `Page#main` | `frappe/public/js/frappe/ui/page.js:159` | `wrapper.find(".layout-main-section")`, and `add_main_section()` inserts that div on BOTH branches (`frappe/public/js/frappe/ui/page.js:116-137`) before `setup_page()` reads it |
+ * | `Page#main` | `frappe/public/js/frappe/ui/page.js:160` | `wrapper.find(".layout-main-section")`, and `add_main_section()` inserts that div on BOTH branches (`frappe/public/js/frappe/ui/page.js:117-138`) before `setup_page()` reads it |
  *
  * DO NOT add sites without doing that check. A `find()` whose target is not
  * emitted by the same component is a selector result, not a region.
@@ -587,10 +587,10 @@ export interface JQueryFrappePlugins<TElement = HTMLElement> {
 	/**
 	 * Bind a handler to Enter (keyCode 13) on each matched element.
 	 *
-	 * frappe/public/js/frappe/ui/keyboard.js:366-375. The body is
+	 * frappe/public/js/frappe/ui/keyboard.js:388-397. The body is
 	 * `return this.each(function () { $(this).keypress(...) })`, so it is
 	 * chainable, and the callback is invoked as `fnc.call(this, ev)`
-	 * (keyboard.js:371) — `this` is the raw element, which is why the signature
+	 * (keyboard.js:393) — `this` is the raw element, which is why the signature
 	 * carries an explicit `this` parameter for `noImplicitThis`.
 	 *
 	 * Note it hooks `keypress`, which never fires for non-printing keys in some
@@ -601,7 +601,7 @@ export interface JQueryFrappePlugins<TElement = HTMLElement> {
 	 * `<TDelegateTarget, TData, TCurrentTarget, TTarget>`, so passing a single
 	 * argument would bind the *delegate* target, not the element — a
 	 * plausible-looking lie. The handler reads `ev.keyCode` / `ev.which`
-	 * (keyboard.js:369), both of which the fully-defaulted form provides.
+	 * (keyboard.js:391), both of which the fully-defaulted form provides.
 	 */
 	enterKey(fnc: (this: TElement, ev: JQuery.KeyPressEvent) => void): JQuery<TElement>;
 
@@ -636,7 +636,7 @@ export interface JQueryFrappePlugins<TElement = HTMLElement> {
 	 * (carbon_frappe/public/js/tables/grid/grid_row.js:292) calls `super`, and
 	 * the upstream body calls
 	 * `this.open_form_button.tooltip({ delay: { show: 600, hide: 100 } })` —
-	 * frappe/public/js/frappe/form/grid_row.js:355.
+	 * frappe/public/js/frappe/form/grid_row.js:359.
 	 *
 	 * `_jQueryInterface` is `return this.each(...)`
 	 * (node_modules/bootstrap/js/dist/tooltip.js:808-809), so every form —
@@ -703,19 +703,19 @@ export interface JQueryFrappeOverloads {
 	 * need overloads).
 	 *
 	 * Readers, all of which would otherwise be `any`:
-	 * frappe/public/js/frappe/form/grid.js:39 and
+	 * frappe/public/js/frappe/form/grid.js:37 and
 	 * frappe/public/js/frappe/form/layout.js:714
 	 * (`$(".grid-row-open").data("grid_row")`),
-	 * frappe/public/js/frappe/form/grid.js:1225,1232
+	 * frappe/public/js/frappe/form/grid.js:1224,1231
 	 * (`.find("[data-idx='" + idx + "']").data("grid_row")`),
-	 * frappe/public/js/frappe/ui/keyboard.js:337. carbon_frappe mirrors the
+	 * frappe/public/js/frappe/ui/keyboard.js:359. carbon_frappe mirrors the
 	 * idiom at carbon_frappe/scripts/tables/grid.mjs:261.
 	 *
 	 * `| undefined` is real: `$(".grid-row-open")` is an empty set whenever no
 	 * row form is open, and jQuery's `.data()` on an empty set is `undefined` —
 	 * which is exactly why `frappe.ui.form.close_grid_form` guards with
 	 * `open_form && open_form.hide_form()`
-	 * (frappe/public/js/frappe/form/grid.js:43-44).
+	 * (frappe/public/js/frappe/form/grid.js:41-42).
 	 *
 	 * The `doc` key is `FrappeDoc | ""` because grid_row.js:70 stores
 	 * `this.doc || ""`.
@@ -794,7 +794,7 @@ export interface BootstrapTooltipOptions {
 	template?: string;
 	title?: string | Element | ((this: Element) => string);
 	trigger?: string;
-	/** `'(number|object)'` — tooltip.js:229. frappe passes `{ show: 600, hide: 100 }` at frappe/public/js/frappe/form/grid_row.js:355. */
+	/** `'(number|object)'` — tooltip.js:229. frappe passes `{ show: 600, hide: 100 }` at frappe/public/js/frappe/form/grid_row.js:359. */
 	delay?: number | { show?: number; hide?: number };
 	html?: boolean;
 	selector?: string | false;
@@ -891,13 +891,13 @@ export interface BootstrapScrollSpyOptions {
  * - `"show.bs.dropdown"` — Bootstrap 4 namespaced event, triggered on a
  *   dropdown's parent by Bootstrap itself
  *   (node_modules/bootstrap/js/dist/dropdown.js:86 `EVENT_SHOW`, triggered at
- *   dropdown.js:166-170). frappe listens for it at
+ *   dropdown.js:215-219). frappe listens for it at
  *   frappe/public/js/frappe/ui/alt_keyboard_shortcuts.js:119,
- *   frappe/public/js/frappe/list/base_list.js:888 and
+ *   frappe/public/js/frappe/list/base_list.js:890 and
  *   frappe/public/js/frappe/form/controls/multiselect_list.js:123. frappe does
  *   not fire it by hand for the notification bell: the sidebar bell calls
  *   `frappe.ui.sidebar_panels.toggle("notifications")`
- *   (frappe/public/js/frappe/ui/sidebar/sidebar.js:661) and the notifications
+ *   (frappe/public/js/frappe/ui/sidebar/sidebar.js:660) and the notifications
  *   view refreshes in its `on_open()`
  *   (frappe/public/js/frappe/ui/notifications/notifications.js:462) rather
  *   than listening for this event. No `.dropdown-notifications` element is left
@@ -905,10 +905,10 @@ export interface BootstrapScrollSpyOptions {
  *   (carbon_frappe/public/js/anatomy/shell/utilities.ts:195) has nothing to
  *   reach at this version.
  * - `"escape"` — frappe-only. Triggered on `document` by the global Esc handler
- *   at frappe/public/js/frappe/ui/keyboard.js:330
+ *   at frappe/public/js/frappe/ui/keyboard.js:352
  *   (`$(document).trigger("escape");`, inside `handle_escape_key()`), listened
- *   for at frappe/public/js/frappe/form/grid_row.js:361 so the open-form button
- *   regains focus, and also at frappe/public/js/frappe/ui/dialog.js:353 and
+ *   for at frappe/public/js/frappe/form/grid_row.js:365 so the open-form button
+ *   regains focus, and also at frappe/public/js/frappe/ui/dialog.js:402 and
  *   frappe/public/js/frappe/ui/sidebar/sidebar_panel.js:247.
  *   carbon_frappe's `menu_node()` keeps a real element under
  *   that focus call — carbon_frappe/public/js/tables/grid/grid_row.js:153-155.
@@ -917,20 +917,20 @@ export interface BootstrapScrollSpyOptions {
  * - `"page-change"` — triggered on `document` at
  *   frappe/public/js/frappe/views/container.js:86 with the page element as its
  *   one extra argument (`$(document).trigger("page-change", this.page)`), which
- *   the listener at frappe/public/js/frappe/ui/toolbar/awesome_bar.js:502
+ *   the listener at frappe/public/js/frappe/ui/toolbar/awesome_bar.js:508
  *   receives as `data`; the Container's own listener is
  *   frappe/public/js/frappe/views/container.js:27.
  * - `"rename"` — triggered on `document` with the extra args
  *   `[doctype, old_name, new_name]` at
  *   frappe/public/js/frappe/model/sync.js:64,
  *   frappe/public/js/frappe/form/toolbar.js:157 and
- *   frappe/public/js/frappe/model/model.js:801, and handled as
+ *   frappe/public/js/frappe/model/model.js:803, and handled as
  *   `(event, dt, old_name, new_name)` at
  *   frappe/public/js/frappe/form/form.js:381. The Container's own handler
  *   (frappe/public/js/frappe/views/container.js:34) takes no arguments and just
  *   calls `frappe.breadcrumbs.update()`.
  * - `"frappe.ui.Dialog:shown"` — triggered at
- *   frappe/public/js/frappe/ui/dialog.js:132.
+ *   frappe/public/js/frappe/ui/dialog.js:138.
  */
 export type FrappeCustomJQueryEvent =
 	| "show.bs.dropdown"
@@ -974,7 +974,7 @@ export interface JQueryValPatchNote {
  * bare: `format_currency(amount, currency)`, `open_url_post(url, args)`.
  *
  * Every one is assigned at bundle load by a file the desk always loads
- * (`frappe/hooks.py:24-33`, `app_include_js`):
+ * (`frappe/hooks.py:41-50`, `app_include_js`):
  *
  * - `frappe/public/js/frappe/utils/datatype.js:4-81` writes `cstr`, `cint`,
  *   `toTitle`, `is_null`, `copy_dict`, the `validate_*` four, `nth`,
@@ -1003,7 +1003,7 @@ export interface JQueryValPatchNote {
  *
  * The website bundle loads `number_format.js` (which imports `datatype.js`,
  * `frappe/public/js/frappe/utils/number_format.js:4`), `common.js` and
- * `pretty_date.js` too (`frappe/public/js/frappe-web.bundle.js:9,32,34`), but
+ * `pretty_date.js` too (`frappe/public/js/frappe-web.bundle.js:9,35,37`), but
  * not `urllib.js` or the form helpers; like the rest of this package's
  * globals they are declared for the desk.
  *
@@ -1308,11 +1308,11 @@ export interface DeskWindow extends DeskTemplateGlobals, Partial<DeskHelperGloba
 	__?: TranslateFunction;
 	/** provide.js:21 — `frappe.provide("locals")`. */
 	locals?: LocalsStore;
-	/** provide.js:50 / form.js:453 / pageview.js:99. */
+	/** provide.js:50 / form.js:453 / pageview.js:123. */
 	cur_frm?: CurrentForm;
 	/** frappe/public/js/frappe/list/list_factory.js:6,99,102. */
 	cur_list?: CurrentListView;
-	/** frappe/public/js/frappe/ui/dialog.js:6,115-119,127. */
+	/** frappe/public/js/frappe/ui/dialog.js:6,118-122,130. */
 	cur_dialog?: CurrentDialog;
 	/** frappe/public/js/frappe/views/container.js:8,51. */
 	cur_page?: CurrentPageContainer;
@@ -1320,7 +1320,7 @@ export interface DeskWindow extends DeskTemplateGlobals, Partial<DeskHelperGloba
 	erpnext?: ErpNextGlobal;
 	/**
 	 * A web form's save guard: `true` while `WebForm#save` waits for the server,
-	 * `false` again when it answers (`frappe/public/js/frappe/web_form/web_form.js:405`,
+	 * `false` again when it answers (`frappe/public/js/frappe/web_form/web_form.js:407`,
 	 * `:414`, `:450`). Only on a web form page, and absent until the first save.
 	 */
 	saving?: boolean;

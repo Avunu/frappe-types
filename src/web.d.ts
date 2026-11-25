@@ -91,9 +91,9 @@ export interface FrappeWebGlobals {
 	/**
 	 * `frappe/website/doctype/web_form/templates/web_form.html:189` — the
 	 * document being edited or viewed, `{}` on a new form
-	 * (`frappe/website/doctype/web_form/web_form.py:569`). For a Guest, or a
+	 * (`frappe/website/doctype/web_form/web_form.py:627`). For a Guest, or a
 	 * Web Form Request, trimmed to `name`, `doctype` and the form's own fields
-	 * (`frappe/website/doctype/web_form/web_form.py:592-602`).
+	 * (`frappe/website/doctype/web_form/web_form.py:650-660`).
 	 */
 	reference_doc: FrappeDocBase;
 	/**
@@ -135,7 +135,7 @@ declare module "./index" {
 declare global {
 	// -- website.js window helpers ------------------------------------------
 	// `frappe/website/js/website.js` is the last import of the website bundle
-	// (`frappe/public/js/frappe-web.bundle.js:47`) and no desk bundle loads it.
+	// (`frappe/public/js/frappe-web.bundle.js:50`) and no desk bundle loads it.
 	// It also reassigns `validate_email`, `cstr` and `is_null` (:589-597),
 	// which `frappe-types/global` already declares from the desk's
 	// `datatype.js`; the three below exist on website pages only.
@@ -170,7 +170,7 @@ declare global {
 		full_name?: string;
 		/**
 		 * The web form's save guard: `WebForm#save` returns at once while it is
-		 * set (`frappe/public/js/frappe/web_form/web_form.js:405`), sets it before
+		 * set (`frappe/public/js/frappe/web_form/web_form.js:407`), sets it before
 		 * posting (:414) and clears it when the request completes, either way
 		 * (:449-451). Undefined until the first save.
 		 */

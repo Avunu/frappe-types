@@ -57,8 +57,9 @@
  */
 
 /**
- * `frappe.utils.make_chart()` returns `new frappe.Chart(...)`
- * (`utils/utils.js:1599`). The chart class belongs to `charts.d.ts`.
+ * `frappe.utils.make_chart()` returns `new Chart(...)`, frappe-charts' `Chart`
+ * (`ui/chart.js:125-128`, deprecated since 16.60; it no longer goes through `frappe.Chart`).
+ * The chart class belongs to `charts.d.ts`.
  *
  * SEAM — imported as `FrappeChart`, a name `charts.d.ts` does not export. The
  * value of `new frappe.Chart(...)` is typed {@link FrappeBaseChart} by that
@@ -77,12 +78,12 @@ import type { FrappeBaseChart } from "./charts";
  * fragments:
  *
  * - {@link BaseControl} — what `frappe.ui.form.make_control` returns
- *   (`ui/page.js:1183`), used for `Page#fields_dict` and `Page#add_field`.
+ *   (`ui/page.js:1232`), used for `Page#fields_dict` and `Page#add_field`.
  *   This makes `utils.d.ts` ↔ `ui/form.d.ts` a type-only import cycle, which is
  *   legal in `.d.ts` and produces no emit.
  * - {@link FrappeIndicator} — the indicator-colour union `Page#set_indicator`
  *   writes verbatim into the pill's `data-theme` attribute
- *   (`frappe/public/js/frappe/ui/page.js:259`), owned by `core.d.ts`.
+ *   (`frappe/public/js/frappe/ui/page.js:263`), owned by `core.d.ts`.
  */
 import type { BaseControl, Form } from "./ui/form";
 import type { FrappeIndicator } from "./core";
@@ -123,15 +124,15 @@ export interface JQueryEventLike<TTarget extends EventTarget = EventTarget> {
  * A `frappe.utils.debounce()` result — a callable carrying `cancel`/`flush`
  * expandos.
  *
- * `utils/utils.js:928-963`: `debounced.cancel` and `debounced.flush` are
+ * `utils/utils.js:930-965`: `debounced.cancel` and `debounced.flush` are
  * attached to the returned function and both return `false` when no timer is
  * pending, `true` otherwise.
  */
 export interface FrappeDebouncedFunction<TArgs extends unknown[] = unknown[]> {
 	(...args: TArgs): void;
-	/** `frappe/public/js/frappe/utils/utils.js:945-951`. `false` when there was nothing pending. */
+	/** `frappe/public/js/frappe/utils/utils.js:947-953`. `false` when there was nothing pending. */
 	cancel(): boolean;
-	/** `frappe/public/js/frappe/utils/utils.js:953-960`. Runs the pending call immediately. */
+	/** `frappe/public/js/frappe/utils/utils.js:955-962`. Runs the pending call immediately. */
 	flush(): boolean;
 }
 
@@ -142,8 +143,8 @@ export interface FrappeDebouncedFunction<TArgs extends unknown[] = unknown[]> {
 /**
  * Duration-field display options.
  *
- * Read at `utils/utils.js:1221-1249` (`get_formatted_duration`) and produced by
- * `get_duration_options` (`utils/utils.js:1298-1303`) straight off a
+ * Read at `utils/utils.js:1249-1277` (`get_formatted_duration`) and produced by
+ * `get_duration_options` (`utils/utils.js:1326-1331`) straight off a
  * `Duration` DocField, so the flags arrive as frappe's 0/1 booleans. The
  * `!== 1` comparisons in `get_formatted_duration` mean a JS `true` is NOT
  * equivalent to `1` there — pass `1`.
@@ -153,7 +154,7 @@ export interface FrappeDurationOptions {
 	hide_seconds?: 0 | 1;
 }
 
-/** `utils/utils.js:1259-1279` — the decomposed duration. */
+/** `utils/utils.js:1287-1307` — the decomposed duration. */
 export interface FrappeDurationParts {
 	days: number;
 	hours: number;
@@ -170,7 +171,7 @@ export interface FrappeNumberSystemUnit {
 	symbol: string;
 }
 
-/** `utils/utils.js:1196-1219` — coarse UA sniff. */
+/** `utils/utils.js:1224-1247` — coarse UA sniff. */
 export interface FrappeBrowserInfo {
 	name: string;
 	version: string;
@@ -178,7 +179,7 @@ export interface FrappeBrowserInfo {
 
 /**
  * The values `frappe.utils.validate_type` knows.
- * `utils/utils.js:481-519` — anything else returns `false` unconditionally.
+ * `utils/utils.js:483-521` — anything else returns `false` unconditionally.
  */
 export type FrappeValidationType =
 	| "phone"
@@ -193,10 +194,10 @@ export type FrappeValidationType =
 /**
  * `frappe.utils.icon()`'s `size` argument.
  *
- * `utils/utils.js:1521-1526`: a string becomes the class `icon-${size}`
+ * `utils/utils.js:1567-1572`: a string becomes the class `icon-${size}`
  * (frappe ships `icon-xs` … `icon-xl`, plus `icon-rail` — 22px, new at v16.54.0
  * for module glyphs in dock tiles, `frappe/public/scss/common/icons.scss:65-68`,
- * passed by `frappe/public/js/frappe/ui/sidebar/dock.js:358-359`); an object is
+ * passed by `frappe/public/js/frappe/ui/sidebar/dock.js:365-366`); an object is
  * inlined as `width: ${size.width}; height: ${size.height}` in the `style`
  * attribute, so the two members are raw CSS lengths, not numbers-as-px.
  */
@@ -212,7 +213,7 @@ export type FrappeIconSize =
 	| { width: string | number; height: string | number };
 
 /**
- * A `frappe.utils.map_defaults.tiles.*` entry (`utils/utils.js:1318-1346`).
+ * A `frappe.utils.map_defaults.tiles.*` entry (`utils/utils.js:1346-1374`).
  * Shapes match Leaflet's `L.tileLayer(url, options)`.
  */
 export interface FrappeMapTile {
@@ -220,7 +221,7 @@ export interface FrappeMapTile {
 	options: { attribution: string };
 }
 
-/** `utils/utils.js:1315-1348`. */
+/** `utils/utils.js:1343-1376`. */
 export interface FrappeMapDefaults {
 	center: [number, number];
 	zoom: number;
@@ -238,7 +239,7 @@ export interface FrappeMapDefaults {
  * The registry of `doc_view`s {@link FrappeGenerateRouteItem} accepts: its keys
  * are {@link FrappeGenerateRouteDocView}. Seeded with the views
  * `generate_route`'s switch routes to
- * (`frappe/public/js/frappe/utils/utils.js:1636-1666`), which are the non-empty
+ * (`frappe/public/js/frappe/utils/utils.js:1679-1709`), which are the non-empty
  * options of the Workspace Shortcut `doc_view` field
  * (`frappe/desk/doctype/workspace_shortcut/workspace_shortcut.json:48`); any
  * other value routes to the doctype's default view (`:1666-1667`). The field's
@@ -270,26 +271,26 @@ export type FrappeGenerateRouteDocView = Extract<keyof FrappeGenerateRouteDocVie
 
 /**
  * The argument `frappe.utils.generate_route()` reads.
- * `frappe/public/js/frappe/utils/utils.js:1621-1718`. Only `type` is required;
+ * `frappe/public/js/frappe/utils/utils.js:1664-1761`. Only `type` is required;
  * every other member is consulted per `type`, and unknown members are ignored.
  */
 export interface FrappeGenerateRouteItem {
 	/** Lower-cased before dispatch: doctype | report | page | dashboard | workspace. */
 	type: string;
 	name?: string;
-	/** Set by the function itself when `type === "doctype"` (`frappe/public/js/frappe/utils/utils.js:1623-1625`). */
+	/** Set by the function itself when `type === "doctype"` (`frappe/public/js/frappe/utils/utils.js:1666-1668`). */
 	doctype?: string;
-	/** Short-circuits every branch when present (`frappe/public/js/frappe/utils/utils.js:1627,1695-1697`). */
+	/** Short-circuits every branch when present (`frappe/public/js/frappe/utils/utils.js:1670,1738-1740`). */
 	route?: string;
 	link?: string;
 	/**
-	 * Doctypes only: the view to route to (`frappe/public/js/frappe/utils/utils.js:1636`).
+	 * Doctypes only: the view to route to (`frappe/public/js/frappe/utils/utils.js:1679`).
 	 * See {@link FrappeGenerateRouteDocViews}. `""` is the Workspace Shortcut
 	 * field's empty option
 	 * (`frappe/desk/doctype/workspace_shortcut/workspace_shortcut.json:48`), which
 	 * the shortcut widget forwards as it is
 	 * (`frappe/public/js/frappe/widgets/shortcut_widget.js:41-49`): the doctype's
-	 * default view (`frappe/public/js/frappe/utils/utils.js:1667-1668`).
+	 * default view (`frappe/public/js/frappe/utils/utils.js:1710-1711`).
 	 */
 	doc_view?: FrappeGenerateRouteDocView | "";
 	kanban_board?: string;
@@ -298,19 +299,19 @@ export interface FrappeGenerateRouteItem {
 	is_query_report?: boolean;
 	report_ref_doctype?: string;
 	/**
-	 * Workspaces only (`frappe/public/js/frappe/utils/utils.js:1687-1694`): a public
+	 * Workspaces only (`frappe/public/js/frappe/utils/utils.js:1730-1737`): a public
 	 * workspace is routed by `name`, anything else as `private/<title>`.
 	 */
 	public?: boolean;
 	/**
 	 * Workspaces only, and only read for a non-public one
-	 * (`frappe/public/js/frappe/utils/utils.js:1693`): a private page is spelled by
+	 * (`frappe/public/js/frappe/utils/utils.js:1736`): a private page is spelled by
 	 * its title, because its `name` carries the owner's email. Falls back to `name`.
 	 */
 	title?: string;
 	/**
 	 * Serialised onto the URL as a query string
-	 * (`frappe/public/js/frappe/utils/utils.js:1700-1711`). An **array** value is
+	 * (`frappe/public/js/frappe/utils/utils.js:1743-1754`). An **array** value is
 	 * `JSON.stringify`'d (it is a `[operator, value]` filter that the list view
 	 * parses back out); anything else is `encodeURIComponent`'d as-is.
 	 */
@@ -319,8 +320,8 @@ export interface FrappeGenerateRouteItem {
 
 /**
  * A row of `frappe.boot.desktop_icons` — the shape `get_desktop_icon_by_label`
- * (`frappe/public/js/frappe/utils/utils.js:1488-1499`) and `get_route_for_icon`
- * (`frappe/public/js/frappe/utils/utils.js:1409-1470`) read.
+ * (`frappe/public/js/frappe/utils/utils.js:1534-1545`) and `get_route_for_icon`
+ * (`frappe/public/js/frappe/utils/utils.js:1454-1516`) read.
  *
  * Server shape: `frappe/desk/doctype/desktop_icon/desktop_icon.py:252-267`
  * selects sixteen columns off `Desktop Icon` (`frappe.get_all`), and
@@ -331,7 +332,7 @@ export interface FrappeGenerateRouteItem {
  * Checks as `0 | 1`.
  *
  * `frappe.boot.desktop_icons` is **only put in the boot payload when the site's
- * Desktop Settings page is "Desktop Icons"** (`frappe/boot.py:266-271`,
+ * Desktop Settings page is "Desktop Icons"** (`frappe/boot.py:276-281`,
  * `is_desktop_icons_page()` in `desktop_settings.py:93-95`); on the default
  * Apps screen it is absent, and the `get_desktop_icon*` helpers below throw
  * on it. The `Desktop Icon` DocType itself is flagged `deprecated` in
@@ -341,14 +342,14 @@ export interface FrappeDesktopIconRecord {
 	label: string;
 	/** `gray` / `blue` (json options). */
 	bg_color: "gray" | "blue" | null;
-	/** External URL — read at `frappe/public/js/frappe/utils/utils.js:1413-1414` when `link_type === "External"`. */
+	/** External URL — read at `frappe/public/js/frappe/utils/utils.js:1458-1459` when `link_type === "External"`. */
 	link: string | null;
 	link_type: "Workspace Sidebar" | "External" | null;
 	/**
 	 * The owning app's `app_name`. `get_desktop_icon` keys
 	 * `frappe.boot.desktop_icon_urls[app]` with it to find the app's own
 	 * `icons/desktop_icons/<variant>/<scrub(label)>.svg`
-	 * (`frappe/public/js/frappe/utils/utils.js:1472-1486`).
+	 * (`frappe/public/js/frappe/utils/utils.js:1518-1532`).
 	 */
 	app: string | null;
 	icon_type: "Link" | "Folder" | "App" | null;
@@ -370,12 +371,12 @@ export interface FrappeDesktopIconRecord {
 	 * payload so the client resolves the icon's route through the module-keyed
 	 * sidebar payload"). `get_route_for_icon` resolves the icon's shell with
 	 * `sidebar_for_module(module || label)`
-	 * (`frappe/public/js/frappe/utils/utils.js:1416-1418`).
+	 * (`frappe/public/js/frappe/utils/utils.js:1461-1463`).
 	 */
 	module: string | null;
 }
 
-/** `frappe/public/js/frappe/utils/utils.js:1774-1800` — the argument to `build_summary_item`. */
+/** `frappe/public/js/frappe/utils/utils.js:1812-1838` — the argument to `build_summary_item`. */
 export interface FrappeSummaryItem {
 	type?: "separator" | (string & {});
 	label?: string;
@@ -386,7 +387,7 @@ export interface FrappeSummaryItem {
 	indicator?: string;
 }
 
-/** `frappe/public/js/frappe/utils/utils.js:1846-1905` — one entry of `add_select_group_button`. */
+/** `frappe/public/js/frappe/utils/utils.js:1884-1943` — one entry of `add_select_group_button`. */
 export interface FrappeSelectGroupAction {
 	label: string;
 	description?: string;
@@ -395,7 +396,7 @@ export interface FrappeSelectGroupAction {
 
 /**
  * What `frappe.utils.app_logo()` reads off an app
- * (`frappe/public/js/frappe/utils/utils.js:1379-1391`): `app_title` (falling back
+ * (`frappe/public/js/frappe/utils/utils.js:1407-1419`): `app_title` (falling back
  * to `app_name`) and `app_logo_url`. A `frappe.boot.app_data` entry fits.
  *
  * `app_logo_url` may be a list — an app that ships a light and a dark mark
@@ -414,12 +415,12 @@ export interface FrappeAppLogoSource {
  *
  * @deprecated The same type as {@link FrappeModuleSidebar}; use that name.
  * `sidebar_for_module` returns the boot entry itself
- * (`frappe/public/js/frappe/utils/utils.js:1400-1404`), so it is now typed as
+ * (`frappe/public/js/frappe/utils/utils.js:1445-1449`), so it is now typed as
  * one, rather than as this narrower `{module, items}` view of it.
  */
 export type FrappeModuleSidebarShell = FrappeModuleSidebar;
 
-/** `utils/utils.js:2260-2300` — a navbar Help dropdown entry. */
+/** `utils/utils.js:2298-2338` — a navbar Help dropdown entry. */
 export interface FrappeHelpDropdownItem {
 	name?: string;
 	label?: string;
@@ -431,7 +432,7 @@ export interface FrappeHelpDropdownItem {
 /**
  * The "cell" `frappe.utils.report_column_total()` is handed.
  *
- * `utils/utils.js:1004-1020` reads exactly two things off it:
+ * `utils/utils.js:1006-1022` reads exactly two things off it:
  * `column.column.disable_total` and `column.column.fieldtype`. The parameter
  * name upstream is `column`, but the object is a frappe-datatable **cell**
  * whose `.column` is the column definition — see
@@ -542,7 +543,7 @@ export interface FrappeUtilsLogTypes {
  * The `frappe.utils` namespace.
  *
  * Created by `frappe.provide("frappe.utils")` (`provide.js:24`), then filled by
- * `Object.assign(frappe.utils, {...})` at `utils/utils.js:136` and
+ * `Object.assign(frappe.utils, {...})` at `utils/utils.js:138` and
  * `query_string.js:74`, plus individual assignments in `common.js`,
  * `event_emitter.js`, `meta_tag.js`, `logtypes.js` and `utils/datatable.js`.
  *
@@ -638,14 +639,14 @@ export interface FrappeUtils {
 	// ------------------------------------------------------------- scrolling
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:306-319`. Animates `.main-section`'s
+	 * `frappe/public/js/frappe/utils/utils.js:308-321`. Animates `.main-section`'s
 	 * `scrollTop` to 0 over 300 ms (jQuery `swing`) and pins it to 0 when the
 	 * animation completes. Returns nothing; there is no way to await it.
 	 */
 	scroll_page_to_top(): void;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:320-375`. `element` is a scroll offset
+	 * `frappe/public/js/frappe/utils/utils.js:322-377`. `element` is a scroll offset
 	 * in px (a `number`), or an element to scroll to. No-ops when
 	 * `frappe.flags.disable_auto_scroll`. `element_to_be_scrolled` defaults to
 	 * `$("html, body")`.
@@ -672,7 +673,7 @@ export interface FrappeUtils {
 	): void;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:376-403`. Where `scrollTop` has to be
+	 * `frappe/public/js/frappe/utils/utils.js:378-405`. Where `scrollTop` has to be
 	 * for `element` to sit just under the sticky header: the sum of `offsetTop` up
 	 * the `offsetParent` chain until it reaches `element_to_be_scrolled[0]` (or the
 	 * end of the chain, when that is omitted), minus the heights of `.navbar`, the visible
@@ -700,7 +701,7 @@ export interface FrappeUtils {
 	 *
 	 * ⚠ The four comparison operators are broken upstream: they compare the row's
 	 * value against the whole `[op, value]` array (`d[key] < filters[key]`,
-	 * `frappe/public/js/frappe/utils/utils.js:416-423`), not against `value`, so only
+	 * `frappe/public/js/frappe/utils/utils.js:418-425`), not against `value`, so only
 	 * `in` / `not in` and plain equality behave as the shape suggests.
 	 */
 	filter_dict(
@@ -755,7 +756,7 @@ export interface FrappeUtils {
 	/** `utils.js:678-714`. Sorted-merge intersection; sorts copies first. */
 	intersection<T>(a: readonly T[], b: readonly T[]): T[];
 
-	/** `frappe/public/js/frappe/utils/utils.js:1911-1916`. `undefined` for an empty/absent array, else the array. */
+	/** `frappe/public/js/frappe/utils/utils.js:1949-1954`. `undefined` for an empty/absent array, else the array. */
 	parse_array<T>(array: readonly T[] | null | undefined): readonly T[] | undefined;
 
 	/** `utils.js:1918-1928`. Python's `range`; a lone argument is the *end*. */
@@ -880,18 +881,18 @@ export interface FrappeUtils {
 	validate_type(val: string, type: FrappeValidationType | (string & {})): boolean;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:520-560`. Maps a status word onto a
+	 * `frappe/public/js/frappe/utils/utils.js:522-562`. Maps a status word onto a
 	 * bootstrap style (`default`/`warning`/`danger`/`success`/`info`) or, with
 	 * `_colour`, onto a colour name (`gray`/`amber`/`red`/`green`/`blue`). The
 	 * warning colour is **`amber`** now (`:527`); it was `orange`.
 	 */
 	guess_style(text: string | null | undefined, default_style?: string | null, _colour?: boolean): string;
 
-	/** `frappe/public/js/frappe/utils/utils.js:562-564`. `guess_style(text, null, true)`. */
+	/** `frappe/public/js/frappe/utils/utils.js:564-566`. `guess_style(text, null, true)`. */
 	guess_colour(text: string | null | undefined): string;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:566-584`. Async — reads the `Workflow
+	 * `frappe/public/js/frappe/utils/utils.js:568-586`. Async — reads the `Workflow
 	 * State`'s `style` and maps it to a colour: Success → `green`, Warning →
 	 * **`amber`** (it was `orange`), Danger → `red`, Primary → `blue`
 	 * (`:575-580`). A state with no `style` is guessed from its name with
@@ -951,7 +952,7 @@ export interface FrappeUtils {
 	 * Unbinds the previous namespaced handler first, and returns `$el`
 	 * unchanged.
 	 *
-	 * Used by frappe's own Grid at `frappe/public/js/frappe/form/grid.js:178`
+	 * Used by frappe's own Grid at `frappe/public/js/frappe/form/grid.js:176`
 	 * as `frappe.utils.bind_actions_with_object(this.wrapper, this)`.
 	 */
 	bind_actions_with_object<TEl extends JQuery<HTMLElement> | HTMLElement | string>(
@@ -999,7 +1000,7 @@ export interface FrappeUtils {
 	map_defaults: FrappeMapDefaults;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1409-1470`. Resolves a Desktop Icon
+	 * `frappe/public/js/frappe/utils/utils.js:1454-1516`. Resolves a Desktop Icon
 	 * row to a desk route: `link` for `External`, else the route of the first
 	 * `type === "Link"` item of the module sidebar found by
 	 * `sidebar_for_module(icon.module || icon.label)` (`:1416-1420`; it used to
@@ -1012,7 +1013,7 @@ export interface FrappeUtils {
 	get_route_for_icon(desktop_icon: FrappeDesktopIconRecord | null | undefined): string | undefined;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1349-1372`. Letter-avatar HTML for a
+	 * `frappe/public/js/frappe/utils/utils.js:1377-1400`. Letter-avatar HTML for a
 	 * workspace/app tile: an `.icon-container` div wrapping the `#<LETTER>`
 	 * alphabet sprite, tinted from {@link FrappeUtils.desktop_pallete}.
 	 *
@@ -1025,7 +1026,7 @@ export interface FrappeUtils {
 	desktop_icon(label: string, color?: string | null, size?: string, style?: "Subtle" | "Solid"): string;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1379-1391`. An app's mark and name,
+	 * `frappe/public/js/frappe/utils/utils.js:1407-1419`. An app's mark and name,
 	 * or `null` when `app` is falsy. The icon is the app's logo as an `<img>`
 	 * (`app_logo_url` may be a list; the first entry is used) or, when the app
 	 * declares none, the letter icon `desktop_icon(title, "gray", "sm")`. `title`
@@ -1034,7 +1035,7 @@ export interface FrappeUtils {
 	app_logo(app: FrappeAppLogoSource | null | undefined): { icon: string; title: string } | null;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1400-1404`. The boot entry for a
+	 * `frappe/public/js/frappe/utils/utils.js:1445-1449`. The boot entry for a
 	 * module's own shell: `frappe.boot.module_sidebars[module]`, else the entry
 	 * whose `module` equals it (a renamed `Sidebar`). `undefined` when `module` is
 	 * falsy or nothing matches. The entry is returned as it is in the boot, so it
@@ -1042,13 +1043,13 @@ export interface FrappeUtils {
 	 */
 	sidebar_for_module(module: string | null | undefined): FrappeModuleSidebar | undefined;
 
-	/** `frappe/public/js/frappe/utils/utils.js:1501-1504`. Only `blue` and `gray` ship; indexed by colour name. */
+	/** `frappe/public/js/frappe/utils/utils.js:1547-1550`. Only `blue` and `gray` ship; indexed by colour name. */
 	desktop_pallete: { blue: string; gray: string; [color: string]: string | undefined };
 
 	/**
 	 * Renders one of frappe's sprite icons as an HTML **string**.
 	 *
-	 * `frappe/public/js/frappe/utils/utils.js:1505-1543`. Behaviour:
+	 * `frappe/public/js/frappe/utils/utils.js:1551-1589`. Behaviour:
 	 * - an emoji `icon_name` returns `<span>${icon_name}</span>` (`:1514-1516`);
 	 * - a name starting with `es-` resolves to the espresso sprite (`href="#<name>"`)
 	 *   with the class `es-icon es-line`; anything else resolves to the
@@ -1077,7 +1078,7 @@ export interface FrappeUtils {
 		stroke_color?: string | null
 	): string;
 
-	/** `frappe/public/js/frappe/utils/utils.js:1545-1547`. `<img>` from flagcdn.com for an ISO country code. */
+	/** `frappe/public/js/frappe/utils/utils.js:1591-1595`. `<img>` of the bundled `/assets/frappe/images/flags/<code>.svg` (`frappe/public/js/frappe/utils/country_flag_url.js:4`, `alt=""`) for an ISO country code. */
 	flag(country_code: string): string;
 
 	/** `utils.js:1549-1551`. `\p{Extended_Pictographic}` test (with ZWJ sequences). */
@@ -1087,36 +1088,40 @@ export interface FrappeUtils {
 	get_emojis(): string[];
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1472-1486`. Path to an app-supplied
+	 * `frappe/public/js/frappe/utils/utils.js:1518-1532`. Path to an app-supplied
 	 * desktop icon SVG, or `false` when the app has none for that variant (or the
 	 * icon has no `app`). **The falsy branch is `false`, not `null`.** Throws when
 	 * `frappe.boot.desktop_icons` is absent (see {@link FrappeDesktopIconRecord}).
 	 */
 	get_desktop_icon(icon_name: string, variant: string): string | false;
 
-	/** `frappe/public/js/frappe/utils/utils.js:1569-1573`. */
+	/** `frappe/public/js/frappe/utils/utils.js:1617-1621`. */
 	desktop_icon_exists(app_name: string, url: string): boolean;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1488-1499`. Searches
+	 * `frappe/public/js/frappe/utils/utils.js:1534-1545`. Searches
 	 * `frappe.boot.desktop_icons` (only present on the Desktop Icons page mode —
 	 * see {@link FrappeDesktopIconRecord}).
 	 */
 	get_desktop_icon_by_label(title: string, filters?: Record<string, unknown>): FrappeDesktopIconRecord | undefined;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1575-1601`. Merges `custom_options`
-	 * over frappe's defaults (`type: "bar"`, `axisOptions.xIsSeries` …) and
-	 * constructs a `frappe.Chart`.
+	 * `frappe/public/js/frappe/ui/chart.js:125-128` (moved out of `utils.js` in 16.60).
+	 * @deprecated frappe warns once: use `frappe.ui.chart` (`chart.js:126`). Merges
+	 * `custom_options` over frappe's defaults (`type: "bar"`, `axisOptions.xIsSeries` …)
+	 * via `frappe.utils.get_chart_args` (`frappe/public/js/frappe/utils/utils.js:1623-1644`), and
+	 * constructs frappe-charts' `Chart` directly, not `frappe.Chart`, so a patched or
+	 * replaced `frappe.Chart` is bypassed.
 	 *
 	 * **`colors`:** frappe no longer hard-codes `["light-blue"]`. When
 	 * `custom_options.colors` is absent or empty the chart is given
-	 * {@link FrappeUtils.get_chart_palette} instead (`:1576-1579`), i.e. the
-	 * Espresso palette resolved against the current theme.
+	 * {@link FrappeUtils.get_chart_palette} instead (`chart.js:120-123`, `:127`), i.e. the
+	 * Espresso palette resolved against the current theme. Unlike
+	 * `frappe.ui.chart.with_classic_palette`, this applies whether or not classic charts are on.
 	 *
 	 * Options are typed as an open record because the merge is a
 	 * `for...in` over arbitrary keys (skipping `__proto__`,
-	 * `frappe/public/js/frappe/utils/utils.js:1592`) with a one-level
+	 * `frappe/public/js/frappe/utils/utils.js:1635`) with a one-level
 	 * `Object.assign` for object-valued keys — there is no closed option set at this layer.
 	 */
 	make_chart(
@@ -1125,8 +1130,8 @@ export interface FrappeUtils {
 	): FrappeBaseChart;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1605-1610`. Espresso's chart colours
-	 * (`CHART_PALETTE`, `frappe/public/js/frappe/ui/components/utils.js:97`) as the
+	 * `frappe/public/js/frappe/utils/utils.js:1648-1653`. Espresso's chart colours
+	 * (`CHART_PALETTE`, `frappe/public/js/frappe/ui/components/utils.js:155`) as the
 	 * **current theme** defines them: each `var(--x)` entry is replaced by
 	 * `getComputedStyle(document.documentElement).getPropertyValue("--x")`, because
 	 * frappe-charts lightens and blends colours from their literal values, which a
@@ -1135,11 +1140,11 @@ export interface FrappeUtils {
 	 */
 	get_chart_palette(): string[];
 
-	/** `frappe/public/js/frappe/utils/utils.js:1612-1615`. `shorten_number(label, country, 3)`. */
+	/** `frappe/public/js/frappe/utils/utils.js:1655-1658`. `shorten_number(label, country, 3)`. */
 	format_chart_axis_number(label: number | string, country?: string): string;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1616-1620`. **Mutates** `chart_args`, setting
+	 * `frappe/public/js/frappe/utils/utils.js:1659-1663`. **Mutates** `chart_args`, setting
 	 * `axisOptions.seriesLabelSpaceRatio = 0.9` for >10 labels. Throws if
 	 * `chart_args.data.labels` is absent.
 	 */
@@ -1150,7 +1155,7 @@ export interface FrappeUtils {
 	}): void;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1621-1719`. Builds a `/desk/...` route
+	 * `frappe/public/js/frappe/utils/utils.js:1664-1762`. Builds a `/desk/...` route
 	 * from a sidebar/shortcut item. It writes **no shell segment**: the result is
 	 * always `/desk/<route>`, and `frappe.router` adds the shell when it routes
 	 * there (see {@link FrappeRouterBase.write_shell_into_url}).
@@ -1158,7 +1163,7 @@ export interface FrappeUtils {
 	generate_route(item: FrappeGenerateRouteItem): string;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1721-1767`. `"1.2 M"`-style
+	 * `frappe/public/js/frappe/utils/utils.js:1764-1805`. `"1.2 M"`-style
 	 * abbreviation. Returns `""` for `null`, `undefined`, blank or NaN input
 	 * (`is_null(number) || isNaN(number)`, `:1731`; `0` is therefore **not**
 	 * blanked any more and comes back as `"0"`), and the plain number string when
@@ -1171,10 +1176,10 @@ export interface FrappeUtils {
 		max_no_of_decimals?: number
 	): string;
 
-	/** `frappe/public/js/frappe/utils/utils.js:1769-1772`. */
+	/** `frappe/public/js/frappe/utils/utils.js:1807-1810`. */
 	get_number_of_decimals(number: number): number;
 
-	/** `frappe/public/js/frappe/utils/utils.js:1774-1800`. Renders a report/dashboard summary chip. */
+	/** `frappe/public/js/frappe/utils/utils.js:1812-1838`. Renders a report/dashboard summary chip. */
 	build_summary_item(summary: FrappeSummaryItem): JQuery<HTMLElement>;
 
 	/** `utils.js:1801-1823`. Opens `/printview` in a popup. */
@@ -1197,7 +1202,7 @@ export interface FrappeUtils {
 	): void;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:1846-1905`. Split button whose primary
+	 * `frappe/public/js/frappe/utils/utils.js:1884-1943`. Split button whose primary
 	 * action follows the selection. `btn_type` is spliced into the class list
 	 * (`btn ${btn_type} btn-sm`), so it is a bootstrap class such as `"btn-primary"`.
 	 */
@@ -1272,19 +1277,19 @@ export interface FrappeUtils {
 	generate_tracking_url(): void;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:2201-2208`. `true` for `""`, `null`, `undefined`, `{}`, `[]`;
+	 * `frappe/public/js/frappe/utils/utils.js:2239-2246`. `true` for `""`, `null`, `undefined`, `{}`, `[]`;
 	 * `false` for `0`, `1`, `"hello"`, `{a:1}`, `[1]`.
 	 */
 	is_empty(value: unknown): boolean;
 
-	/** `frappe/public/js/frappe/utils/utils.js:2216-2223`. **Mutates** `obj`, replacing password-ish values with `*****`. */
+	/** `frappe/public/js/frappe/utils/utils.js:2254-2261`. **Mutates** `obj`, replacing password-ish values with `*****`. */
 	mask_passwords(obj: Record<string, unknown>): void;
 
-	/** `frappe/public/js/frappe/utils/utils.js:2242-2248`. Lazily loads highlight.js and marks up every `<pre>`. */
+	/** `frappe/public/js/frappe/utils/utils.js:2280-2286`. Lazily loads highlight.js and marks up every `<pre>`. */
 	highlight_pre($wrapper: JQuery<HTMLElement>): void;
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:2254-2259`. `true` unless the
+	 * `frappe/public/js/frappe/utils/utils.js:2292-2297`. `true` unless the
 	 * `only_allow_system_managers_to_upload_public_files` default is enabled
 	 * (`frappe.defaults.is_enabled(...)`, `:2255`), in which case only
 	 * `System Manager` / `Administrator` may.
@@ -1361,7 +1366,7 @@ export interface FrappeUtils {
 	 * returns the same object (`event_emitter.js:31-34`).
 	 *
 	 * This is how `frappe.router` acquires `on`/`off`/`once`/`trigger`
-	 * (`router.js:1103`), so a static declaration has to model the router as
+	 * (`router.js:1126`), so a static declaration has to model the router as
 	 * already carrying them — see {@link FrappeRouter}.
 	 *
 	 * The mixin's members are `init`, `trigger`, `once`, `on`, `off` — there is
@@ -1405,7 +1410,7 @@ export interface FrappeEventEmitter {
 
 	/**
 	 * `event_emitter.js:10-13`. Fires `evt` with a single payload argument.
-	 * `frappe.router` fires `trigger("change", this)` (`router.js:201`), i.e.
+	 * `frappe.router` fires `trigger("change", this)` (`router.js:207`), i.e.
 	 * the payload is the router itself.
 	 */
 	trigger(evt: string, data?: unknown): void;
@@ -1443,7 +1448,7 @@ export interface FrappeEventEmitter {
 // ===========================================================================
 
 /**
- * The `frappe.dom` namespace — `frappe/public/js/frappe/dom.js:7-258`.
+ * The `frappe.dom` namespace — `frappe/public/js/frappe/dom.js:7-263`.
  *
  * A plain object literal assigned onto `frappe` after
  * `frappe.provide("frappe.dom")` (`dom.js:5`), so every member exists as soon
@@ -1456,10 +1461,10 @@ export interface FrappeDom {
 	/**
 	 * Reference count for {@link FrappeDom.freeze}/{@link FrappeDom.unfreeze}.
 	 *
-	 * `dom.js:9` initialises it to `0`; `freeze()` increments it (`dom.js:172`)
+	 * `dom.js:9` initialises it to `0`; `freeze()` increments it (`dom.js:177`)
 	 * and `unfreeze()` early-returns when it is already `0`, decrements it, and
 	 * removes the `#freeze` backdrop only on reaching `0`
-	 * (`dom.js:175-179`).
+	 * (`dom.js:180-184`).
 	 *
 	 * **Mutable and public**: callers that suppress a backdrop must balance the
 	 * count rather than skip the call. carbon_frappe's inline grid form does
@@ -1539,19 +1544,21 @@ export interface FrappeDom {
 	 * Raises the `#freeze` modal backdrop and **increments**
 	 * {@link FrappeDom.freeze_count}.
 	 *
-	 * `dom.js:142-173`. `msg` is interpolated into
+	 * `dom.js:142-178`. `msg` is interpolated into
 	 * `<p class="lead">` unescaped; `css_class` is a space-separated class list
 	 * added to `#freeze` (frappe itself passes e.g. `"dark grid-form"`). Both
 	 * are optional — `freeze()` with no arguments renders an empty message.
 	 *
-	 * Clicking the backdrop toggles `cur_frm.cur_grid` when one is open
-	 * (`dom.js:146-151`).
+	 * Clicking the backdrop toggles the open grid row (`frappe.ui.form.get_open_grid_form()`)
+	 * when one exists. It no longer needs `cur_frm`, so it works on portal pages
+	 * (`dom.js:146-153`). The backdrop is appended to `#body`, or to `document.body` when
+	 * there is none (`dom.js:142-158`).
 	 */
 	freeze(msg?: string, css_class?: string): void;
 
 	/**
 	 * Decrements {@link FrappeDom.freeze_count} and removes `#freeze` when it
-	 * reaches zero. `dom.js:174-180`.
+	 * reaches zero. `dom.js:179-185`.
 	 *
 	 * Takes no arguments, and **returns early without decrementing** when the
 	 * count is already `0`, so an unmatched `unfreeze()` is a silent no-op
@@ -1559,33 +1566,33 @@ export interface FrappeDom {
 	 */
 	unfreeze(): void;
 
-	/** `dom.js:181-196`. Snapshot of the current selection, `null` when there is none. */
+	/** `dom.js:186-201`. Snapshot of the current selection, `null` when there is none. */
 	save_selection(): Range[] | null;
 
-	/** `dom.js:197-209`. Restores a snapshot from {@link FrappeDom.save_selection}. */
+	/** `dom.js:202-214`. Restores a snapshot from {@link FrappeDom.save_selection}. */
 	restore_selection(savedSel: Range[] | null | undefined): void;
 
-	/** `dom.js:210-212`. `"ontouchstart" in window`. */
+	/** `dom.js:215-217`. `"ontouchstart" in window`. */
 	is_touchscreen(): boolean;
 
-	/** `dom.js:213-220`. Adds `.no-image` to `<img>`s that fail to load. */
+	/** `dom.js:218-225`. Adds `.no-image` to `<img>`s that fail to load. */
 	handle_broken_images(container: Element | JQuery<HTMLElement> | string): void;
 
-	/** `dom.js:221-224`. */
+	/** `dom.js:226-229`. */
 	scroll_to_bottom(container: Element | JQuery<HTMLElement> | string): void;
 
 	/**
-	 * `dom.js:225-233`. `FileReader.readAsDataURL` as a promise. The promise
+	 * `dom.js:230-238`. `FileReader.readAsDataURL` as a promise. The promise
 	 * never rejects — a read error simply never resolves. Resolves with the
 	 * data-URI string (`FileReader.result` for `readAsDataURL` is always a
 	 * string, though lib.dom types it as `string | ArrayBuffer | null`).
 	 */
 	file_to_base64(file_obj: Blob): Promise<string>;
 
-	/** `dom.js:234-245`. Opens and scrolls to a form section by visible label. */
+	/** `dom.js:239-250`. Opens and scrolls to a form section by visible label. */
 	scroll_to_section(section_name: string): void;
 
-	/** `dom.js:246-257`. Measures device DPI via a temporary 1in probe div. */
+	/** `dom.js:251-262`. Measures device DPI via a temporary 1in probe div. */
 	pixel_to_inches(pixels: number): number;
 }
 
@@ -1613,14 +1620,14 @@ export type FrappeListViewSlug =
  * The route "factories" — the first element of a standard route
  * (`frappe/public/js/frappe/router.js:86`). `frappe.views[<TitleCase>Factory]`
  * must exist for the router to dispatch to it
- * (`frappe/public/js/frappe/router.js:469`).
+ * (`frappe/public/js/frappe/router.js:475`).
  */
 export type FrappeFactoryView = "form" | "list" | "report" | "tree" | "print" | "dashboard";
 
 /**
  * What the first segment of a route names, as decided by
  * {@link FrappeRouterBase.segment_kind}
- * (`frappe/public/js/frappe/router.js:278-303`), in the order the desk tries them:
+ * (`frappe/public/js/frappe/router.js:284-309`), in the order the desk tries them:
  *
  * - `"workspace"` — a key of `frappe.workspaces`;
  * - `"private"` — the literal segment `private`;
@@ -1646,14 +1653,14 @@ export interface FrappeDoctypeRoute {
 /**
  * A standard route: the array form frappe passes around internally, e.g.
  * `["Form", "User", "user-001"]` or `["List", "ToDo", "Report"]`.
- * `frappe/public/js/frappe/router.js:213-222` documents the mapping from URL
+ * `frappe/public/js/frappe/router.js:219-228` documents the mapping from URL
  * paths. It never carries the shell segment: `parse` takes that off first.
  */
 export type FrappeStandardRoute = string[];
 
 /**
  * One of the user's own private workspaces, as `private_workspace()` finds it in
- * `frappe.boot.allowed_workspaces` (`frappe/public/js/frappe/router.js:314-325`).
+ * `frappe.boot.allowed_workspaces` (`frappe/public/js/frappe/router.js:320-331`).
  * Only the four members that function reads are declared; the rest of the boot
  * row rides on the index signature.
  */
@@ -1670,7 +1677,7 @@ export interface FrappeRouterPrivateWorkspace {
 
 /**
  * The `frappe.router` object literal —
- * `frappe/public/js/frappe/router.js:73-1076`.
+ * `frappe/public/js/frappe/router.js:73-1099`.
  *
  * Everything below is a member of that literal **except** the four
  * runtime-assigned fields (`current_sub_path`, `meta`, `doctype_layout`,
@@ -1678,7 +1685,7 @@ export interface FrappeRouterPrivateWorkspace {
  * optional.
  *
  * The emitter half (`on`/`off`/`once`/`trigger`/`init`/`jq`) is mixed in at
- * `frappe/public/js/frappe/router.js:1103` via
+ * `frappe/public/js/frappe/router.js:1126` via
  * `frappe.utils.make_event_emitter(frappe.router)`; see {@link FrappeRouter}.
  *
  * ### The shell segment
@@ -1697,7 +1704,7 @@ export interface FrappeRouterBase {
 	/**
 	 * The current standard route, e.g. `["Form", "ToDo", "abc"]`.
 	 * `frappe/public/js/frappe/router.js:74` initialises it to `null`; `route()`
-	 * assigns it (`frappe/public/js/frappe/router.js:193`) before the first
+	 * assigns it (`frappe/public/js/frappe/router.js:199`) before the first
 	 * `"change"` event fires, so any `"change"` handler sees an array.
 	 */
 	current_route: FrappeStandardRoute | null;
@@ -1732,7 +1739,7 @@ export interface FrappeRouterBase {
 	 * {@link FrappeRouterBase.write_shell_into_url} when it writes one, and to
 	 * `frappe.ui.PRIVATE_SHELL` (`"Private"`,
 	 * `frappe/public/js/frappe/ui/sidebar/sidebar.js:25`) when `/desk/private/<route>`
-	 * is read as the Private shell (`frappe/public/js/frappe/router.js:245`). Cleared
+	 * is read as the Private shell (`frappe/public/js/frappe/router.js:251`). Cleared
 	 * by {@link FrappeRouterBase.drop_shell_from_url} and
 	 * {@link FrappeRouterBase.choose_shell_again}. A shell is a string key of
 	 * `frappe.boot.module_sidebars`.
@@ -1743,11 +1750,11 @@ export interface FrappeRouterBase {
 	 * `frappe/public/js/frappe/router.js:85`. Whether the route being resolved was
 	 * asked for from outside the sidebar: `route()` copies
 	 * `frappe.route_flags.jump` into it before parsing
-	 * (`frappe/public/js/frappe/router.js:190`), and
+	 * (`frappe/public/js/frappe/router.js:196`), and
 	 * {@link FrappeRouterBase.choose_shell_again} sets it. The awesomebar sets that
-	 * flag (`frappe/public/js/frappe/ui/toolbar/awesome_bar.js:248,543`). The
+	 * flag (`frappe/public/js/frappe/ui/toolbar/awesome_bar.js:270,549`). The
 	 * sidebar's `shell_for_route` then keeps the shell on screen only if it lists
-	 * the entity (`frappe/public/js/frappe/ui/sidebar/sidebar.js:906-913`).
+	 * the entity (`frappe/public/js/frappe/ui/sidebar/sidebar.js:922-932`; a `shared_page` counts as listed).
 	 */
 	is_jump: boolean;
 
@@ -1761,7 +1768,7 @@ export interface FrappeRouterBase {
 	 * `frappe/public/js/frappe/router.js:99-112`. Slug → title-cased view name. Note
 	 * it carries two keys that are **not** in `list_views`: `file` and `home` (both
 	 * → `"Home"`). Lookups are unchecked
-	 * (`frappe/public/js/frappe/router.js:391,410,439`), so an unknown slug yields
+	 * (`frappe/public/js/frappe/router.js:397,416,445`), so an unknown slug yields
 	 * `undefined` and lands in the route array as such.
 	 */
 	list_views_route: Record<string, string | undefined>;
@@ -1773,11 +1780,11 @@ export interface FrappeRouterBase {
 	layout_mapped: Record<string, unknown>;
 
 	/**
-	 * Assigned twice by `route()`. First at `frappe/public/js/frappe/router.js:192`:
+	 * Assigned twice by `route()`. First at `frappe/public/js/frappe/router.js:198`:
 	 * the URL path after `/desk/` as it stood when the route started (query string
 	 * excluded, segments decoded), **shell segment included** when the URL carried
 	 * one. Then, once `write_shell_into_url` has run,
-	 * at `frappe/public/js/frappe/router.js:196`: the path on screen **without** its
+	 * at `frappe/public/js/frappe/router.js:202`: the path on screen **without** its
 	 * shell segment ({@link FrappeRouterBase.path_on_screen}), decoded the same
 	 * way — so a settled router holds the shell-less path, and `""` is the desk
 	 * landing. 16.50 kept only the first value, which could lag the URL by one
@@ -1786,7 +1793,7 @@ export interface FrappeRouterBase {
 	current_sub_path?: string;
 
 	/**
-	 * Assigned by `set_doctype_route()` at `frappe/public/js/frappe/router.js:365`
+	 * Assigned by `set_doctype_route()` at `frappe/public/js/frappe/router.js:371`
 	 * from `frappe.get_meta(doctype)`.
 	 *
 	 * Left `unknown` on purpose: the DocType meta shape is owned by the
@@ -1796,10 +1803,10 @@ export interface FrappeRouterBase {
 	meta?: unknown;
 
 	/**
-	 * Assigned by `set_doctype_route()` at `frappe/public/js/frappe/router.js:398`
+	 * Assigned by `set_doctype_route()` at `frappe/public/js/frappe/router.js:404`
 	 * (`undefined` for plain doctypes) and **reset to `null`** by
 	 * `convert_to_standard_route` for every route that is not a doctype route
-	 * (`frappe/public/js/frappe/router.js:264`), so stale layouts do not leak into
+	 * (`frappe/public/js/frappe/router.js:270`), so stale layouts do not leak into
 	 * workspace and page routes.
 	 */
 	doctype_layout?: string | null;
@@ -1828,7 +1835,7 @@ export interface FrappeRouterBase {
 	setup_shell_routes(): void;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:172-202`. Resolves the URL, renders the
+	 * `frappe/public/js/frappe/router.js:172-208`. Resolves the URL, renders the
 	 * page, sets the title and finally fires `trigger("change", this)`. In order:
 	 * copy `frappe.route_flags.jump` into {@link FrappeRouterBase.is_jump}, parse
 	 * (which sets `current_route` and `current_shell`),
@@ -1836,12 +1843,14 @@ export interface FrappeRouterBase {
 	 * {@link FrappeRouterBase.write_shell_into_url}, re-assign
 	 * {@link FrappeRouterBase.current_sub_path}, `set_history`, `render`,
 	 * `set_title`, then `"change"`. Resolves to `undefined` without doing anything
-	 * when `frappe.app` does not exist yet, or after a `re_route`.
+	 * when `frappe.app` does not exist yet, or after a `re_route`. It also returns early,
+	 * after `window.location.replace(frappe.boot.setup_wizard_url)`, when setup is incomplete
+	 * and that URL is not under `/app/` (`frappe/public/js/frappe/router.js:172-187`).
 	 */
 	route(): Promise<void>;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:204-211`. URL (or `route`) → standard
+	 * `frappe/public/js/frappe/router.js:210-217`. URL (or `route`) → standard
 	 * route. Takes the shell off the front
 	 * ({@link FrappeRouterBase.take_shell_from}) and loads
 	 * `frappe.route_options` from the query string before converting.
@@ -1849,7 +1858,7 @@ export interface FrappeRouterBase {
 	parse(route?: string): Promise<FrappeStandardRoute>;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:213-267`. Dispatches on
+	 * `frappe/public/js/frappe/router.js:219-273`. Dispatches on
 	 * {@link FrappeRouterBase.segment_kind} of the first segment: a workspace
 	 * becomes `["Workspaces", <name>]`; `private` becomes `["Workspaces", "private"]`
 	 * or `["Workspaces", "private", <name>]` (or, when the second segment is not one
@@ -1862,7 +1871,7 @@ export interface FrappeRouterBase {
 	convert_to_standard_route(route: string[]): Promise<FrappeStandardRoute>;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:278-303`. What the first segment of a route
+	 * `frappe/public/js/frappe/router.js:284-309`. What the first segment of a route
 	 * names, or `null` when the desk has never heard of it (also `null` for a falsy
 	 * segment). One list, in the order the desk resolves — workspace first, because
 	 * a workspace slug and a doctype slug collide and the workspace has always won.
@@ -1872,7 +1881,7 @@ export interface FrappeRouterBase {
 	segment_kind(segment: string | null | undefined): FrappeRouteSegmentKind | null;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:314-325`. One of this user's own private
+	 * `frappe/public/js/frappe/router.js:320-331`. One of this user's own private
 	 * pages named by the segment that follows `private` in a URL: matched by title
 	 * slug first, then by the full `<title>-<user>` name slug (the old spelling).
 	 * `null` when there is none. Slugs here are {@link FrappeRouterBase.slug}.
@@ -1880,23 +1889,23 @@ export interface FrappeRouterBase {
 	private_workspace(segment: string): FrappeRouterPrivateWorkspace | null;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:332-352`. When the route is a private
+	 * `frappe/public/js/frappe/router.js:338-358`. When the route is a private
 	 * workspace and the address bar spells its page by the old full name, replaces
 	 * that segment with the title slug via `history.replaceState`. Touches only the
 	 * page segment, never a shell in front of it.
 	 */
 	respell_private_workspace(): void;
 
-	/** `frappe/public/js/frappe/router.js:354-357`. */
+	/** `frappe/public/js/frappe/router.js:360-363`. */
 	doctype_route_exist(route: string): FrappeDoctypeRoute | undefined;
 
-	/** `frappe/public/js/frappe/router.js:359-401`. Loads the doctype meta, then picks Form/List/Tree. */
+	/** `frappe/public/js/frappe/router.js:365-407`. Loads the doctype meta, then picks Form/List/Tree. */
 	set_doctype_route(route: string[]): Promise<FrappeStandardRoute>;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:403-447`. May **re-route** as a side effect when
+	 * `frappe/public/js/frappe/router.js:409-453`. May **re-route** as a side effect when
 	 * `force_re_route_to_default_view` disagrees with the URL
-	 * (`frappe/public/js/frappe/router.js:430-434`).
+	 * (`frappe/public/js/frappe/router.js:436-440`).
 	 */
 	get_standard_route_for_list(
 		route: string[],
@@ -1905,31 +1914,31 @@ export interface FrappeRouterBase {
 	): FrappeStandardRoute;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:449-452`. Pushes `current_route` onto
+	 * `frappe/public/js/frappe/router.js:455-458`. Pushes `current_route` onto
 	 * `frappe.route_history` and closes any open dialog. Declared with no parameters:
 	 * `route()` calls it as `this.set_history(sub_path)`
-	 * (`frappe/public/js/frappe/router.js:198`) but the implementation ignores the argument.
+	 * (`frappe/public/js/frappe/router.js:204`) but the implementation ignores the argument.
 	 */
 	set_history(): void;
 
-	/** `frappe/public/js/frappe/router.js:454-461`. */
+	/** `frappe/public/js/frappe/router.js:460-467`. */
 	render(): void;
 
-	/** `frappe/public/js/frappe/router.js:463-484`. Instantiates `frappe.views.<X>Factory` and shows it. */
+	/** `frappe/public/js/frappe/router.js:469-490`. Instantiates `frappe.views.<X>Factory` and shows it. */
 	render_page(): void;
 
-	/** `frappe/public/js/frappe/router.js:486-503`. `true` when a re-route was performed, else `undefined`. */
+	/** `frappe/public/js/frappe/router.js:492-509`. `true` when a re-route was performed, else `undefined`. */
 	re_route(sub_path: string): true | undefined;
 
-	/** `frappe/public/js/frappe/router.js:505-509`. Restores a remembered title for `sub_path`. */
+	/** `frappe/public/js/frappe/router.js:511-515`. Restores a remembered title for `sub_path`. */
 	set_title(sub_path: string): void;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:511-555`. Push-state navigation. Accepts
+	 * `frappe/public/js/frappe/router.js:517-561`. Push-state navigation. Accepts
 	 * `set_route("a","b","c")`, `set_route(["a","b","c"])` or
-	 * `set_route("a/b/c")` (`frappe/public/js/frappe/router.js:513-516,574-589`); a
+	 * `set_route("a/b/c")` (`frappe/public/js/frappe/router.js:519-522,584-599`); a
 	 * plain-object argument becomes `frappe.route_options`
-	 * (`frappe/public/js/frappe/router.js:678-686`). A leading `desk`/`app`
+	 * (`frappe/public/js/frappe/router.js:688-696`). A leading `desk`/`app`
 	 * segment is dropped, and so is a leading **shell** segment — except that a
 	 * route naming a shell other than the one on screen is a move into that shell and
 	 * keeps it ({@link FrappeRouterBase.keep_shell_moved_into}). `frappe.route_hash`
@@ -1937,7 +1946,7 @@ export interface FrappeRouterBase {
 	 * instead (with the route options stashed in `localStorage["route_options"]`).
 	 *
 	 * Resolves ~100 ms later, after `frappe.after_ajax` drains
-	 * (`frappe/public/js/frappe/router.js:548-554`); `frappe.route_flags` is reset to
+	 * (`frappe/public/js/frappe/router.js:554-560`); `frappe.route_flags` is reset to
 	 * `{}` when it settles.
 	 */
 	set_route(route: readonly (string | number | Record<string, unknown>)[]): Promise<void>;
@@ -1945,24 +1954,25 @@ export interface FrappeRouterBase {
 	set_route(...route: (string | number | Record<string, unknown>)[]): Promise<void>;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:562-567`. For a route that named a shell
+	 * `frappe/public/js/frappe/router.js:571-577`. For a route that named a shell
 	 * (taken off by {@link FrappeRouterBase.read_route_arguments}): `path` unchanged
 	 * when there is no shell, when it is the shell on screen
 	 * ({@link FrappeRouterBase.current_shell}) or when it is the sidebar's
-	 * `current_module`; otherwise `path` with the shell slug written back after
+	 * `current_module` (unless the current route is a `system_page`, where the sidebar's module
+	 * is ignored; `router.js:565-576`); otherwise `path` with the shell slug written back after
 	 * `/desk`. `path` is a `/desk/...` path.
 	 */
 	keep_shell_moved_into(path: string, shell: string | null | undefined): string;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:569-571`. The route part of
+	 * `frappe/public/js/frappe/router.js:579-581`. The route part of
 	 * {@link FrappeRouterBase.read_route_arguments}: normalises the `arguments` array of
 	 * `set_route` and drops a leading shell. Elements may be plain objects (route options).
 	 */
 	get_route_from_arguments(route: unknown[]): (string | Record<string, unknown>)[];
 
 	/**
-	 * `frappe/public/js/frappe/router.js:574-628`. Normalises the `arguments` of
+	 * `frappe/public/js/frappe/router.js:584-638`. Normalises the `arguments` of
 	 * `set_route` (`[[...]]`, `["a/b?x=1"]` — whose query string is merged into
 	 * `frappe.route_options` — or a flat list), drops a leading `""`, `desk` or `app`,
 	 * and takes a leading shell off the route **without adopting it**, handing it back
@@ -1974,14 +1984,14 @@ export interface FrappeRouterBase {
 		shell: string | null;
 	};
 
-	/** `frappe/public/js/frappe/router.js:630-660`. Standard route → URL segments. */
+	/** `frappe/public/js/frappe/router.js:640-670`. Standard route → URL segments. */
 	convert_from_standard_route(route: readonly (string | Record<string, unknown>)[]): string[];
 
-	/** `frappe/public/js/frappe/router.js:662-671`. Lower-cases a factory view and slugs the doctype. */
+	/** `frappe/public/js/frappe/router.js:672-681`. Lower-cases a factory view and slugs the doctype. */
 	slug_parts(route: string[]): string[];
 
 	/**
-	 * `frappe/public/js/frappe/router.js:678-703`. Joins encoded segments into
+	 * `frappe/public/js/frappe/router.js:688-713`. Joins encoded segments into
 	 * `/desk/<path>`. A plain-object member is consumed as `frappe.route_options` and
 	 * dropped from the path. Always returns `"/desk"` when nothing is left. It
 	 * writes **no shell**: `write_shell_into_url` adds it once the route is parsed,
@@ -1991,7 +2001,7 @@ export interface FrappeRouterBase {
 	make_url(params: readonly (string | number | Record<string, unknown>)[]): string;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:713-724`. `history.pushState`/`replaceState`
+	 * `frappe/public/js/frappe/router.js:723-734`. `history.pushState`/`replaceState`
 	 * (chosen by `frappe.route_flags.replace_route`) followed by `route()`. When
 	 * {@link FrappeRouterBase.path_on_screen} equals `path` and
 	 * `window.location.search` equals `query_params` it no-ops, unless
@@ -2001,7 +2011,7 @@ export interface FrappeRouterBase {
 	push_state(path: string, query_params?: string): void;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:732-738`. A jump to the route already on
+	 * `frappe/public/js/frappe/router.js:742-748`. A jump to the route already on
 	 * screen: replaces the address bar with `url` (keeping the hash), clears
 	 * {@link FrappeRouterBase.current_shell}, sets {@link FrappeRouterBase.is_jump},
 	 * re-runs {@link FrappeRouterBase.write_shell_into_url} and fires `"change"`,
@@ -2010,37 +2020,37 @@ export interface FrappeRouterBase {
 	choose_shell_again(url: string): void;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:755-762`. The path on screen spelled the way
+	 * `frappe/public/js/frappe/router.js:765-772`. The path on screen spelled the way
 	 * `make_url` would have spelled it: `window.location.pathname`, minus the shell
 	 * segment when {@link FrappeRouterBase.current_shell} is set. Lets `push_state`
 	 * tell "somewhere else" from "here, with the shell the router wrote".
 	 */
 	path_on_screen(): string;
 
-	/** `frappe/public/js/frappe/router.js:764-771`. Defaults to `window.location.pathname`. */
+	/** `frappe/public/js/frappe/router.js:774-781`. Defaults to `window.location.pathname`. */
 	get_sub_path_string(route?: string): string;
 
-	/** `frappe/public/js/frappe/router.js:773-781`. Removes a leading `/`, `desk/`, `#` or `!`. */
+	/** `frappe/public/js/frappe/router.js:783-791`. Removes a leading `/`, `desk/`, `#` or `!`. */
 	strip_prefix(route: string): string;
 
-	/** `frappe/public/js/frappe/router.js:783-788`. `strip_prefix` + per-segment `decodeURIComponent`. */
+	/** `frappe/public/js/frappe/router.js:793-798`. `strip_prefix` + per-segment `decodeURIComponent`. */
 	get_sub_path(route?: string): string;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:790-807`. Merges `location.search` (and a stashed
+	 * `frappe/public/js/frappe/router.js:800-817`. Merges `location.search` (and a stashed
 	 * `localStorage["route_options"]`, which it consumes) into
 	 * `frappe.route_options`.
 	 */
 	set_route_options_from_url(): void;
 
-	/** `frappe/public/js/frappe/router.js:809-820`. `decodeURIComponent` that swallows `URIError`. */
+	/** `frappe/public/js/frappe/router.js:819-830`. `decodeURIComponent` that swallows `URIError`. */
 	decode_component(r: string): string;
 
-	/** `frappe/public/js/frappe/router.js:822-824`. `name.toLowerCase().replace(/ /g, "-")`. Throws on a nullish name. */
+	/** `frappe/public/js/frappe/router.js:832-834`. `name.toLowerCase().replace(/ /g, "-")`. Throws on a nullish name. */
 	slug(name: string): string;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:835-837`. How a **shell** reaches a URL:
+	 * `frappe/public/js/frappe/router.js:845-847`. How a **shell** reaches a URL:
 	 * lower-cased, `&` spelled `" and "`, trimmed, whitespace runs → `-` — so
 	 * `Shift & Attendance` is `shift-and-attendance`. Deliberately not reversible: a
 	 * segment is turned back into a shell by looking it up in
@@ -2050,7 +2060,7 @@ export interface FrappeRouterBase {
 	shell_slug(name: string): string;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:859-870`. Takes a leading shell off a route
+	 * `frappe/public/js/frappe/router.js:869-880`. Takes a leading shell off a route
 	 * and remembers it in {@link FrappeRouterBase.current_shell}; with no leading
 	 * shell it sets `current_shell` to `null` and returns `route` itself. A leading
 	 * shell this user cannot see (a {@link FrappeRouterBase.module_slugs} entry with
@@ -2063,7 +2073,7 @@ export interface FrappeRouterBase {
 	take_shell_from(route: string[]): string[];
 
 	/**
-	 * `frappe/public/js/frappe/router.js:875-880`. Whether `route` begins with a
+	 * `frappe/public/js/frappe/router.js:885-890`. Whether `route` begins with a
 	 * shell segment that may be taken off its front: more than one segment, the
 	 * first is a key of {@link FrappeRouterBase.shell_routes} or in
 	 * {@link FrappeRouterBase.module_slugs}, its own
@@ -2076,16 +2086,18 @@ export interface FrappeRouterBase {
 	begins_with_shell(route: readonly string[]): boolean;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:887-889`. The shell a URL for `route` should
+	 * `frappe/public/js/frappe/router.js:897-899`. The shell a URL for `route` should
 	 * name: delegates to `frappe.app.sidebar.shell_for_route(route)`
-	 * (`frappe/public/js/frappe/ui/sidebar/sidebar.js:883`), and answers `null`
+	 * (`frappe/public/js/frappe/ui/sidebar/sidebar.js:896`), and answers `null`
 	 * before there is a sidebar to ask — the first route of a cold load, or a site
 	 * whose setup is not complete.
 	 */
 	shell_for_route(route: readonly string[]): string | null;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:907-953`. Puts the shell into the address
+	 * `frappe/public/js/frappe/router.js:917-970`. A `system_page` route opens in no shell: a
+	 * shell already in the URL is dropped (`drop_shell_from_url`), and none is written
+	 * (`router.js:917-926`). Otherwise it puts the shell into the address
 	 * bar when it is missing or names one that cannot show the route:
 	 * `/desk/item` becomes `/desk/stock/item`. `history.replaceState`, never
 	 * `set_route`, so it pushes no history entry and cannot loop. No segment is
@@ -2099,7 +2111,7 @@ export interface FrappeRouterBase {
 	write_shell_into_url(): void;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:957-965`. Drops the first segment after
+	 * `frappe/public/js/frappe/router.js:980-988`. Drops the first segment after
 	 * `/desk/` from the address bar with `history.replaceState` (query string and
 	 * hash kept) and sets {@link FrappeRouterBase.current_shell} to `null`. Called
 	 * by {@link FrappeRouterBase.take_shell_from} for a shell this user cannot see.
@@ -2107,13 +2119,13 @@ export interface FrappeRouterBase {
 	drop_shell_from_url(): void;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:969-971`. `!!segment_kind(segment)`: whether a
+	 * `frappe/public/js/frappe/router.js:992-994`. `!!segment_kind(segment)`: whether a
 	 * segment names something the desk can route to on its own.
 	 */
 	route_names_something(segment: string | null | undefined): boolean;
 
 	/**
-	 * `frappe/public/js/frappe/router.js:973-1075`. Shows the "external link" confirmation dialog when
+	 * `frappe/public/js/frappe/router.js:996-1098`. Shows the "external link" confirmation dialog when
 	 * `frappe.boot.show_external_link_warning` is `"Ask"`/`"Always"`.
 	 * Returns `true` when the click should be cancelled. Never throws — the
 	 * whole body is wrapped in a try/catch that returns `false`.
@@ -2123,11 +2135,11 @@ export interface FrappeRouterBase {
 
 /**
  * `frappe.router` as it actually exists at runtime: the literal plus the
- * event-emitter mixin applied at `frappe/public/js/frappe/router.js:1103`.
+ * event-emitter mixin applied at `frappe/public/js/frappe/router.js:1126`.
  *
  * The only event frappe itself fires is `"change"`, from `route()`
- * (`frappe/public/js/frappe/router.js:201`) and from `choose_shell_again()`
- * (`frappe/public/js/frappe/router.js:737`), with the router as the payload.
+ * (`frappe/public/js/frappe/router.js:207`) and from `choose_shell_again()`
+ * (`frappe/public/js/frappe/router.js:747`), with the router as the payload.
  *
  * Declared with **non-optional** `on`, deliberately: carbon_frappe guards its
  * subscriptions with `typeof frappe.router.on === "function"`
@@ -2189,7 +2201,7 @@ export interface FrappeUiThemeSlice {
 
 /**
  * The jQuery regions a `frappe.ui.Page` exposes, assigned in one block in
- * `setup_page()` at `frappe/public/js/frappe/ui/page.js:150-183` (the template they
+ * `setup_page()` at `frappe/public/js/frappe/ui/page.js:151-185` (the template they
  * are found in is `frappe/public/js/frappe/ui/page.html`).
  *
  * Declared as a standalone interface so the group that owns the full
@@ -2203,110 +2215,110 @@ export interface FrappeUiThemeSlice {
  * (`carbon_frappe/public/js/tables/list/list_view.js:204`).
  */
 export interface FrappePageRegions {
-	/** `frappe/public/js/frappe/ui/page.js:70`. `$(this.parent)` — the page's outermost node. */
+	/** `frappe/public/js/frappe/ui/page.js:72`. `$(this.parent)` — the page's outermost node. */
 	wrapper: JQuery<HTMLElement>;
 
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:159`. `.layout-main-section`.
+	 * `frappe/public/js/frappe/ui/page.js:160`. `.layout-main-section`.
 	 * `body` and {@link FrappePageRegions.main} are assigned in the same
 	 * statement and are the **same jQuery object**, not two views of it.
 	 */
 	body: JQueryRegion;
 
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:159`. Alias of {@link FrappePageRegions.body} — literally the same
+	 * `frappe/public/js/frappe/ui/page.js:160`. Alias of {@link FrappePageRegions.body} — literally the same
 	 * jQuery object.
 	 *
 	 * Both are a {@link JQueryRegion} (gaps.md §6.12). This one is a `find()`,
 	 * not a literal template, so it earns the guarantee differently:
 	 * `add_main_section()` inserts a `.layout-main-section` div on BOTH of its
-	 * branches (`frappe/public/js/frappe/ui/page.js:114-137`) and `setup_page()`
-	 * reads it back immediately after (`frappe/public/js/frappe/ui/page.js:147,159`),
+	 * branches (`frappe/public/js/frappe/ui/page.js:115-138`) and `setup_page()`
+	 * reads it back immediately after (`frappe/public/js/frappe/ui/page.js:148,160`),
 	 * so the selector cannot miss. It is the mount point a replacement list/report
 	 * renderer attaches to.
 	 */
 	main: JQueryRegion;
 
-	/** `frappe/public/js/frappe/ui/page.js:160`. `.page-body`. */
+	/** `frappe/public/js/frappe/ui/page.js:161`. `.page-body`. */
 	container: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:161`. `.layout-side-section`. */
+	/** `frappe/public/js/frappe/ui/page.js:162`. `.layout-side-section`. */
 	sidebar: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:162`. `.layout-footer`. */
+	/** `frappe/public/js/frappe/ui/page.js:163`. `.layout-footer`. */
 	footer: JQuery<HTMLElement>;
 
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:163`. `.title-area .page-indicator-pill` —
+	 * `frappe/public/js/frappe/ui/page.js:164`. `.title-area .page-indicator-pill` —
 	 * the status pill, an `es-badge` (`span.es-badge.page-indicator-pill.hide`,
-	 * `frappe/public/js/frappe/ui/page.html:24`), **not** the legacy
+	 * `frappe/public/js/frappe/ui/page.html:16`), **not** the legacy
 	 * `.indicator-pill`. Written by {@link Page.set_indicator} /
 	 * {@link Page.clear_indicator}.
 	 */
 	indicator: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:151`. `.title-area`, the flex row holding the breadcrumb `nav` and the pill. */
+	/** `frappe/public/js/frappe/ui/page.js:152`. `.title-area`, the flex row holding the breadcrumb `nav` and the pill. */
 	$title_area: JQuery<HTMLElement>;
 
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:153`. `this.wrapper.find("h6")`. The page
+	 * `frappe/public/js/frappe/ui/page.js:154`. `this.wrapper.find("h6")`. The page
 	 * template (`frappe/public/js/frappe/ui/page.html`) no longer contains an
 	 * `<h6>`, so this is an **empty jQuery set** unless the page's own content
 	 * supplies one; {@link Page.set_title_sub} writes into it and is therefore a no-op.
 	 */
 	$sub_title_area: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:165`. `.page-actions`. */
+	/** `frappe/public/js/frappe/ui/page.js:166`. `.page-actions`. */
 	page_actions: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:166`. `.filters`. */
+	/** `frappe/public/js/frappe/ui/page.js:167`. `.filters`. */
 	filters: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:167`. `.page-head`. */
+	/** `frappe/public/js/frappe/ui/page.js:168`. `.page-head`. */
 	page_head: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:168`. `.primary-action`, an `es-button` (`frappe/public/js/frappe/ui/page.html:61`). */
+	/** `frappe/public/js/frappe/ui/page.js:169`. `.primary-action`, an `es-button` (`frappe/public/js/frappe/ui/page.html:49`). */
 	btn_primary: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:169`. `.secondary-action`, an `es-button` (`frappe/public/js/frappe/ui/page.html:51`). */
+	/** `frappe/public/js/frappe/ui/page.js:171`. `.secondary-action`, an `es-button` (`frappe/public/js/frappe/ui/page.html:38`). */
 	btn_secondary: JQuery<HTMLElement>;
 
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:171`. `.menu-btn-group .dropdown-menu` —
+	 * `frappe/public/js/frappe/ui/page.js:173`. `.menu-btn-group .dropdown-menu` —
 	 * a **hidden item store**, not the visible menu: `add_dropdown_item` keeps writing
 	 * `<li><a>` rows here and {@link Page.menu_dropdown} snapshots them into an
-	 * espresso menu on every open (`frappe/public/js/frappe/ui/page.html:46-49`).
+	 * espresso menu on every open (`frappe/public/js/frappe/ui/page.html:33-36`).
 	 */
 	menu: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:172`. */
+	/** `frappe/public/js/frappe/ui/page.js:174`. */
 	menu_btn_group: JQuery<HTMLElement>;
 
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:174`. `.actions-btn-group .dropdown-menu` —
+	 * `frappe/public/js/frappe/ui/page.js:176`. `.actions-btn-group .dropdown-menu` —
 	 * the hidden item store behind {@link Page.actions_dropdown}, like {@link FrappePageRegions.menu}.
 	 */
 	actions: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:175`. */
+	/** `frappe/public/js/frappe/ui/page.js:177`. */
 	actions_btn_group: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:177`. */
+	/** `frappe/public/js/frappe/ui/page.js:179`. */
 	standard_actions: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:178`. */
+	/** `frappe/public/js/frappe/ui/page.js:180`. */
 	custom_actions: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:179`. */
+	/** `frappe/public/js/frappe/ui/page.js:181`. */
 	custom_mobile_actions: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:181`. `.page-form.row.hide`, prepended into `main`. */
+	/** `frappe/public/js/frappe/ui/page.js:183`. `.page-form.row.hide`, prepended into `main`. */
 	page_form: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:182`. Alias of {@link FrappePageRegions.custom_actions}. */
+	/** `frappe/public/js/frappe/ui/page.js:184`. Alias of {@link FrappePageRegions.custom_actions}. */
 	inner_toolbar: JQuery<HTMLElement>;
 
-	/** `frappe/public/js/frappe/ui/page.js:183`. `.page-icon-group`. */
+	/** `frappe/public/js/frappe/ui/page.js:185`. `.page-icon-group`. */
 	icon_group: JQuery<HTMLElement>;
 }
 
@@ -2318,15 +2330,15 @@ export interface FrappePageRegions {
  * members are the ones `page.js` itself reads.
  */
 export interface PageOptions {
-	/** `frappe/public/js/frappe/ui/page.js:70` — `this.wrapper = $(this.parent)`. Required. */
+	/** `frappe/public/js/frappe/ui/page.js:72` — `this.wrapper = $(this.parent)`. Required. */
 	parent: HTMLElement | JQuery;
-	/** Applied by `setup_page()` via `set_title` (`frappe/public/js/frappe/ui/page.js:155`). */
+	/** Applied by `setup_page()` via `set_title` (`frappe/public/js/frappe/ui/page.js:156`). */
 	title?: string;
-	/** `frappe/public/js/frappe/ui/page.js:157` — passed to `get_main_icon()`. */
+	/** `frappe/public/js/frappe/ui/page.js:158` — passed to `get_main_icon()`. */
 	icon?: string;
-	/** `frappe/public/js/frappe/ui/page.js:114` — picks the single- vs two-column `layout-main` markup. */
+	/** `frappe/public/js/frappe/ui/page.js:115` — picks the single- vs two-column `layout-main` markup. */
 	single_column?: boolean;
-	/** `frappe/public/js/frappe/ui/page.js:139` — `"Right"` moves `.layout-side-section` after the main section. */
+	/** `frappe/public/js/frappe/ui/page.js:140` — `"Right"` moves `.layout-side-section` after the main section. */
 	sidebar_position?: "Left" | "Right";
 	/**
 	 * `frappe/public/js/frappe/ui/page.js:61` — the constructor only defaults it to
@@ -2343,15 +2355,15 @@ export interface PageOptions {
 	 */
 	hide_dock?: boolean;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1031` — `false` makes
+	 * `frappe/public/js/frappe/ui/page.js:1077` — `false` makes
 	 * {@link Page.render_breadcrumbs} draw no trail ("a page inside a dialog has a
 	 * head of its own but no business drawing a trail in it"). Not defaulted by the
 	 * constructor: absent is treated as "show".
 	 */
 	show_breadcrumbs?: boolean;
-	/** `frappe/public/js/frappe/ui/page.js:109` — handed straight to `frappe.require`. */
+	/** `frappe/public/js/frappe/ui/page.js:110` — handed straight to `frappe.require`. */
 	required_libs?: string | string[];
-	/** `frappe/public/js/frappe/ui/page.js:185-187` — called at the end of `setup_page()` if present. */
+	/** `frappe/public/js/frappe/ui/page.js:187-189` — called at the end of `setup_page()` if present. */
 	make_page?(): void;
 	/** `$.extend(this, opts)` (`frappe/public/js/frappe/ui/page.js:53`) copies anything else onto the instance. */
 	[option: string]: unknown;
@@ -2388,21 +2400,21 @@ export interface PageBreadcrumbItem {
 
 /**
  * The part of an espresso `frappe.ui.Dropdown`
- * (`frappe/public/js/frappe/ui/components/dropdown.js:39-164`) that
+ * (`frappe/public/js/frappe/ui/components/dropdown.js:41-213`) that
  * {@link Page} itself calls on the instances it holds: `menu_dropdown`,
  * `actions_dropdown` and the per-group dropdowns it closes on page switch.
  * The class has more (`open`, `toggle`, `set_options`, `$trigger`, …); it is not
  * declared in full because nothing this package targets constructs one.
  */
 export interface PageEsDropdown {
-	/** `frappe/public/js/frappe/ui/components/dropdown.js:110-112`. Whether the menu is open. */
+	/** `frappe/public/js/frappe/ui/components/dropdown.js:112-114`. Whether the menu is open. */
 	readonly is_open: boolean;
 	/**
-	 * `frappe/public/js/frappe/ui/components/dropdown.js:144-146`. Closes the menu;
+	 * `frappe/public/js/frappe/ui/components/dropdown.js:192-195`. Closes the menu;
 	 * `reason` defaults to `"owner"` and is what `on_close` receives.
 	 */
 	close(reason?: "activate" | "escape" | "outside" | "tab" | "navigate" | "owner"): void;
-	/** `frappe/public/js/frappe/ui/components/dropdown.js:157-163`. Closes the menu and unbinds the trigger. */
+	/** `frappe/public/js/frappe/ui/components/dropdown.js:206-212`. Closes the menu and unbinds the trigger. */
 	destroy(): void;
 }
 
@@ -2440,7 +2452,7 @@ export declare class Page {
 
 	// ---- merged from opts (page.js:53) ----
 
-	/** `frappe/public/js/frappe/ui/page.js:70` — the element the page template is appended to. */
+	/** `frappe/public/js/frappe/ui/page.js:72` — the element the page template is appended to. */
 	parent: HTMLElement | JQuery;
 	/** See {@link PageOptions.single_column}. */
 	single_column?: boolean;
@@ -2448,12 +2460,12 @@ export declare class Page {
 	sidebar_position?: "Left" | "Right";
 	/** See {@link PageOptions.required_libs}. */
 	required_libs?: string | string[];
-	/** `frappe/public/js/frappe/ui/page.js:185-187`. App-supplied; called once from `setup_page()`. */
+	/** `frappe/public/js/frappe/ui/page.js:187-189`. App-supplied; called once from `setup_page()`. */
 	make_page?(): void;
 	/** See {@link PageOptions.show_breadcrumbs}. */
 	show_breadcrumbs?: boolean;
 
-	// ---- set in the constructor (page.js:55-66) ----
+	// ---- set in the constructor (page.js:55-68) ----
 
 	/** `frappe/public/js/frappe/ui/page.js:55`. Always `true`; consulted by `frappe.utils.set_title` callers. */
 	set_document_title: boolean;
@@ -2461,12 +2473,12 @@ export declare class Page {
 	buttons: Record<string, JQuery<HTMLElement> | undefined>;
 	/**
 	 * `frappe/public/js/frappe/ui/page.js:57`, populated by `add_field`
-	 * (`frappe/public/js/frappe/ui/page.js:1220`) keyed by
+	 * (`frappe/public/js/frappe/ui/page.js:1269`) keyed by
 	 * `df.fieldname || df.label`. The values are `frappe.ui.form.make_control`
 	 * results.
 	 */
 	fields_dict: Record<string, PageControl | undefined>;
-	/** `frappe/public/js/frappe/ui/page.js:58`, populated by `add_view` (`frappe/public/js/frappe/ui/page.js:1251`). */
+	/** `frappe/public/js/frappe/ui/page.js:58`, populated by `add_view` (`frappe/public/js/frappe/ui/page.js:1300`). */
 	views: Record<string, JQuery<HTMLElement> | undefined>;
 	/**
 	 * `frappe/public/js/frappe/ui/page.js:61` — `false` unless `opts` carried the key.
@@ -2482,41 +2494,41 @@ export declare class Page {
 
 	// ---- set later ----
 
-	/** The stripped title, written by `set_title` (`frappe/public/js/frappe/ui/page.js:1042`). */
+	/** The stripped title, written by `set_title` (`frappe/public/js/frappe/ui/page.js:1091`). */
 	title?: string;
-	/** `frappe/public/js/frappe/ui/page.js:233-250` — the "Navigate to main content" skip link, appended to `sidebar`. */
+	/** `frappe/public/js/frappe/ui/page.js:237-254` — the "Navigate to main content" skip link, appended to `sidebar`. */
 	skip_link_to_main: JQuery<HTMLElement>;
-	/** The `.dropdown-divider.user-action` lazily created by `add_dropdown_item` (`frappe/public/js/frappe/ui/page.js:600-606`). */
+	/** The `.dropdown-divider.user-action` lazily created by `add_dropdown_item` (`frappe/public/js/frappe/ui/page.js:624-630`). */
 	divider?: JQuery<HTMLElement>;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1252-1253` — the first view added wins;
-	 * `set_view` reassigns it (`frappe/public/js/frappe/ui/page.js:1262`).
+	 * `frappe/public/js/frappe/ui/page.js:1301-1302` — the first view added wins;
+	 * `set_view` reassigns it (`frappe/public/js/frappe/ui/page.js:1311`).
 	 */
 	current_view?: JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/ui/page.js:1265`. `undefined` until the first `set_view`. */
+	/** `frappe/public/js/frappe/ui/page.js:1314`. `undefined` until the first `set_view`. */
 	current_view_name?: string;
-	/** `frappe/public/js/frappe/ui/page.js:1264`. */
+	/** `frappe/public/js/frappe/ui/page.js:1313`. */
 	previous_view_name?: string;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:204-208` — the espresso dropdown behind the
+	 * `frappe/public/js/frappe/ui/page.js:206-210` — the espresso dropdown behind the
 	 * Menu button, whose rows are snapshotted from {@link FrappePageRegions.menu}.
 	 * Assigned in `setup_page()`, so it exists once the constructor returns.
 	 */
 	menu_dropdown: PageEsDropdown;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:209-213` — the espresso dropdown behind the
+	 * `frappe/public/js/frappe/ui/page.js:211-217` — the espresso dropdown behind the
 	 * Actions button, whose rows are snapshotted from {@link FrappePageRegions.actions}.
 	 */
 	actions_dropdown: PageEsDropdown;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1005` — the explicit trail written by
+	 * `frappe/public/js/frappe/ui/page.js:1051` — the explicit trail written by
 	 * {@link Page.set_breadcrumbs}; `set_title` rewrites its last item. Absent until
 	 * one of those has run. Read it through {@link Page.get_breadcrumbs}, which also
 	 * honours the legacy payload.
 	 */
 	breadcrumbs?: readonly PageBreadcrumbItem[];
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1007` — a payload left by the deprecated
+	 * `frappe/public/js/frappe/ui/page.js:1053` — a payload left by the deprecated
 	 * `frappe.breadcrumbs.add()` (`frappe/public/js/frappe/views/breadcrumbs.js:236-238`),
 	 * kept **unresolved** and turned into items on every read. `set_breadcrumbs`
 	 * clears it, so explicit items win. `frappe.breadcrumbs` is a compatibility
@@ -2524,7 +2536,7 @@ export declare class Page {
 	 */
 	legacy_breadcrumbs?: Record<string, unknown> | null;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1026-1029` — the `<ol>` inside
+	 * `frappe/public/js/frappe/ui/page.js:1072-1075` — the `<ol>` inside
 	 * `.navbar-breadcrumbs`, set by {@link Page.render_breadcrumbs}. The list is
 	 * refilled rather than replaced, so a held reference stays good across paints.
 	 */
@@ -2532,10 +2544,10 @@ export declare class Page {
 
 	// ---- lifecycle ----
 
-	/** `frappe/public/js/frappe/ui/page.js:69-74`. Called by the constructor (`frappe/public/js/frappe/ui/page.js:60`). */
+	/** `frappe/public/js/frappe/ui/page.js:71-75`. Called by the constructor (`frappe/public/js/frappe/ui/page.js:60`). */
 	make(): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:76-91`. Formerly `setup_mobile_awesomebar`,
+	 * `frappe/public/js/frappe/ui/page.js:77-92`. Formerly `setup_mobile_awesomebar`,
 	 * and no longer mobile-only: when `frappe.boot.desk_settings.search_bar` is on and
 	 * `frappe.app.awesome_bar` does not exist yet, creates a `frappe.search.AwesomeBar`
 	 * on `.navbar-modal-search-mobile`, stores it as `frappe.app.awesome_bar`, and
@@ -2543,29 +2555,27 @@ export declare class Page {
 	 * `RQ Job`) as searchable functions. Runs once per desk, not once per page.
 	 */
 	setup_awesomebar(): void;
-	/** `frappe/public/js/frappe/ui/page.js:112-148`. Renders the `page` template and the `main` view. */
+	/** `frappe/public/js/frappe/ui/page.js:113-149`. Renders the `page` template and the `main` view. */
 	add_main_section(): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:150-251`. Assigns every region in
+	 * `frappe/public/js/frappe/ui/page.js:151-255`. Assigns every region in
 	 * {@link FrappePageRegions}, builds the Menu and Actions dropdowns, and
 	 * registers a page-wrapper `"hide"` handler that closes every dropdown the page
 	 * owns (the menus portal to `<body>`, so one left open would float over the next
 	 * page).
 	 */
 	setup_page(): void;
-	/** `frappe/public/js/frappe/ui/page.js:287-293`. */
-	setup_main_sidebar_toggle(): void;
-	/** `frappe/public/js/frappe/ui/page.js:108-110`. `frappe.require(this.required_libs, callback)`. */
+	/** `frappe/public/js/frappe/ui/page.js:109-111`. `frappe.require(this.required_libs, callback)`. */
 	load_lib(callback: () => void): void;
-	/** `frappe/public/js/frappe/ui/page.js:93-105`. Returns a detached `.page-card-container`; the caller appends it. */
+	/** `frappe/public/js/frappe/ui/page.js:94-106`. Returns a detached `.page-card-container`; the caller appends it. */
 	get_empty_state(title: string, message: string, primary_action: string): JQuery<HTMLElement>;
 
 	// ---- title / breadcrumbs / indicator ----
 
-	/** `frappe/public/js/frappe/ui/page.js:991-993`. */
+	/** `frappe/public/js/frappe/ui/page.js:1037-1039`. */
 	get_title_area(): JQuery<HTMLElement>;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1037-1059`. `strip` runs the title through
+	 * `frappe/public/js/frappe/ui/page.js:1086-1108`. `strip` runs the title through
 	 * `strip_html`; `tab_title` overrides what goes to `frappe.utils.set_title`
 	 * (only when `set_document_title`).
 	 *
@@ -2586,7 +2596,7 @@ export declare class Page {
 		tooltip_label?: string
 	): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1004-1009`. The trail in this page's head;
+	 * `frappe/public/js/frappe/ui/page.js:1050-1055`. The trail in this page's head;
 	 * the last item is the page itself, so it carries no `href`. Each page owns its
 	 * own items and markup, so a view can only change the trail of the page it was
 	 * handed. Writing explicit items discards any {@link Page.legacy_breadcrumbs}
@@ -2594,14 +2604,14 @@ export declare class Page {
 	 */
 	set_breadcrumbs(items: readonly PageBreadcrumbItem[] | null | undefined): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1012-1017`. The trail this page holds,
+	 * `frappe/public/js/frappe/ui/page.js:1058-1063`. The trail this page holds,
 	 * whichever API set it: a legacy `frappe.breadcrumbs.add()` payload is resolved
 	 * on every read (`frappe.breadcrumbs.resolve`), otherwise {@link Page.breadcrumbs},
 	 * otherwise `[]`.
 	 */
 	get_breadcrumbs(): readonly PageBreadcrumbItem[];
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1019-1035`. Repaints the trail: refills the
+	 * `frappe/public/js/frappe/ui/page.js:1065-1084`. Repaints the trail: refills the
 	 * `<ol>` of `.title-area .navbar-breadcrumbs` (storing it as
 	 * {@link Page.$breadcrumbs}) from `frappe.ui.breadcrumbs({ items })`, and
 	 * toggles `mobile-no-divider` on the `nav`. Draws nothing when
@@ -2610,22 +2620,22 @@ export declare class Page {
 	 */
 	render_breadcrumbs(): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1061-1064`. Writes `txt` into
+	 * `frappe/public/js/frappe/ui/page.js:1110-1113`. Writes `txt` into
 	 * {@link FrappePageRegions.$sub_title_area} and hides it when `txt` is falsy.
 	 * **Effectively a no-op**: that region is `wrapper.find("h6")` and the page
 	 * template has no `<h6>`.
 	 */
 	set_title_sub(txt: string): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1066-1068`. Writes `frappe.utils.icon(icon)`
+	 * `frappe/public/js/frappe/ui/page.js:1115-1117`. Writes `frappe.utils.icon(icon)`
 	 * into `.title-icon` under the title area and shows it. The page template has no
 	 * `.title-icon` any more, so this matches nothing and returns an **empty** jQuery set.
 	 */
 	get_main_icon(icon: string): JQuery<HTMLElement>;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:253-265`. Shows the status pill with `label`
+	 * `frappe/public/js/frappe/ui/page.js:257-269`. Shows the status pill with `label`
 	 * as its text and writes `color` **verbatim** into its `data-theme` attribute
-	 * (`frappe/public/js/frappe/ui/page.js:259`). The espresso badge themes are
+	 * (`frappe/public/js/frappe/ui/page.js:263`). The espresso badge themes are
 	 * `gray`, `blue`, `green`, `amber`, `red`, `violet`, plus the legacy indicator
 	 * names (`frappe/public/js/frappe/ui/components/badge.js:21-27`); it is not validated.
 	 * On a mobile viewport the label is replaced by a coloured dot
@@ -2633,7 +2643,7 @@ export declare class Page {
 	 */
 	set_indicator(label: string, color: FrappeIndicator): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:295-300`. Strips every class and the
+	 * `frappe/public/js/frappe/ui/page.js:291-296`. Strips every class and the
 	 * `data-theme` attribute off the pill, restores `es-badge page-indicator-pill hide`
 	 * (so it is hidden) and returns it.
 	 */
@@ -2642,20 +2652,20 @@ export declare class Page {
 	// ---- primary / secondary / icon actions ----
 
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:302-312`. `icon` may be a bare name or
+	 * `frappe/public/js/frappe/ui/page.js:298-308`. `icon` may be a bare name or
 	 * `{ icon, size }`; the result is the button's inner HTML.
 	 */
 	get_icon_label(icon: string | PageIconSpec | null | undefined, label: string): string;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:314-369`. Rebinds `btn`'s click, dresses it
+	 * `frappe/public/js/frappe/ui/page.js:310-365`. Rebinds `btn`'s click, dresses it
 	 * as an `es-button` (`frappe.ui.button.dress`), un-hides it and registers its
 	 * alt-shortcut. A click while the button is `aria-busy` is ignored
-	 * (`frappe/public/js/frappe/ui/page.js:341`); otherwise the return value of
+	 * (`frappe/public/js/frappe/ui/page.js:337`); otherwise the return value of
 	 * `opts.click` goes to {@link Page.btn_disable_enable}.
 	 */
 	set_action(btn: JQuery<HTMLElement>, opts: PageActionOptions): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:373-382`. Returns `btn_primary`. `label` may
+	 * `frappe/public/js/frappe/ui/page.js:369-379`. Returns `btn_primary`. `label` may
 	 * be `{ label, short_label }` to show a shorter text below the `md` breakpoint.
 	 * The variant is always `"solid"`.
 	 */
@@ -2666,7 +2676,7 @@ export declare class Page {
 		working_label?: string
 	): JQuery<HTMLElement>;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:384-394`. Returns `btn_secondary`. Same
+	 * `frappe/public/js/frappe/ui/page.js:398-408`. Returns `btn_secondary`. Same
 	 * `label` forms as {@link Page.set_primary_action}; the variant is always `"subtle"`.
 	 */
 	set_secondary_action(
@@ -2675,38 +2685,38 @@ export declare class Page {
 		icon?: string | PageIconSpec,
 		working_label?: string
 	): JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/ui/page.js:396-398`. */
+	/** `frappe/public/js/frappe/ui/page.js:410-412`. */
 	clear_action_of(btn: JQuery<HTMLElement>): void;
-	/** `frappe/public/js/frappe/ui/page.js:400-402`. */
+	/** `frappe/public/js/frappe/ui/page.js:414-417`. */
 	clear_primary_action(): void;
-	/** `frappe/public/js/frappe/ui/page.js:404-406`. */
+	/** `frappe/public/js/frappe/ui/page.js:419-421`. */
 	clear_secondary_action(): void;
-	/** `frappe/public/js/frappe/ui/page.js:408-411`. Both of the above. */
+	/** `frappe/public/js/frappe/ui/page.js:423-426`. Both of the above. */
 	clear_actions(): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:426-430`. Tears down the espresso dropdowns of
+	 * `frappe/public/js/frappe/ui/page.js:441-445`. Tears down the espresso dropdowns of
 	 * the inner button groups first ({@link Page.destroy_group_dropdowns}), then hides
 	 * and empties `custom_actions` and clears the mobile groups
 	 * ({@link Page.clear_mobile_custom_groups}).
 	 */
 	clear_custom_actions(): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:431-437`. Removes the `.custom-btn-group`s
+	 * `frappe/public/js/frappe/ui/page.js:446-452`. Removes the `.custom-btn-group`s
 	 * (other than the `.view-switcher`) from `custom_mobile_actions`, destroying their
 	 * dropdowns first.
 	 */
 	clear_mobile_custom_groups(): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:417-424`. Closes and destroys the espresso
+	 * `frappe/public/js/frappe/ui/page.js:432-439`. Closes and destroys the espresso
 	 * dropdown stored under the `es_dropdown` data key of every `.inner-group-button`
 	 * / `.custom-btn-group` in (and including) `$scope`. Needed before discarding such
 	 * a group: an open menu portals to `<body>` and would otherwise outlive it.
 	 */
 	destroy_group_dropdowns($scope: JQuery<HTMLElement>): void;
-	/** `frappe/public/js/frappe/ui/page.js:439-441`. Empties `icon_group`. */
+	/** `frappe/public/js/frappe/ui/page.js:454-456`. Empties `icon_group`. */
 	clear_icons(): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:267-285`. Appends a tooltipped icon button
+	 * `frappe/public/js/frappe/ui/page.js:271-289`. Appends a tooltipped icon button
 	 * to `icon_group` (a plain `btn btn-default icon-btn`, not an `es-button`).
 	 */
 	add_action_icon(
@@ -2716,7 +2726,7 @@ export declare class Page {
 		tooltip_label?: string
 	): JQuery<HTMLElement>;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:844-857`. Marks `btn` busy while `response`
+	 * `frappe/public/js/frappe/ui/page.js:890-903`. Marks `btn` busy while `response`
 	 * is pending — it duck-types BOTH a `Promise` (`.finally`) and a jqXHR (`.always`),
 	 * which is why the parameter is `unknown` rather than `Promise<unknown>`. Busy is
 	 * `aria-busy="true"`, **not** `disabled` (disabling would eject keyboard focus):
@@ -2726,15 +2736,16 @@ export declare class Page {
 
 	// ---- menu / actions dropdowns ----
 
-	/** `frappe/public/js/frappe/ui/page.js:445-454`. */
+	/** `frappe/public/js/frappe/ui/page.js:460-470`. */
 	add_menu_item(
 		label: string,
 		click: PageActionClick,
 		standard?: boolean,
 		shortcut?: string | PageShortcut,
-		show_parent?: boolean
+		show_parent?: boolean,
+		group?: string
 	): JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/ui/page.js:456-465`. */
+	/** `frappe/public/js/frappe/ui/page.js:472-481`. */
 	add_custom_menu_item(
 		parent: JQuery<HTMLElement>,
 		label: string,
@@ -2743,71 +2754,76 @@ export declare class Page {
 		shortcut?: string | PageShortcut,
 		icon?: string | null
 	): JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/ui/page.js:497-504`. */
+	/** `frappe/public/js/frappe/ui/page.js:513-521`. `icon` (16.60) is the icon name, or none. */
 	add_action_item(
 		label: string,
 		click: PageActionClick,
-		standard?: boolean
+		standard?: boolean,
+		icon?: string | null
 	): JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/ui/page.js:506-515`. */
+	/** `frappe/public/js/frappe/ui/page.js:523-534`. `icon` and `theme` (16.60; `"red"` for destructive rows) are optional. */
 	add_actions_menu_item(
 		label: string,
 		click: PageActionClick,
 		standard?: boolean,
-		shortcut?: string | PageShortcut
+		shortcut?: string | PageShortcut,
+		icon?: string | null,
+		theme?: "gray" | "red" | null
 	): JQuery<HTMLElement>;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:533-610`. The one primitive the four helpers above delegate to.
+	 * `frappe/public/js/frappe/ui/page.js:553-634`. The one primitive the four helpers above delegate to.
 	 * Writes an `<li><a class="grey-link dropdown-item">` into the (hidden) `parent`
 	 * store, stashing the click handler, icon and shortcut on the `<li>` with
 	 * `.data(...)` so {@link Page.build_dropdown_options} can render it.
 	 *
 	 * When a same-labelled item is already present it returns the EXISTING match
-	 * **without adding anything** (`frappe/public/js/frappe/ui/page.js:547-548`) — and
+	 * **without adding anything** (`frappe/public/js/frappe/ui/page.js:569-570`) — and
 	 * that match is the `span.menu-item-label` carrying the `data-label`, not the `<a>`
 	 * a fresh call returns, so it is safe to call twice but the two return values
 	 * are not the same element.
 	 */
 	add_dropdown_item(opts: PageDropdownItemOptions): JQuery<HTMLElement>;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:616-700`. Snapshots a hidden item store
+	 * `frappe/public/js/frappe/ui/page.js:641-746`. Snapshots a hidden item store
 	 * (`menu` / `actions` / an inner group's `<ul>`) into the rows an espresso
 	 * `frappe.ui.Dropdown` renders: dividers split groups, rows hidden by `display:none`
 	 * or by a responsive utility class are skipped, and mobile-mirrored inner buttons
 	 * (`"Group > Label"`) are folded into one submenu row. Returns the flat row list,
-	 * or a list of `{ group: "", hide_label: true, options }` sections when a divider
-	 * split it. The row shape is espresso's `MenuItem` (`ui/components/menu.js`), which
+	 * or a list of `{ group, hide_label, options }` sections: `group` is `""` with
+	 * `hide_label: true` for a divider-split section, or the `group` heading of items added
+	 * with `add_dropdown_item({ group })` (`page.js:645-668`, `:739-745`). Rows with the
+	 * `hidden-xs` class are also skipped below 768px (`page.js:645-652`). The row shape is espresso's `MenuItem` (`ui/components/menu.js`), which
 	 * this package does not declare.
 	 */
 	build_dropdown_options($parent: JQuery<HTMLElement>): unknown[];
-	/** `frappe/public/js/frappe/ui/page.js:467-469`. */
-	clear_menu(): void;
-	/** `frappe/public/js/frappe/ui/page.js:471-473`. */
-	show_menu(): void;
-	/** `frappe/public/js/frappe/ui/page.js:475-477`. */
-	hide_menu(): void;
-	/** `frappe/public/js/frappe/ui/page.js:479-481`. */
-	show_icon_group(): void;
 	/** `frappe/public/js/frappe/ui/page.js:483-485`. */
+	clear_menu(): void;
+	/** `frappe/public/js/frappe/ui/page.js:487-489`. */
+	show_menu(): void;
+	/** `frappe/public/js/frappe/ui/page.js:491-493`. */
+	hide_menu(): void;
+	/** `frappe/public/js/frappe/ui/page.js:495-497`. */
+	show_icon_group(): void;
+	/** `frappe/public/js/frappe/ui/page.js:499-501`. */
 	hide_icon_group(): void;
-	/** `frappe/public/js/frappe/ui/page.js:489-491`. */
+	/** `frappe/public/js/frappe/ui/page.js:505-507`. */
 	show_actions_menu(): void;
-	/** `frappe/public/js/frappe/ui/page.js:493-495`. */
+	/** `frappe/public/js/frappe/ui/page.js:509-511`. */
 	hide_actions_menu(): void;
-	/** `frappe/public/js/frappe/ui/page.js:517-519`. */
+	/** `frappe/public/js/frappe/ui/page.js:536-538`. */
 	clear_actions_menu(): void;
-	/** `frappe/public/js/frappe/ui/page.js:986-988`. Removes only the `.user-action` items from `menu`. */
+	/** `frappe/public/js/frappe/ui/page.js:1032-1034`. Removes only the `.user-action` items from `menu`. */
 	clear_user_actions(): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:744-751`. Empties `parent` and hides its
+	 * `frappe/public/js/frappe/ui/page.js:790-797`. Empties `parent` and hides its
 	 * wrapper; when `parent` is `menu` / `actions` it first closes the matching
 	 * dropdown so a portaled panel does not float on with stale rows.
 	 */
 	clear_btn_group(parent: JQuery<HTMLElement>): void;
-	/** `frappe/public/js/frappe/ui/page.js:753-755`. Appends an `<li class="dropdown-divider">` to `menu`. */
+	/** `frappe/public/js/frappe/ui/page.js:799-801`. Appends an `<li class="dropdown-divider">` to `menu`. */
 	add_divider(): JQuery<HTMLElement>;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:702-724`. **Mutates** the `shortcut` object it is given (or wraps a
+	 * `frappe/public/js/frappe/ui/page.js:748-770`. **Mutates** the `shortcut` object it is given (or wraps a
 	 * string in a fresh one) and stamps `page` onto it.
 	 */
 	prepare_shortcut_obj(
@@ -2816,9 +2832,9 @@ export declare class Page {
 		label: string
 	): PageShortcut;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:733-742`. Returns the matching jQuery set, or `false` when nothing
+	 * `frappe/public/js/frappe/ui/page.js:779-788`. Returns the matching jQuery set, or `false` when nothing
 	 * matches or when `label`/`parent` is missing — the falsy union is load-bearing
-	 * at `frappe/public/js/frappe/ui/page.js:547-548` and `frappe/public/js/frappe/ui/page.js:897`.
+	 * at `frappe/public/js/frappe/ui/page.js:569-570` and `frappe/public/js/frappe/ui/page.js:943`.
 	 */
 	is_in_group_button_dropdown(
 		parent: JQuery<HTMLElement> | HTMLElement | null | undefined,
@@ -2829,28 +2845,28 @@ export declare class Page {
 	// ---- inner toolbar (the `.custom-actions` strip) ----
 
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:757-789`. Creates the group on first call;
+	 * `frappe/public/js/frappe/ui/page.js:803-835`. Creates the group on first call;
 	 * keyed by `label`. The group is a `.inner-group-button` holding an `es-button`
 	 * trigger and a hidden `.dropdown-menu` item store; its espresso dropdown is kept
 	 * under the `es_dropdown` data key.
 	 */
 	get_or_add_inner_group_button(label: string, align_right?: boolean): JQuery<HTMLElement>;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:794-825`. {@link Page.build_dropdown_options}
+	 * `frappe/public/js/frappe/ui/page.js:840-871`. {@link Page.build_dropdown_options}
 	 * for an inner group's store (bare `<a.dropdown-item>` children plus divider
 	 * `<li>`s); a `btn-danger` / `text-danger` item becomes a red-themed row.
 	 */
 	build_inner_group_options($store: JQuery<HTMLElement>): unknown[];
-	/** `frappe/public/js/frappe/ui/page.js:827-831`. May be an EMPTY jQuery set — check `.length`. */
+	/** `frappe/public/js/frappe/ui/page.js:873-877`. May be an EMPTY jQuery set — check `.length`. */
 	get_inner_group_button(label: string): JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/ui/page.js:833-842`. */
+	/** `frappe/public/js/frappe/ui/page.js:879-888`. */
 	set_inner_btn_group_as_primary(label: string): void;
-	/** `frappe/public/js/frappe/ui/page.js:858-861`. */
+	/** `frappe/public/js/frappe/ui/page.js:904-907`. */
 	add_divider_to_button_group(group: string): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:871-922`. Returns the `es-button` (no group)
+	 * `frappe/public/js/frappe/ui/page.js:917-968`. Returns the `es-button` (no group)
 	 * or the dropdown `<a>` (grouped) — and **`undefined`** when a same-labelled item
-	 * already exists in the group (`frappe/public/js/frappe/ui/page.js:897-905` falls
+	 * already exists in the group (`frappe/public/js/frappe/ui/page.js:943-951` falls
 	 * through with no `return`). `type` is a bootstrap button type mapped onto the
 	 * espresso contract (`default`/`secondary`/`light` → subtle, `primary` → solid,
 	 * `danger` → solid red, `ghost` → ghost); an unknown type falls back to subtle
@@ -2864,29 +2880,29 @@ export declare class Page {
 		type?: string,
 		align_right?: boolean
 	): JQuery<HTMLElement> | undefined;
-	/** `frappe/public/js/frappe/ui/page.js:924-943`. Accepts one label or a list; translates each. */
+	/** `frappe/public/js/frappe/ui/page.js:970-989`. Accepts one label or a list; translates each. */
 	remove_inner_button(label: string | string[], group?: string): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:945-970`. Ungrouped: re-expresses the type as
+	 * `frappe/public/js/frappe/ui/page.js:991-1016`. Ungrouped: re-expresses the type as
 	 * `data-variant` / `data-theme` on the `es-button` (the classes survive). Grouped:
 	 * rewrites the store item's class to `btn btn-${type} ellipsis`, which the dropdown
 	 * snapshot maps to a red row for `danger`.
 	 */
 	change_inner_button_type(label: string, group: string | undefined, type: string): void;
-	/** `frappe/public/js/frappe/ui/page.js:972-978`. Replaces any existing `.inner-page-message`. */
+	/** `frappe/public/js/frappe/ui/page.js:1018-1024`. Replaces any existing `.inner-page-message`. */
 	add_inner_message(message: string): JQuery<HTMLElement>;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:980-984`. Delegates to
+	 * `frappe/public/js/frappe/ui/page.js:1026-1030`. Delegates to
 	 * {@link Page.clear_custom_actions} (`inner_toolbar` IS `custom_actions`).
 	 */
 	clear_inner_toolbar(): void;
 
 	// ---- custom buttons ----
 
-	/** `frappe/public/js/frappe/ui/page.js:1070-1072`. **A no-op in v16** — the body is empty. */
+	/** `frappe/public/js/frappe/ui/page.js:1119-1121`. **A no-op in v16** — the body is empty. */
 	add_help_button(txt: string): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1074-1098`. Appends an `es-button` to
+	 * `frappe/public/js/frappe/ui/page.js:1123-1147`. Appends an `es-button` to
 	 * `custom_actions` and mirrors it into the Menu dropdown for narrow screens.
 	 * Returns the button.
 	 */
@@ -2896,7 +2912,7 @@ export declare class Page {
 		opts?: PageButtonOptions
 	): JQuery<HTMLElement>;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1100-1140`. Returns the group's hidden
+	 * `frappe/public/js/frappe/ui/page.js:1149-1189`. Returns the group's hidden
 	 * `.dropdown-menu` item store — the thing you pass to {@link Page.add_custom_menu_item}
 	 * — not the group itself. `parent` defaults to `custom_mobile_actions` on a mobile
 	 * viewport and `custom_actions` otherwise.
@@ -2906,7 +2922,7 @@ export declare class Page {
 		icon?: string | null,
 		parent?: JQuery<HTMLElement>
 	): JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/ui/page.js:1142-1144`. Delegates to `frappe.ui.toolbar.add_dropdown_button`. */
+	/** `frappe/public/js/frappe/ui/page.js:1191-1193`. Delegates to `frappe.ui.toolbar.add_dropdown_button`. */
 	add_dropdown_button(
 		parent: JQuery<HTMLElement>,
 		label: string,
@@ -2916,39 +2932,39 @@ export declare class Page {
 
 	// ---- the `.page-form` filter row ----
 
-	/** `frappe/public/js/frappe/ui/page.js:1147-1152`. */
+	/** `frappe/public/js/frappe/ui/page.js:1196-1201`. */
 	add_label(label: string): JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/ui/page.js:1153-1156`. Returns the `<select>`, already populated. */
+	/** `frappe/public/js/frappe/ui/page.js:1202-1205`. Returns the `<select>`, already populated. */
 	add_select(label: string, options: unknown): JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/ui/page.js:1157-1160`. Returns the `<input>`. */
+	/** `frappe/public/js/frappe/ui/page.js:1206-1209`. Returns the `<input>`. */
 	add_data(label: string): JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/ui/page.js:1161-1164`. Returns the `<input>`. */
+	/** `frappe/public/js/frappe/ui/page.js:1210-1213`. Returns the `<input>`. */
 	add_date(label: string, date?: string): JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/ui/page.js:1165-1169`. Returns the checkbox `<input>`. */
+	/** `frappe/public/js/frappe/ui/page.js:1214-1218`. Returns the checkbox `<input>`. */
 	add_check(label: string): JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/ui/page.js:1170-1173`. */
+	/** `frappe/public/js/frappe/ui/page.js:1219-1222`. */
 	add_break(): void;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:1174-1222`. **Mutates `df`** (`placeholder`, `input_class`) and
-	 * returns `undefined` for `fieldtype: "HTML"` (`frappe/public/js/frappe/ui/page.js:1200-1203`).
+	 * `frappe/public/js/frappe/ui/page.js:1223-1271`. **Mutates `df`** (`placeholder`, `input_class`) and
+	 * returns `undefined` for `fieldtype: "HTML"` (`frappe/public/js/frappe/ui/page.js:1249-1252`).
 	 */
 	add_field(df: PageFieldDef, parent?: JQuery<HTMLElement>): PageControl | undefined;
-	/** `frappe/public/js/frappe/ui/page.js:1223-1228`. */
+	/** `frappe/public/js/frappe/ui/page.js:1272-1277`. */
 	restyle_field(f: PageControl): void;
-	/** `frappe/public/js/frappe/ui/page.js:1229-1231`. Empties `page_form`; does NOT clear `fields_dict`. */
+	/** `frappe/public/js/frappe/ui/page.js:1278-1280`. Empties `page_form`; does NOT clear `fields_dict`. */
 	clear_fields(): void;
-	/** `frappe/public/js/frappe/ui/page.js:1232-1234`. */
+	/** `frappe/public/js/frappe/ui/page.js:1281-1283`. */
 	show_form(): void;
-	/** `frappe/public/js/frappe/ui/page.js:1235-1237`. */
+	/** `frappe/public/js/frappe/ui/page.js:1284-1286`. */
 	hide_form(): void;
-	/** `frappe/public/js/frappe/ui/page.js:1238-1245`. One entry per `fields_dict` key. */
+	/** `frappe/public/js/frappe/ui/page.js:1287-1294`. One entry per `fields_dict` key. */
 	get_form_values(): Record<string, unknown>;
 
 	// ---- views ----
 
-	/** `frappe/public/js/frappe/ui/page.js:1246-1258`. Appends into `.page-content`; the first view added is shown. */
+	/** `frappe/public/js/frappe/ui/page.js:1295-1307`. Appends into `.page-content`; the first view added is shown. */
 	add_view(name: string, html: string | JQuery<HTMLElement>): JQuery<HTMLElement>;
-	/** `frappe/public/js/frappe/ui/page.js:1259-1270`. No-op when `name` is already current. Triggers `"view-change"`. */
+	/** `frappe/public/js/frappe/ui/page.js:1308-1319`. No-op when `name` is already current. Triggers `"view-change"`. */
 	set_view(name: string): void;
 }
 
@@ -2963,15 +2979,15 @@ export interface Page extends FrappePageRegions {}
 
 /**
  * The two shapes `frappe.utils.icon` accepts through a Page API — a bare icon
- * name, or `{ icon, size }` (`frappe/public/js/frappe/ui/page.js:305-307`).
+ * name, or `{ icon, size }` (`frappe/public/js/frappe/ui/page.js:301-303`).
  *
  * Only {@link Page.get_icon_label} still honours `size`: {@link Page.set_action}
  * reads `.icon` and drops the size, "the es contract sizes icons from the button
- * itself" (`frappe/public/js/frappe/ui/page.js:319-322`).
+ * itself" (`frappe/public/js/frappe/ui/page.js:315-318`).
  */
 export interface PageIconSpec {
 	icon: string;
-	/** Defaults to `"xs"` (`frappe/public/js/frappe/ui/page.js:304,307`). */
+	/** Defaults to `"xs"` (`frappe/public/js/frappe/ui/page.js:300,303`). */
 	size?: FrappeIconSize;
 }
 
@@ -2979,92 +2995,96 @@ export interface PageIconSpec {
  * The `label` argument of {@link Page.set_primary_action} /
  * {@link Page.set_secondary_action}: a string, or `{ label, short_label }` to show a
  * shorter text below the `md` breakpoint (e.g. "Add" for "Add Sales Order") —
- * `frappe/public/js/frappe/ui/page.js:371-375,384-387`. The object is spread into the
+ * `frappe/public/js/frappe/ui/page.js:367-371,398-401`. The object is spread into the
  * {@link PageActionOptions}, so it may carry anything those do; `click`, `icon`,
  * `working_label` and `variant` are overwritten by the method's own arguments.
  */
 export type PageActionLabel = string | { label: string; short_label?: string };
 
 /**
- * A Page action callback. `frappe/public/js/frappe/ui/page.js:342` calls it as
+ * A Page action callback. `frappe/public/js/frappe/ui/page.js:338` calls it as
  * `opts.click.apply(this, [btn])` with `this` bound to the raw button element,
- * and `frappe/public/js/frappe/ui/page.js:343` feeds the return value to
+ * and `frappe/public/js/frappe/ui/page.js:339` feeds the return value to
  * {@link Page.btn_disable_enable} — so returning a Promise or a jqXHR is
  * meaningful, and returning nothing is fine.
  */
 export type PageActionClick = (button?: JQuery<HTMLElement>) => unknown;
 
-/** Options for {@link Page.set_action} — `frappe/public/js/frappe/ui/page.js:314-369`. */
+/** Options for {@link Page.set_action} — `frappe/public/js/frappe/ui/page.js:310-365`. */
 export interface PageActionOptions {
 	label: string;
 	click: PageActionClick;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:322` — a bare name or `{ icon, size }`;
+	 * `frappe/public/js/frappe/ui/page.js:318` — a bare name or `{ icon, size }`;
 	 * only the name is used. `null` is accepted and means "no icon".
 	 */
 	icon?: string | PageIconSpec | null;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:326` — the `es-button` variant
+	 * `frappe/public/js/frappe/ui/page.js:322` — the `es-button` variant
 	 * (`frappe/public/js/frappe/ui/components/button.js:6-12`).
 	 */
 	variant?: "solid" | "subtle" | "outline" | "ghost";
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:346-358` — a shorter label shown below
+	 * `frappe/public/js/frappe/ui/page.js:342-354` — a shorter label shown below
 	 * the `md` breakpoint; the full `label` is hidden there.
 	 */
 	short_label?: string;
 	/**
-	 * `frappe/public/js/frappe/ui/page.js:330-332,360-362` — shown while the button is
+	 * `frappe/public/js/frappe/ui/page.js:326-328,356-358` — shown while the button is
 	 * busy and written to `data-working-label`.
 	 */
 	working_label?: string;
 }
 
-/** Options for {@link Page.add_dropdown_item} — `frappe/public/js/frappe/ui/page.js:533-542`. */
+/** Options for {@link Page.add_dropdown_item} — `frappe/public/js/frappe/ui/page.js:553-564`. */
 export interface PageDropdownItemOptions {
 	label: string;
 	click: PageActionClick;
-	/** `frappe/public/js/frappe/ui/page.js:597-607` — `true` appends to `parent`, `false` inserts above the user-action divider. */
+	/** `frappe/public/js/frappe/ui/page.js:621-631` — `true` appends to `parent`, `false` inserts above the user-action divider. */
 	standard?: boolean;
 	/** The `<ul>` the item goes into. */
 	parent: JQuery<HTMLElement>;
 	shortcut?: string | PageShortcut;
-	/** Defaults to `true` (`frappe/public/js/frappe/ui/page.js:539`) — un-hides the dropdown's button. */
+	/** Defaults to `true` (`frappe/public/js/frappe/ui/page.js:559`) — un-hides the dropdown's button. */
 	show_parent?: boolean;
-	/** Defaults to `null` (`frappe/public/js/frappe/ui/page.js:540`). A sprite icon name shown before the label. */
+	/** Defaults to `null` (`frappe/public/js/frappe/ui/page.js:560`). A sprite icon name shown before the label. */
 	icon?: string | null;
 	/**
-	 * Defaults to `null` (`frappe/public/js/frappe/ui/page.js:541`). Stashed on the
+	 * Defaults to `null` (`frappe/public/js/frappe/ui/page.js:561`). Stashed on the
 	 * `<li>` and rendered by the dropdown snapshot as the row's right-hand icon
-	 * (`frappe/public/js/frappe/ui/page.js:588,689`). New: `icon_right` did not exist
+	 * (`frappe/public/js/frappe/ui/page.js:610,730`). New: `icon_right` did not exist
 	 * on this method before.
 	 */
 	icon_right?: string | null;
+	/** `frappe/public/js/frappe/ui/page.js:562` (16.60) — `"gray" | "red"`; `"red"` for destructive rows. */
+	theme?: "gray" | "red" | null;
+	/** `frappe/public/js/frappe/ui/page.js:563` (16.60) — the heading the item is listed under; items sharing one sit together. */
+	group?: string | null;
 }
 
 /**
  * A `frappe.ui.keys` shortcut descriptor as {@link Page.prepare_shortcut_obj}
- * leaves it (`frappe/public/js/frappe/ui/page.js:702-724`). The method fills in every optional member, so a
+ * leaves it (`frappe/public/js/frappe/ui/page.js:748-770`). The method fills in every optional member, so a
  * caller only has to supply `shortcut`.
  */
 export interface PageShortcut {
-	/** e.g. `"ctrl+s"`. Lowercased in place at `frappe/public/js/frappe/ui/page.js:713`. */
+	/** e.g. `"ctrl+s"`. Lowercased in place at `frappe/public/js/frappe/ui/page.js:759`. */
 	shortcut: string;
-	/** Added at `frappe/public/js/frappe/ui/page.js:710` from `frappe.ui.keys.get_shortcut_label`. */
+	/** Added at `frappe/public/js/frappe/ui/page.js:756` from `frappe.ui.keys.get_shortcut_label`. */
 	shortcut_label?: string;
-	/** Defaults to the item's `click` (`frappe/public/js/frappe/ui/page.js:715-717`). */
+	/** Defaults to the item's `click` (`frappe/public/js/frappe/ui/page.js:761-763`). */
 	action?: PageActionClick;
-	/** Defaults to the item's `label` (`frappe/public/js/frappe/ui/page.js:719-721`). */
+	/** Defaults to the item's `label` (`frappe/public/js/frappe/ui/page.js:765-767`). */
 	description?: string;
-	/** Stamped at `frappe/public/js/frappe/ui/page.js:723`. */
+	/** Stamped at `frappe/public/js/frappe/ui/page.js:769`. */
 	page?: Page;
 	[key: string]: unknown;
 }
 
-/** Options for {@link Page.add_button} — `frappe/public/js/frappe/ui/page.js:1074-1088`. */
+/** Options for {@link Page.add_button} — `frappe/public/js/frappe/ui/page.js:1123-1137`. */
 export interface PageButtonOptions {
 	/**
-	 * Defaults to `"btn-default"` (`frappe/public/js/frappe/ui/page.js:1079`). The
+	 * Defaults to `"btn-default"` (`frappe/public/js/frappe/ui/page.js:1128`). The
 	 * bootstrap vocabulary is mapped onto the `es-button` contract
 	 * (`frappe/public/js/frappe/ui/page.js:36-49`): `default`/`secondary`/`light` →
 	 * subtle, `primary` → solid, `danger` → solid red, `ghost` → ghost. A class
@@ -3072,7 +3092,7 @@ export interface PageButtonOptions {
 	 */
 	btn_class?: string;
 	/**
-	 * Only `"btn-xs"` has an effect (an `xs` button, `frappe/public/js/frappe/ui/page.js:1085`);
+	 * Only `"btn-xs"` has an effect (an `xs` button, `frappe/public/js/frappe/ui/page.js:1134`);
 	 * anything else gives the default size.
 	 */
 	btn_size?: string;
@@ -3082,16 +3102,16 @@ export interface PageButtonOptions {
 
 /**
  * The docfield-ish object {@link Page.add_field} takes. It is a partial DocField
- * — `frappe/public/js/frappe/ui/page.js:1177-1181` only requires `fieldtype`, and mutates `placeholder` and
+ * — `frappe/public/js/frappe/ui/page.js:1226-1230` only requires `fieldtype`, and mutates `placeholder` and
  * `input_class` — so it is declared open rather than as a full `DocField`.
  */
 export interface PageFieldDef {
 	fieldtype: string;
 	label?: string;
 	fieldname?: string;
-	/** Set to `df.label` when absent (`frappe/public/js/frappe/ui/page.js:1177-1179`). */
+	/** Set to `df.label` when absent (`frappe/public/js/frappe/ui/page.js:1226-1228`). */
 	placeholder?: string;
-	/** Forced to `"input-xs"` (`frappe/public/js/frappe/ui/page.js:1181`). */
+	/** Forced to `"input-xs"` (`frappe/public/js/frappe/ui/page.js:1230`). */
 	input_class?: string;
 	default?: unknown;
 	parent?: string;
@@ -3099,7 +3119,7 @@ export interface PageFieldDef {
 }
 
 /**
- * What `frappe.ui.form.make_control` hands back to a Page (`frappe/public/js/frappe/ui/page.js:1183-1187`).
+ * What `frappe.ui.form.make_control` hands back to a Page (`frappe/public/js/frappe/ui/page.js:1232-1236`).
  *
  * SEAM NOTE — typed as `ui/form.d.ts`'s {@link BaseControl}, imported at the
  * head of this file. That makes `utils.d.ts` ↔ `ui/form.d.ts` a type-only
@@ -3120,7 +3140,7 @@ export interface FrappeUiPageSlice {
 	Page: typeof Page;
 	/**
 	 * `frappe/public/js/frappe/ui/page.js:34` — `frappe.ui.pages = {}`, keyed by `frappe.get_route_str()`
-	 * (`frappe/public/js/frappe/ui/page.js:66`). A route with no page yet reads back `undefined`.
+	 * (`frappe/public/js/frappe/ui/page.js:68`). A route with no page yet reads back `undefined`.
 	 */
 	pages: Record<string, Page | undefined>;
 	/**
@@ -3257,8 +3277,8 @@ export type AnimationFrameHandle = ReturnType<typeof requestAnimationFrame>;
  * API behind them — they are a rendering contract that breaks silently when
  * upstream markup changes.
  *
- * - `#freeze` — the backdrop {@link FrappeDom.freeze} appends to `#body`
- *   (`frappe/public/js/frappe/dom.js:145,152`). The harness counts these nodes
+ * - `#freeze` — the backdrop {@link FrappeDom.freeze} appends to `#body` (or to `document.body` on a page with no `#body`)
+ *   (`frappe/public/js/frappe/dom.js:146,157`). The harness counts these nodes
  *   to assert freeze/unfreeze balance
  *   (`scripts/tables/grid.ts:524,633,662,666`).
  * - `#login_email`, `#login_password` — the desk login form's inputs
@@ -3323,25 +3343,25 @@ export interface FrappeUtilsDomRouterGlobals {
 	dom: FrappeDom;
 	router: FrappeRouter;
 
-	// -- the router's "global functions for backward compatibility" (`frappe/public/js/frappe/router.js:1078-1091`)
+	// -- the router's "global functions for backward compatibility" (`frappe/public/js/frappe/router.js:1101-1114`)
 
-	/** `frappe/public/js/frappe/router.js:1079` — `frappe.router.current_route`. */
+	/** `frappe/public/js/frappe/router.js:1102` — `frappe.router.current_route`. */
 	get_route(): FrappeStandardRoute | null;
-	/** `frappe/public/js/frappe/router.js:1080` — `current_route.join("/")`. Throws before the first route, when `current_route` is still `null`. */
+	/** `frappe/public/js/frappe/router.js:1103` — `current_route.join("/")`. Throws before the first route, when `current_route` is still `null`. */
 	get_route_str(): string;
 	/**
-	 * `frappe/public/js/frappe/router.js:1081-1083` — `frappe.router.set_route`, with `arguments` passed
+	 * `frappe/public/js/frappe/router.js:1104-1106` — `frappe.router.set_route`, with `arguments` passed
 	 * through untouched; see {@link FrappeRouterBase.set_route} for the forms.
 	 */
 	set_route: FrappeRouterBase["set_route"];
-	/** `frappe/public/js/frappe/router.js:1085-1091` — the route before the current one, or `[]`. */
+	/** `frappe/public/js/frappe/router.js:1108-1114` — the route before the current one, or `[]`. */
 	get_prev_route(): FrappeStandardRoute | [];
 
 	/**
 	 * `frappe/public/js/frappe/router.js:14` — values for the view the next route
 	 * opens: `null` until something sets them. Set them before
 	 * `frappe.set_route(...)`; the router also fills them from a route's query
-	 * string (`frappe/public/js/frappe/router.js:584-587`, `:790-800`) and from an
+	 * string (`frappe/public/js/frappe/router.js:594-597`, `:790-800`) and from an
 	 * object in the route (`:644-646`, `:680-682`). A list view reads them as
 	 * filters, a new form as field values.
 	 */
@@ -3352,7 +3372,7 @@ export interface FrappeUtilsDomRouterGlobals {
 	 * `frappe/public/js/frappe/utils/address_and_contact.js:1`, `:286-339`. The
 	 * Address and Contact helpers of a party's form. In `form.bundle.js`
 	 * (`frappe/public/js/form.bundle.js:16`), which every desk page loads
-	 * (`frappe/hooks.py:24-33`, `app_include_js`), so it is not optional, like
+	 * (`frappe/hooks.py:41-50`, `app_include_js`), so it is not optional, like
 	 * `frappe.ui.form`. Desk only.
 	 */
 	contacts: FrappeContactsNamespace;

@@ -19,16 +19,16 @@
  *
  * - the **sidebar** host — the default. `Sidebar.setup_notifications` calls
  *   `new frappe.ui.Notifications()` with no options
- *   (frappe/public/js/frappe/ui/sidebar/sidebar.js:671-675), so `wrapper` is
+ *   (frappe/public/js/frappe/ui/sidebar/sidebar.js:681-685), so `wrapper` is
  *   `$(".body-sidebar")` and the bell is the "Notification" row of the
  *   standard-items band, whose click runs
  *   `frappe.ui.sidebar_panels.toggle("notifications")`
- *   (frappe/public/js/frappe/ui/sidebar/sidebar.js:654-662). The body lives in a
+ *   (frappe/public/js/frappe/ui/sidebar/sidebar.js:653-661). The body lives in a
  *   `frappe.ui.SidebarPanel` named `notifications`
  *   (frappe/public/js/frappe/ui/notifications/notifications.js:35-46), so
  *   dismissal (outside click, `Escape`, page change) is the panel registry's job;
  * - the **desk** host — `{ popover: true, wrapper }`, used by the desktop screen
- *   (frappe/desk/page/desktop/desktop.js:256-261). There is only a bell, so the
+ *   (frappe/desk/page/desktop/desktop.js:251-256). There is only a bell, so the
  *   body is handed to a `frappe.ui.Popover`
  *   (frappe/public/js/frappe/ui/notifications/notifications.js:52-78).
  *
@@ -96,7 +96,7 @@ export interface FrappeNotificationsView extends FrappeNotificationsTab {
 	 * is not the badge.
 	 */
 	notifications_icon: JQuery<HTMLElement>;
-	/** frappe/public/js/frappe/ui/notifications/notifications.js:278,423 — seeded from `frappe.boot.notification_unread_count`, which `frappe/sessions.py:167-169` counts afresh on every page load (it was cached with the rest of the bootinfo before v16.54.0). */
+	/** frappe/public/js/frappe/ui/notifications/notifications.js:278,423 — seeded from `frappe.boot.notification_unread_count`, which `frappe/sessions.py:197-199` counts afresh on every page load (it was cached with the rest of the bootinfo before v16.54.0). */
 	unread_count: number;
 	/** frappe/public/js/frappe/ui/notifications/notifications.js:473 — set after the first fetch on open; absent until then. */
 	notifications_fetched?: boolean;
