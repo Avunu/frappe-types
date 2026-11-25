@@ -1,5 +1,14 @@
 # Changelog
 
+## [16.7.2](https://github.com/Avunu/frappe-types/compare/v16.7.1...v16.7.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* **deps:** bump nixpkgs from `0490633` to `0bb8272` ([#62](https://github.com/Avunu/frappe-types/issues/62)) ([cc2c96e](https://github.com/Avunu/frappe-types/commit/cc2c96e67d54263231f7a79b5e3ba677013108ca))
+* **deps:** bump nixpkgs from `d4f25a3` to `0490633` ([#59](https://github.com/Avunu/frappe-types/issues/59)) ([a3eb2a6](https://github.com/Avunu/frappe-types/commit/a3eb2a6c4b039226616a5dfac97628a4976e7363))
+* re-verify declarations against frappe v16.60.2 ([#63](https://github.com/Avunu/frappe-types/issues/63)) ([23d2930](https://github.com/Avunu/frappe-types/commit/23d29300c8e71f2536602dbaf5db3bef1feaf531))
+
 ## [16.7.1](https://github.com/Avunu/frappe-types/compare/v16.7.0...v16.7.1) (2026-11-09)
 
 
