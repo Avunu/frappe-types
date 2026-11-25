@@ -95,7 +95,8 @@ export const OTHER_GLOBALS = ["__", "locals", "cur_frm", "cur_list", "cur_dialog
  *   frappe/public/js/frappe/ui/dialog.js:6             cur_dialog
  *   frappe/public/js/frappe/views/container.js:8       cur_page
  *   frappe/public/js/frappe/views/treeview.js:6        cur_tree
- *   frappe/public/js/frappe/ui/filters/filter_list.js:5  fltr
+ *   frappe/public/js/flow_launcher.bundle.js:443       flow    (16.60: Flow's launcher API for app code; `fltr` was
+ *                                                      set by filter_list.js:5 until 16.60 and is gone)
  *   frappe/public/js/frappe/views/reports/report_view.js:6, query_report.js:6  DataTable
  *   frappe/public/js/frappe/web_form/web_form.js:414   saving
  *   frappe/public/js/print.bundle.js:17                render_barcode
@@ -131,8 +132,8 @@ export const WINDOW_GLOBALS = [
 	"cur_page",
 	"cur_tree",
 	"extend_cscript",
+	"flow",
 	"flt",
-	"fltr",
 	"fmt_money",
 	"format_currency",
 	"format_number",

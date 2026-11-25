@@ -125,7 +125,7 @@ declare global {
 	/** `frappe/public/js/frappe/provide.js:21` — `frappe.provide("locals")`. */
 	var locals: LocalsStore;
 
-	/** `provide.js:50` (as `null`), then `form.js:453` / `pageview.js:99`. */
+	/** `provide.js:50` (as `null`), then `form.js:453` / `pageview.js:123`. */
 	var cur_frm: CurrentForm;
 
 	/**
@@ -138,8 +138,8 @@ declare global {
 
 	/**
 	 * `frappe/public/js/frappe/ui/dialog.js:6` (as `null`), popped at
-	 * `frappe/public/js/frappe/ui/dialog.js:115-119` and set at
-	 * `frappe/public/js/frappe/ui/dialog.js:127` — the top of the modal stack.
+	 * `frappe/public/js/frappe/ui/dialog.js:118-122` and set at
+	 * `frappe/public/js/frappe/ui/dialog.js:130` — the top of the modal stack.
 	 */
 	var cur_dialog: CurrentDialog;
 
@@ -354,7 +354,7 @@ declare global {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * `frappe/public/js/frappe/utils/utils.js:13-28`. Both are installed inside
+	 * `frappe/public/js/frappe/utils/utils.js:15-30`. Both are installed inside
 	 * a single `if (!Array.prototype.uniqBy)` guard, so `move` exists if and
 	 * only if `uniqBy` does. `move` returns `undefined` — see
 	 * {@link FrappeArrayPolyfills}.
@@ -371,7 +371,7 @@ declare global {
 	 * frappe's own jQuery plugins (`add_options`, `set_working`, `done_working`,
 	 * `enterKey`, `datepicker`) and the Bootstrap 4 plugin surface the desk
 	 * bundles load — `frappe/public/js/jquery-bootstrap.js`. `Dialog#show`
-	 * (`frappe/public/js/frappe/ui/dialog.js:325`) calls `.modal("show")` on a
+	 * (`frappe/public/js/frappe/ui/dialog.js:335`) calls `.modal("show")` on a
 	 * plain jQuery handle, so without this the package's own declarations would
 	 * not type-check at their call sites.
 	 */

@@ -1,13 +1,16 @@
 {
   "schema": 1,
   "source": {
-    "ref": "v16.55.2",
-    "commit": "3d1284c5fdb52207a516a49bbf2fd186cb43b3ab",
-    "date": "2026-11-04"
+    "ref": "v16.60.2",
+    "commit": "2df0425571ebbaed878eabc3edc5b7e7c3327ae0",
+    "date": "2026-11-18"
   },
-  "version": "16.55.2",
+  "version": "16.60.2",
   "scss": {
     "bundles": {
+      "frappe/public/scss/bottom_sheet.bundle.scss": [
+        "frappe/public/css/espresso/components/bottom_sheet.css"
+      ],
       "frappe/public/scss/desk.bundle.scss": [
         "frappe/public/css/fonts/inter/inter.scss",
         "~frappe-charts/dist/frappe-charts.min",
@@ -18,7 +21,12 @@
         "frappe/public/node_modules/highlight.js/styles/tomorrow.css",
         "./common/utilities"
       ],
-      "frappe/public/scss/email.bundle.scss": [],
+      "frappe/public/scss/desk_charts.bundle.scss": [
+        "frappe/public/css/espresso/components/stat_card.css"
+      ],
+      "frappe/public/scss/email.bundle.scss": [
+        "./common/quill_content.scss"
+      ],
       "frappe/public/scss/leaflet.bundle.scss": [
         "frappe/public/js/lib/leaflet/leaflet.css",
         "frappe/public/js/lib/leaflet_easy_button/easy-button.css",
@@ -27,6 +35,9 @@
       ],
       "frappe/public/scss/login.bundle.scss": [
         "./desk/variables"
+      ],
+      "frappe/public/scss/optional_sections.bundle.scss": [
+        "frappe/public/css/espresso/components/optional_sections.css"
       ],
       "frappe/public/scss/print.bundle.scss": [
         "./desk/variables",
@@ -41,7 +52,8 @@
         "./common/mixins.scss",
         "./common/global.scss",
         "./common/icons.scss",
-        "~bootstrap/scss/bootstrap"
+        "~bootstrap/scss/bootstrap",
+        "./common/quill_content.scss"
       ],
       "frappe/public/scss/report.bundle.scss": [
         "~frappe-datatable/dist/frappe-datatable",
@@ -98,12 +110,12 @@
   "icons": {
     "sprites": {
       "frappe/public/icons/lucide/icons.svg": {
-        "symbols": 1853,
-        "distinct": 1853,
+        "symbols": 1862,
+        "distinct": 1862,
         "prefixes": {
-          "icon-": 1853
+          "icon-": 1862
         },
-        "idsSha256": "7cc980a1c8518cab68b35c905b9d66b89ac5ae8892a8c06b0feac43c64f975d5"
+        "idsSha256": "3a33c47f304e48e7f0e99191839680f62502aa97d9a4c302f42b92345fd7848a"
       },
       "frappe/public/icons/timeless/icons.svg": {
         "symbols": 141,
@@ -135,12 +147,12 @@
         "idsSha256": "cfa4f846a6dbeb24477910a408ea21df3244beb5b1a2c7544b9397a0f2a50561"
       },
       "frappe/public/icons/module-icons.svg": {
-        "symbols": 24,
-        "distinct": 24,
+        "symbols": 28,
+        "distinct": 28,
         "prefixes": {
-          "icon-": 24
+          "icon-": 28
         },
-        "idsSha256": "a2905934df18933ef36c32792b4172a7701ce8310ae239a87a36caed8b7cacb8"
+        "idsSha256": "fd534be980de4e115647724293dcf826f851ac5da43dd2d144883fa66ae52632"
       }
     },
     "unresolved": [],
@@ -156,17 +168,21 @@
   },
   "bundles": [
     "frappe/public/js/arrangement_editor.bundle.js",
+    "frappe/public/js/attachment_queue_review.bundle.js",
     "frappe/public/js/billing.bundle.js",
     "frappe/public/js/bootstrap-4-web.bundle.js",
+    "frappe/public/js/bottom_sheet.bundle.js",
     "frappe/public/js/calendar.bundle.js",
     "frappe/public/js/controls.bundle.js",
     "frappe/public/js/data_import_tools.bundle.js",
     "frappe/public/js/data_import_wizard.bundle.js",
     "frappe/public/js/desk.bundle.js",
+    "frappe/public/js/desk_charts.bundle.js",
     "frappe/public/js/desktop_icons.bundle.js",
     "frappe/public/js/dialog.bundle.js",
     "frappe/public/js/doctype_settings.bundle.js",
     "frappe/public/js/embedded_list.bundle.js",
+    "frappe/public/js/flow_launcher.bundle.js",
     "frappe/public/js/form.bundle.js",
     "frappe/public/js/form_builder/form_builder.bundle.js",
     "frappe/public/js/frappe-web.bundle.js",
@@ -175,13 +191,16 @@
     "frappe/public/js/frappe/views/kanban/kanban_board.bundle.js",
     "frappe/public/js/frappe/views/kanban_v2/kanban.bundle.js",
     "frappe/public/js/frappe/views/kanban_v2/kanban_settings.bundle.js",
+    "frappe/public/js/grid_import.bundle.js",
     "frappe/public/js/leaflet.bundle.js",
     "frappe/public/js/libs.bundle.js",
     "frappe/public/js/list.bundle.js",
     "frappe/public/js/list_filter.bundle.js",
     "frappe/public/js/list_view_virtualization.bundle.js",
     "frappe/public/js/logtypes.bundle.js",
+    "frappe/public/js/mobile_nav.bundle.js",
     "frappe/public/js/onboarding_tours.bundle.js",
+    "frappe/public/js/optional_sections.bundle.js",
     "frappe/public/js/photoswipe.bundle.js",
     "frappe/public/js/print.bundle.js",
     "frappe/public/js/print_format_builder/print_format_builder.bundle.js",
@@ -190,14 +209,20 @@
     "frappe/public/js/side_panel.bundle.js",
     "frappe/public/js/syntax_highlighting.bundle.js",
     "frappe/public/js/telemetry.bundle.js",
+    "frappe/public/js/upload_first.bundle.js",
+    "frappe/public/js/upload_first_review.bundle.js",
     "frappe/public/js/user_settings_dialog.bundle.js",
     "frappe/public/js/video_player.bundle.js",
     "frappe/public/js/web_form.bundle.js",
+    "frappe/public/js/web_form_request.bundle.js",
     "frappe/public/js/workflow_builder/workflow_builder.bundle.js",
+    "frappe/public/scss/bottom_sheet.bundle.scss",
     "frappe/public/scss/desk.bundle.scss",
+    "frappe/public/scss/desk_charts.bundle.scss",
     "frappe/public/scss/email.bundle.scss",
     "frappe/public/scss/leaflet.bundle.scss",
     "frappe/public/scss/login.bundle.scss",
+    "frappe/public/scss/optional_sections.bundle.scss",
     "frappe/public/scss/print.bundle.scss",
     "frappe/public/scss/print_format.bundle.scss",
     "frappe/public/scss/report.bundle.scss",
@@ -242,6 +267,7 @@
       "lang_dict",
       "letter_heads",
       "link_preview_doctypes",
+      "link_settings",
       "link_title_doctypes",
       "max_file_size",
       "module_app",
@@ -255,10 +281,12 @@
       "server_date",
       "setup_wizard_completed_apps",
       "setup_wizard_requires",
+      "setup_wizard_url",
       "single_types",
       "site_info",
       "sitename",
       "sms_gateway_enabled",
+      "studio_apps",
       "subscription_conf",
       "success_action",
       "sysdefaults",
@@ -269,7 +297,8 @@
       "treeviews",
       "user",
       "user_info",
-      "versions"
+      "versions",
+      "web_form_request_forms"
     ],
     "dynamic": 1,
     "bulk": 1

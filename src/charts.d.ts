@@ -1,28 +1,33 @@
 /**
  * `frappe.Chart` — the frappe-charts slice of the frappe desk API.
  *
- * Frappe v16.55.2 re-exports the `frappe-charts` package verbatim:
+ * Frappe v16.55.2 re-exported the `frappe-charts` package verbatim. Since 16.60 it
+ * is a deprecated subclass, and `frappe.ui.chart(el, config)` is the replacement:
  *
  * ```js
- * // frappe/public/js/frappe/ui/chart.js:1-4
+ * // frappe/public/js/frappe/ui/chart.js:1-12
  * import { Chart } from "frappe-charts/dist/frappe-charts.esm";
  * frappe.provide("frappe.ui");
- * frappe.Chart = Chart;
+ * frappe.Chart = class extends Chart {
+ *   constructor(...args) {
+ *     deprecated("frappe.Chart", "use frappe.ui.chart");
+ *     super(...args);
+ *   }
+ * };
  * ```
  *
- * Everything below is verified against `frappe-charts@2.0.0-rc27` as vendored at
- * `apps/frappe/node_modules/frappe-charts`. Frappe pins that exact version in
- * `apps/frappe/package.json` and resolves it to the same tarball in `yarn.lock`
- * across the frappe releases this package has been verified against, so a frappe
- * upgrade moves no frappe-charts line number — only frappe's own call sites.
- * Citations of the form `BaseChart.js:34` refer to `frappe-charts/src/js/charts/…`;
- * the shipped `dist/frappe-charts.esm.js` (what frappe actually imports) was
- * byte-compared against every `src/js/**` file via its source map, so `src` IS
- * the shipped code — only Babel's ES5 lowering differs.
+ * The frappe-charts citations below (`BaseChart.js:34` and the like, which refer to
+ * `frappe-charts/src/js/charts/…`) are verified against `frappe-charts@2.0.0-rc27`,
+ * as vendored at `apps/frappe/node_modules/frappe-charts`. That is NOT the version
+ * frappe 16.60 pins: its `package.json` moved to `frappe-charts@2.0.0-rc31`, and
+ * `BaseChart.js`, `chart.js`, `AxisChart.js` and most other `src/js/**` files differ
+ * between the two. Those citations are therefore unverified against rc31 and must be
+ * re-checked before this file claims rc31.
  *
- * Besides the library itself this file declares `frappe.ui.RealtimeChart` (frappe's
- * one in-tree subclass), the build-time contracts of carbon_frappe's chart
- * codegen, and the CSS custom properties the frappe-charts stylesheet owns.
+ * Besides the library itself this file declares `frappe.ui.RealtimeChart` (a
+ * frappe-charts `Chart` subclass, deprecated, not a subclass of `frappe.Chart`), the
+ * build-time contracts of carbon_frappe's chart codegen, and the CSS custom
+ * properties the frappe-charts stylesheet owns.
  *
  * @packageDocumentation
  */
@@ -103,18 +108,20 @@ export type FrappeChartPresetColor =
  * (`BaseChart.js:78`).
  *
  * Deliberately widened to `string`: the accepted set is a runtime regex, and
- * frappe feeds it every spelling. `frappe.utils.make_chart`
- * (`frappe/public/js/frappe/utils/utils.js:1575-1601`) fills in
+ * frappe feeds it every spelling. `frappe.utils.make_chart`, now in
+ * `frappe/public/js/frappe/ui/chart.js:125-128`, fills in
  * `frappe.utils.get_chart_palette()` when the caller names no colors
- * (`frappe/public/js/frappe/utils/utils.js:1577-1579`) — ten literal hex strings
+ * (`frappe/public/js/frappe/ui/chart.js:120-123`) — ten literal hex strings
  * read off the Espresso `--blue-600`… custom properties of the current theme
- * (`frappe/public/js/frappe/utils/utils.js:1605-1610`,
- * `frappe/public/js/frappe/ui/components/utils.js:97-108`), because frappe-charts
+ * (`frappe/public/js/frappe/utils/utils.js:1648-1653`,
+ * `frappe/public/js/frappe/ui/components/utils.js:155-166`), because frappe-charts
  * lightens and blends colors from their literal values and cannot take a
  * `var(--…)`. That helper falls back to the raw `var(--token)` text when the
- * property is unset, which `isValidColor()` rejects. Meanwhile
- * `frappe/public/js/frappe/views/reports/report_view.js:635` passes a mix of a
- * raw hex and three preset names in one array.
+ * property is unset, which `isValidColor()` rejects. Since 16.60,
+ * `frappe/public/js/frappe/views/reports/report_view.js:651-669` passes no
+ * `colors` at all: `frappe.ui.chart.with_classic_palette`
+ * (`frappe/public/js/frappe/ui/chart.js`) fills the palette in from
+ * `frappe.utils.get_chart_palette()` when classic charts are on.
  */
 export type FrappeChartColor = FrappeChartPresetColor | (string & {});
 
@@ -204,7 +211,7 @@ export type FrappeChartData = FrappeAxisChartData | FrappeHeatmapData;
 
 /** `options.axisOptions` — read once in `AxisChart.configure()` (AxisChart.js:37-47). Ignored by every non-axis chart. */
 export interface FrappeChartAxisOptions {
-	/** Default `'span'` (AxisChart.js:40). frappe passes `"tick"` in `make_chart` (frappe/public/js/frappe/utils/utils.js:1586). */
+	/** Default `'span'` (AxisChart.js:40). frappe passes `"tick"` in `make_chart` (frappe/public/js/frappe/utils/utils.js:1629). */
 	xAxisMode?: "span" | "tick";
 	/** Default `'span'` (AxisChart.js:41). */
 	yAxisMode?: "span" | "tick";
@@ -212,8 +219,8 @@ export interface FrappeChartAxisOptions {
 	 * Truthy = when the x labels do not fit, thin them out (keep every n-th, blank the
 	 * rest); falsy = truncate each label with a trailing ellipsis instead
 	 * (AxisChart.js:42, utils/axis-chart-utils.js:100-138). frappe passes the `0 | 1`
-	 * Dashboard Chart `timeseries` field (frappe/public/js/frappe/widgets/chart_widget.js:715)
-	 * and defaults `make_chart` to `1` (frappe/public/js/frappe/utils/utils.js:1584).
+	 * Dashboard Chart `timeseries` field (frappe/public/js/frappe/widgets/chart_widget.js:860)
+	 * and defaults `make_chart` to `1` (frappe/public/js/frappe/utils/utils.js:1627).
 	 */
 	xIsSeries?: number | boolean;
 	/** Truthy = abbreviate y-axis labels; REQUIRED for `numberFormatter` to run (utils/draw.js:327-333). */
@@ -221,10 +228,10 @@ export interface FrappeChartAxisOptions {
 	/**
 	 * Overrides the built-in `shortenLargeNumber` for y-axis labels.
 	 * Only consulted when `shortenYAxisNumbers` is truthy (utils/draw.js:327-332).
-	 * frappe passes `frappe.utils.format_chart_axis_number` (frappe/public/js/frappe/utils/utils.js:1587).
+	 * frappe passes `frappe.utils.format_chart_axis_number` (frappe/public/js/frappe/utils/utils.js:1630).
 	 */
 	numberFormatter?: (value: number) => string | number;
-	/** Fraction of the per-label slot a series label may occupy; default `SERIES_LABEL_SPACE_RATIO = 0.6` (utils/constants.js:69). frappe raises it to `0.9` past 10 labels (frappe/public/js/frappe/utils/utils.js:1616-1619). */
+	/** Fraction of the per-label slot a series label may occupy; default `SERIES_LABEL_SPACE_RATIO = 0.6` (utils/constants.js:69). frappe raises it to `0.9` past 10 labels (frappe/public/js/frappe/utils/utils.js:1659-1662). */
 	seriesLabelSpaceRatio?: number;
 	/** Clamps the computed y interval range; `utils/intervals.js:85-91` only ever WIDENS the data-derived extremes. Defaults to `{}`. */
 	yAxisRange?: { min?: number; max?: number };
@@ -260,7 +267,7 @@ export interface FrappeChartBarOptions {
  * `options.lineOptions` — `AxisChart.js:19, 306-330`.
  *
  * Only these keys are read. frappe's empty-state sample passes `hideDots: 1`
- * (`frappe/public/js/frappe/widgets/chart_widget.js:680`), a key frappe-charts
+ * (`frappe/public/js/frappe/widgets/chart_widget.js:816`), a key frappe-charts
  * never reads — the dot switches are `showDots`, `trailingDot` and
  * `hideDotBorder` (`AxisChart.js:309-311`) — so it is deliberately not declared.
  */
@@ -284,15 +291,17 @@ export interface FrappeChartLineOptions {
  *
  * The index signature is deliberate, not a shrug. Frappe genuinely funnels
  * arbitrary keys through here:
- * - `frappe/public/js/frappe/widgets/chart_widget.js:765-787` merges a Dashboard
+ * - `frappe/public/js/frappe/widgets/chart_widget.js:912-934` merges a Dashboard
  *   Chart's `custom_options` JSON blob straight into the args;
- * - `frappe/public/js/frappe/views/reports/query_report.js:1293-1312` leaves
+ * - `frappe/public/js/frappe/views/reports/query_report.js:1303-1322` leaves
  *   report-only keys (`fieldtype`, `options`) on the same object that
- *   `render_chart` hands to the constructor
- *   (`frappe/public/js/frappe/views/reports/query_report.js:1318`);
- * - `frappe/public/js/frappe/form/dashboard.js:548-555` passes `start` / `count_label` at the TOP level
- *   even though frappe-charts reads `data.start` and `options.countLabel`
- *   (those two are therefore silently ignored — see the group notes).
+ *   `render_chart` hands to `frappe.ui.chart`
+ *   (`frappe/public/js/frappe/views/reports/query_report.js:1329`), which converts
+ *   legacy frappe-charts configs and draws with frappe-charts only while System Settings keeps classic charts;
+ * - `frappe/public/js/frappe/form/dashboard.js:549-556` passes `start` / `count_label` at the TOP level to
+ *   `frappe.ui.chart` (no longer `new frappe.Chart`). frappe-charts reads `data.start` and `options.countLabel`,
+ *   so on the classic path (System Settings `use_classic_charts`) those two are silently ignored; the island path
+ *   converts them (`frappe/public/js/frappe/ui/island/chart/legacy_config.js:249,264`).
  *
  * Only the keys below are actually read by frappe-charts; everything else
  * survives into `chart.rawChartArgs` and is otherwise inert.
@@ -361,9 +370,9 @@ export interface FrappeChartOptions {
 	countLabel?: string;
 	/** Default `'Sunday'`; anything other than `'Sunday'`/`'Monday'` falls back to `'Sunday'` (Heatmap.js:25-28). */
 	startSubDomain?: "Sunday" | "Monday";
-	/** Gap between month blocks. Only an explicit `0` disables it (Heatmap.js:35). frappe passes `1` (frappe/public/js/frappe/form/dashboard.js:552). */
+	/** Gap between month blocks. Only an explicit `0` disables it (Heatmap.js:35). frappe passes `1` (frappe/public/js/frappe/form/dashboard.js:553). */
 	discreteDomains?: number | boolean;
-	/** Corner radius of a heatmap square; default `0` (Heatmap.js:105, 182). frappe passes `3` (frappe/public/js/frappe/form/dashboard.js:553). */
+	/** Corner radius of a heatmap square; default `0` (Heatmap.js:105, 182). frappe passes `3` (frappe/public/js/frappe/form/dashboard.js:554). */
 	radius?: number;
 
 	/**
@@ -1003,8 +1012,12 @@ export type FrappeChartInstance =
 /**
  * The type of the (writable) `frappe.Chart` property.
  *
- * `frappe/public/js/frappe/ui/chart.js:4` assigns frappe-charts' `Chart` here.
- * That `Chart` is not a normal class:
+ * @deprecated Since frappe v16.60, constructing `frappe.Chart` console.warns once
+ * ("use frappe.ui.chart"). Use `frappe.ui.chart(el, config)` instead
+ * (`frappe/public/js/frappe/ui/chart.js:7-12`, `:37-45`).
+ *
+ * `frappe/public/js/frappe/ui/chart.js:7-12` assigns a subclass of frappe-charts' `Chart`
+ * here (its constructor calls `deprecated(...)`, then `super()`). The base `Chart` is not a normal class:
  *
  * ```js
  * // frappe-charts/src/js/chart.js:32-36
@@ -1027,9 +1040,10 @@ export type FrappeChartInstance =
  *    (`chart.js:24-27`) returns `undefined` after `console.error`, but a base
  *    constructor returning a non-object yields `this` per [[Construct]] — so
  *    `new frappe.Chart(el, { type: "nope" })` produces an EMPTY, truthy `Chart`
- *    instance with no `parent`, `colors` or `draw`. (Frappe's own falsy guard
- *    at `frappe/public/js/frappe/form/dashboard.js:644-646` is therefore dead
- *    code.) The construct signature below returns {@link FrappeBaseChart}
+ *    instance with no `parent`, `colors` or `draw`. (Frappe's own falsy guard,
+ *    `if (!this.chart) this.hide()`, was removed in 16.60: the dashboard now
+ *    draws through `frappe.ui.chart`, `frappe/public/js/frappe/form/dashboard.js:644-652`.)
+ *    The construct signature below returns {@link FrappeBaseChart}
  *    because TypeScript cannot express "a class whose constructor returns
  *    something else"; treat that as accurate for every valid `type` and as an
  *    over-promise for an invalid one.
@@ -1046,8 +1060,12 @@ export interface FrappeChartConstructor {
 }
 
 /**
- * `frappe.ui.RealtimeChart` — frappe's only in-tree `frappe.Chart` subclass
- * (`frappe/public/js/frappe/ui/chart.js:6-39`).
+ * `frappe.ui.RealtimeChart` — a frappe-charts `Chart` subclass
+ * (`frappe/public/js/frappe/ui/chart.js:130-166`). It extends frappe-charts' `Chart`
+ * directly, NOT `frappe.Chart`, so a patch to `frappe.Chart` does not reach it.
+ *
+ * @deprecated frappe warns once ("call frappe.ui.chart and update(data) with the
+ * growing data object", `frappe/public/js/frappe/ui/chart.js:131-135`).
  *
  * Because of quirk (1) on {@link FrappeChartConstructor}, `this` after
  * `super(element, data)` is the underlying chart instance, and the three
@@ -1055,7 +1073,7 @@ export interface FrappeChartConstructor {
  * rather than living on a prototype.
  *
  * `frappe.throw`s if the initial dataset already exceeds `maxLabelPoints`
- * (`frappe/public/js/frappe/ui/chart.js:9-15`).
+ * (`frappe/public/js/frappe/ui/chart.js:137-143`).
  */
 export declare class FrappeRealtimeChart extends FrappeBaseChart {
 	/**
@@ -1063,7 +1081,7 @@ export declare class FrappeRealtimeChart extends FrappeBaseChart {
 	 * @param maxLabelPoints defaults to `8`.
 	 * @param data the full `frappe.Chart` options object — note the parameter is
 	 * named `data` but is passed straight through as `options`, and
-	 * `data.data.datasets[0].values` must exist (`frappe/public/js/frappe/ui/chart.js:9, 16`).
+	 * `data.data.datasets[0].values` must exist (`frappe/public/js/frappe/ui/chart.js:136-137`).
 	 */
 	constructor(
 		element: string | HTMLElement,
@@ -1076,7 +1094,7 @@ export declare class FrappeRealtimeChart extends FrappeBaseChart {
 	maxLabelPoints: number;
 	start_updating(): void;
 	stop_updating(): void;
-	/** Drops the oldest point once `currentSize` reaches `maxLabelPoints` (`frappe/public/js/frappe/ui/chart.js:30-37`). */
+	/** Drops the oldest point once `currentSize` reaches `maxLabelPoints` (`frappe/public/js/frappe/ui/chart.js:158-165`). */
 	update_chart(label: string, data: number[]): void;
 }
 
@@ -1093,7 +1111,7 @@ export declare class FrappeRealtimeChart extends FrappeBaseChart {
  * these 11, declared on `:root` (`frappe-charts.min.css:1-13`).
  *
  * Frappe's own SCSS re-declares 10 of them for dark mode, inside `.chart-container`
- * (every one but `--charts-legend-value`; `frappe/public/scss/desk/dark.scss:107-121`,
+ * (every one but `--charts-legend-value`; `frappe/public/scss/desk/dark.scss:108-122`,
  * within `[data-theme="dark"]` and pulled in by `frappe/public/scss/desk/variables.scss:161`).
  * No other frappe stylesheet declares a `--charts-*` property — not
  * `frappe/public/scss/desk/charts.scss`, `desk/css_variables.scss` nor the

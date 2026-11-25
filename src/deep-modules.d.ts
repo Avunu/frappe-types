@@ -19,7 +19,7 @@
  * ```
  *
  * Verified defaults:
- *   - frappe/public/js/frappe/form/grid.js:52           `export default class Grid {`
+ *   - frappe/public/js/frappe/form/grid.js:50           `export default class Grid {`
  *   - frappe/public/js/frappe/form/grid_row.js:9        `export default class GridRow {`
  *   - frappe/public/js/frappe/form/grid_row_form.js:1   `export default class GridRowForm {`
  *   - frappe/public/js/frappe/form/grid_pagination.js:1 `export default class GridPagination {`
@@ -28,7 +28,7 @@
  *
  * Nothing else is exported from grid_row.js, grid_row_form.js or
  * grid_pagination.js. grid.js is the exception: since v16.50 it also has four
- * NAMED exports, all pixel-width tables (frappe/public/js/frappe/form/grid.js:10-36):
+ * NAMED exports, all pixel-width tables (frappe/public/js/frappe/form/grid.js:8-34):
  * {@link GRID_MIN_COLUMN_WIDTH}, {@link GRID_MAX_COLUMN_WIDTH},
  * {@link DEFAULT_COLUMN_WIDTHS} and {@link LEGACY_COLSIZE_TO_PX}. They are
  * declared below and re-exported from the `frappe/public/js/frappe/form/grid`
@@ -36,10 +36,10 @@
  * module — only the default is.
  *
  * grid.js additionally has TOP-LEVEL SIDE EFFECTS: importing it defines
- * `frappe.ui.form.get_open_grid_form` (frappe/public/js/frappe/form/grid.js:38) and
- * `frappe.ui.form.close_grid_form` (frappe/public/js/frappe/form/grid.js:42), and
+ * `frappe.ui.form.get_open_grid_form` (frappe/public/js/frappe/form/grid.js:36) and
+ * `frappe.ui.form.close_grid_form` (frappe/public/js/frappe/form/grid.js:40), and
  * the module reads/writes `frappe.ui.form.editable_row`
- * (frappe/public/js/frappe/form/grid.js:47). Those three live in the
+ * (frappe/public/js/frappe/form/grid.js:45). Those three live in the
  * `frappe-ui-form` group; they are named here only so the coupling is on record.
  *
  * ---------------------------------------------------------------------------
@@ -53,7 +53,7 @@
  * `Grid#visible_columns` now holds `[docfield, width in px]` pairs
  * (frappe/public/js/frappe/form/grid.js:1514), `GridRow#make_column` and
  * `make_search_column` write the width inline as `flex: 1 0 Npx; width: Npx`
- * (frappe/public/js/frappe/form/grid_row.js:903, 963), pinned columns get their
+ * (frappe/public/js/frappe/form/grid_row.js:907, 963), pinned columns get their
  * `left` from {@link Grid.sticky_offsets}, and the header grows a drag handle
  * that persists the width to the per-user `GridView` setting
  * ({@link Grid.setup_column_resize}). A legacy `columns` value (a 1-12 span) is
@@ -64,7 +64,7 @@
  * ---------------------------------------------------------------------------
  * HOW THE SPECIFIER RESOLVES
  * ---------------------------------------------------------------------------
- * esbuild (frappe/esbuild/esbuild.js:92-97, 327) sets
+ * esbuild (frappe/esbuild/esbuild.js:93-98, 327) sets
  *
  *   nodePaths: [ ...<apps>/<app>/node_modules, ...<apps>/<app> ]
  *
@@ -162,21 +162,21 @@ import type {
 
 /**
  * The value `frappe.utils.debounce` returns
- * (frappe/public/js/frappe/utils/utils.js:928-963).
+ * (frappe/public/js/frappe/utils/utils.js:930-965).
  *
  * The wrapper forwards `this` and every argument, returns `undefined`, and
  * carries a `cancel()` that reports whether a pending call was actually dropped
- * (frappe/public/js/frappe/utils/utils.js:945-951) and a `flush()` that runs the
- * pending call right now (frappe/public/js/frappe/utils/utils.js:953-960).
+ * (frappe/public/js/frappe/utils/utils.js:947-953) and a `flush()` that runs the
+ * pending call right now (frappe/public/js/frappe/utils/utils.js:955-962).
  *
  * If the `frappe-utils-dom-router` group ends up exporting a `Debounced<T>`,
  * delete this and import that one instead.
  */
 export interface Debounced<TArgs extends readonly unknown[] = []> {
 	(...args: TArgs): void;
-	/** `false` when there was no pending call to cancel (frappe/public/js/frappe/utils/utils.js:946). */
+	/** `false` when there was no pending call to cancel (frappe/public/js/frappe/utils/utils.js:948). */
 	cancel(): boolean;
-	/** `false` when there was no pending call to run; otherwise cancels the timer, runs the call with the last-seen `this` and arguments, and returns `true` (frappe/public/js/frappe/utils/utils.js:953-960). */
+	/** `false` when there was no pending call to run; otherwise cancels the timer, runs the call with the last-seen `this` and arguments, and returns `true` (frappe/public/js/frappe/utils/utils.js:955-962). */
 	flush(): boolean;
 }
 
@@ -191,7 +191,7 @@ export type JQueryClickHandler = (event: unknown) => unknown;
 
 /**
  * The sortablejs instance stored on `Grid#grid_sortable`
- * (frappe/public/js/frappe/form/grid.js:914).
+ * (frappe/public/js/frappe/form/grid.js:913).
  *
  * `Sortable` is a bare GLOBAL in frappe (no import in grid.js or grid_row.js —
  * it comes from the libs bundle, `frappe/public/js/libs.bundle.js:3`). sortablejs
@@ -200,7 +200,7 @@ export type JQueryClickHandler = (event: unknown) => unknown;
  * calls on it, read from `sortablejs@1.15.7/Sortable.js:2154`) are declared.
  */
 export interface GridSortable {
-	/** frappe/public/js/frappe/form/grid_row.js:295, 940 — `option("disabled", …)` freezes dragging while a column filter is active. */
+	/** frappe/public/js/frappe/form/grid_row.js:299, 940 — `option("disabled", …)` freezes dragging while a column filter is active. */
 	option(name: string, value?: unknown): unknown;
 	destroy(): void;
 }
@@ -214,24 +214,24 @@ export interface GridSortable {
  * not schema.
  */
 export interface GridDocField extends DocField {
-	/** frappe/public/js/frappe/form/grid.js:209-211 — called once at the end of `Grid#make()` with the grid. */
+	/** frappe/public/js/frappe/form/grid.js:207-209 — called once at the end of `Grid#make()` with the grid. */
 	on_setup?: (grid: Grid) => void;
 	/**
 	 * Suppresses "Add row"/"Duplicate". Read at
-	 * frappe/public/js/frappe/form/grid.js:298, 446, 484, 819, 1184 and
-	 * frappe/public/js/frappe/form/grid_row.js:1397. The grid-level
+	 * frappe/public/js/frappe/form/grid.js:296, 446, 484, 819, 1184 and
+	 * frappe/public/js/frappe/form/grid_row.js:1398. The grid-level
 	 * {@link Grid.cannot_add_rows} is checked beside it everywhere except `:480`,
 	 * which looks at the docfield only.
 	 */
 	cannot_add_rows?: boolean | 0 | 1;
-	/** frappe/public/js/frappe/form/grid.js:438; frappe/public/js/frappe/form/grid_row.js:1404 — suppresses "Delete". */
+	/** frappe/public/js/frappe/form/grid.js:436; frappe/public/js/frappe/form/grid_row.js:1405 — suppresses "Delete". */
 	cannot_delete_rows?: boolean | 0 | 1;
-	/** frappe/public/js/frappe/form/grid_row.js:330, 369 — no open-form button and no Configure-Columns gear. */
+	/** frappe/public/js/frappe/form/grid_row.js:334, 369 — no open-form button and no Configure-Columns gear. */
 	in_place_edit?: boolean | 0 | 1;
 	/**
-	 * frappe/public/js/frappe/form/grid.js:674 — grid rendered inside a Web Form;
+	 * frappe/public/js/frappe/form/grid.js:672 — grid rendered inside a Web Form;
 	 * `display_status` then comes from `control.get_status()`
-	 * (frappe/public/js/frappe/form/grid.js:675). Also read by
+	 * (frappe/public/js/frappe/form/grid.js:673). Also read by
 	 * `controls/base_control.js:56`.
 	 *
 	 * §2b UNION FIX — this copy had `0 | 1`, `ui/form.d.ts` had `boolean | 0 | 1`.
@@ -241,29 +241,29 @@ export interface GridDocField extends DocField {
 	 * a checkbox slot that JS also writes as a boolean.
 	 */
 	is_web_form?: FrappeCheckLoose;
-	/** frappe/public/js/frappe/form/grid.js:244, 251 — renders a `?` link next to the label. */
+	/** frappe/public/js/frappe/form/grid.js:242, 251 — renders a `?` link next to the label. */
 	documentation_url?: string;
 	/**
 	 * The row array for a grid with NO `frm` (dialogs, web forms). Read at
-	 * frappe/public/js/frappe/form/grid.js:962 and :968 (`get_filtered_data`);
+	 * frappe/public/js/frappe/form/grid.js:961 and :967 (`get_filtered_data`);
 	 * `Grid#add_new_row` creates it from `get_data()` when absent and pushes onto
-	 * it in place (frappe/public/js/frappe/form/grid.js:1206-1215).
+	 * it in place (frappe/public/js/frappe/form/grid.js:1205-1214).
 	 * `GridRow#remove` splices it in place for the reason its own comment gives —
 	 * "else the object reference will be lost"
-	 * (frappe/public/js/frappe/form/grid_row.js:130-136) — but `Grid#delete_rows`
+	 * (frappe/public/js/frappe/form/grid_row.js:127-133) — but `Grid#delete_rows`
 	 * first REASSIGNS it to a filtered copy
-	 * (frappe/public/js/frappe/form/grid.js:368-371), so a reference held across a
+	 * (frappe/public/js/frappe/form/grid.js:366-369), so a reference held across a
 	 * multi-row delete goes stale.
 	 */
 	data?: ChildDoc[];
-	/** frappe/public/js/frappe/form/grid.js:1029; frappe/public/js/frappe/form/grid_row.js:124-125 — alternative row source, filtered by `Grid#deleted_docs`. */
+	/** frappe/public/js/frappe/form/grid.js:1028; frappe/public/js/frappe/form/grid_row.js:124-125 — alternative row source, filtered by `Grid#deleted_docs`. */
 	get_data?: () => ChildDoc[];
-	/** frappe/public/js/frappe/form/grid.js:1216 — called with the 1-based idx of a row appended to `df.data`. */
+	/** frappe/public/js/frappe/form/grid.js:1215 — called with the 1-based idx of a row appended to `df.data`. */
 	on_add_row?: (idx: number) => void;
 	/**
 	 * Pin the column to the left. NOT a stored DocField property — it arrives from
 	 * the per-user GridView setting (frappe/public/js/frappe/form/grid.js:1563) and
-	 * is read at frappe/public/js/frappe/form/grid_row.js:964. The pinned column's
+	 * is read at frappe/public/js/frappe/form/grid_row.js:968. The pinned column's
 	 * `left` comes from `Grid#get_sticky_offset`, which sums the widths of the
 	 * pinned columns before it (frappe/public/js/frappe/form/grid.js:1518-1527).
 	 */
@@ -283,7 +283,7 @@ export interface GridDocField extends DocField {
 	 *     `df.width` first (frappe/public/js/frappe/form/grid.js:1537), through
 	 *     `clamp_column_width`, and WRITES a number there — from the per-user
 	 *     setting (frappe/public/js/frappe/form/grid.js:1562) and from a header
-	 *     drag (frappe/public/js/frappe/form/grid.js:607). `columns`, the legacy
+	 *     drag (frappe/public/js/frappe/form/grid.js:605). `columns`, the legacy
 	 *     1-12 span, is likewise `DocField#columns`.
 	 */
 }
@@ -291,31 +291,31 @@ export interface GridDocField extends DocField {
 /**
  * One active column filter, keyed by fieldname in `Grid#filter`.
  *
- * Built at frappe/public/js/frappe/form/grid_row.js:930-933 (a column's search
- * input) and frappe/public/js/frappe/form/grid_row.js:285-288 (the row-index
+ * Built at frappe/public/js/frappe/form/grid_row.js:934-937 (a column's search
+ * input) and frappe/public/js/frappe/form/grid_row.js:289-292 (the row-index
  * input, whose `df` is the synthetic `{ fieldtype: "Sr No" }` at
- * frappe/public/js/frappe/form/grid_row.js:281-283 — a fieldtype that exists
- * nowhere else in frappe). Consumed at frappe/public/js/frappe/form/grid.js:972-977.
+ * frappe/public/js/frappe/form/grid_row.js:285-287 — a fieldtype that exists
+ * nowhere else in frappe). Consumed at frappe/public/js/frappe/form/grid.js:971-976.
  */
 export interface GridFilter {
 	df: GridDocField;
-	/** Raw input value; `Grid#get_filtered_data` lowercases it before matching (frappe/public/js/frappe/form/grid.js:975). */
+	/** Raw input value; `Grid#get_filtered_data` lowercases it before matching (frappe/public/js/frappe/form/grid.js:974). */
 	value: string;
 }
 
 /**
  * A bag of control properties merged onto the real control later.
  *
- * `Grid#get_field(fieldname)` lazily creates one (grid.js:1161) purely so app code
+ * `Grid#get_field(fieldname)` lazily creates one (grid.js:1160) purely so app code
  * has somewhere to hang `get_query` before the control exists; it is then copied
- * onto the on-grid control (grid_row.js:1164) and `$.extend`-ed onto the grid form's
+ * onto the on-grid control (grid_row.js:1168) and `$.extend`-ed onto the grid form's
  * control (grid_row_form.js:31-33). Genuinely open — the source only ever names
  * `get_query`, but nothing restricts it.
  */
 export interface GridFieldInfo {
 	/**
 	 * The only key frappe itself ever names. Copied onto the on-grid control at
-	 * grid_row.js:1164 (`field.get_query = this.grid.get_field(df.fieldname).get_query`),
+	 * grid_row.js:1168 (`field.get_query = this.grid.get_field(df.fieldname).get_query`),
 	 * onto the bulk-edit dialog's docfield at grid.js:1423-1424
 	 * (`if (grid_field?.get_query) new_df.get_query = grid_field.get_query`), and
 	 * `$.extend`-ed onto the grid form's control at grid_row_form.js:30-33.
@@ -337,28 +337,28 @@ export interface GridFieldInfo {
 
 /**
  * A rendered grid cell: the `div.col.grid-static-col` jQuery object from
- * `GridRow#make_column` (frappe/public/js/frappe/form/grid_row.js:959-1083) with
+ * `GridRow#make_column` (frappe/public/js/frappe/form/grid_row.js:963-1087) with
  * the expandos frappe stamps onto it. This is what `GridRow#columns` and
  * `GridRow#columns_list` hold.
  *
  * NOTE the cells built by `make_search_column`
- * (frappe/public/js/frappe/form/grid_row.js:909-913) are plain `JQuery` — they
+ * (frappe/public/js/frappe/form/grid_row.js:913-917) are plain `JQuery` — they
  * carry none of these expandos and are stored separately in
  * `GridRow#search_columns`. Both kinds are pixel-sized inline
  * (`flex: 1 0 Npx; width: Npx`) and carry `data-fieldname`.
  */
 export interface GridColumn extends JQuery {
-	/** grid_row.js:1066 — the docfield this cell renders. */
+	/** grid_row.js:1070 — the docfield this cell renders. */
 	df: GridDocField;
-	/** grid_row.js:1067 — index into `Grid#visible_columns`. */
+	/** grid_row.js:1071 — index into `Grid#visible_columns`. */
 	column_index: number;
-	/** grid_row.js:1051 — holds the live control while the row is editable; hidden otherwise. */
+	/** grid_row.js:1055 — holds the live control while the row is editable; hidden otherwise. */
 	field_area: JQuery;
-	/** grid_row.js:1052 — holds the formatted read-only text. */
+	/** grid_row.js:1056 — holds the formatted read-only text. */
 	static_area: JQuery;
-	/** grid_row.js:1210 — set by `make_control`; absent until the row is first activated. */
+	/** grid_row.js:1214 — set by `make_control`; absent until the row is first activated. */
 	field?: BaseControl;
-	/** base_input.js:282 sets this from control validation; read at grid_row.js:747. */
+	/** base_input.js:282 sets this from control validation; read at grid_row.js:751. */
 	is_invalid?: boolean;
 }
 
@@ -367,12 +367,12 @@ export interface GridColumn extends JQuery {
  * (`GridRow#selected_columns_for_grid`), which is also what gets saved as the
  * stored `GridView` user setting.
  *
- * Built from the live columns at frappe/public/js/frappe/form/grid_row.js:426-430,
- * from a newly added field at frappe/public/js/frappe/form/grid_row.js:502-506,
+ * Built from the live columns at frappe/public/js/frappe/form/grid_row.js:430-434,
+ * from a newly added field at frappe/public/js/frappe/form/grid_row.js:506-510,
  * and re-read from the dialog's inputs at
- * frappe/public/js/frappe/form/grid_row.js:623-627; saved at
- * frappe/public/js/frappe/form/grid_row.js:692-694. A header drag saves the same
- * shape (frappe/public/js/frappe/form/grid.js:604-616).
+ * frappe/public/js/frappe/form/grid_row.js:627-631; saved at
+ * frappe/public/js/frappe/form/grid_row.js:696-698. A header drag saves the same
+ * shape (frappe/public/js/frappe/form/grid.js:602-614).
  *
  * v16.50 renamed the width slot: through v16.33 it was `columns`, a 1-12
  * Bootstrap span; it is now `width`, in PIXELS. Settings saved by an older
@@ -389,7 +389,7 @@ export interface GridColumnSetting {
 
 /**
  * An option for the MultiCheck field in the "Add / Remove Columns" dialog
- * (frappe/public/js/frappe/form/grid_row.js:532-536, 547-551).
+ * (frappe/public/js/frappe/form/grid_row.js:536-540, 547-551).
  */
 export interface GridFieldChoice {
 	label: string;
@@ -404,11 +404,11 @@ export interface GridFieldChoice {
  * stored document.
  */
 export interface GridChildDoc extends ChildDoc {
-	/** Selection state. Written 0/1 by `GridRow#select` (frappe/public/js/frappe/form/grid_row.js:83); read by `Grid#get_selected*` (frappe/public/js/frappe/form/grid.js:497, 501). */
+	/** Selection state. Written 0/1 by `GridRow#select` (frappe/public/js/frappe/form/grid_row.js:83); read by `Grid#get_selected*` (frappe/public/js/frappe/form/grid.js:495, 501). */
 	__checked?: 0 | 1;
-	/** frappe/public/js/frappe/form/grid.js:1202 — set on a freshly appended row. */
+	/** frappe/public/js/frappe/form/grid.js:1201 — set on a freshly appended row. */
 	__unedited?: boolean;
-	/** Explicitly `false` disables drag-reorder for this row (frappe/public/js/frappe/form/grid.js:933; frappe/public/js/frappe/form/grid_row.js:165). */
+	/** Explicitly `false` disables drag-reorder for this row (frappe/public/js/frappe/form/grid.js:932; frappe/public/js/frappe/form/grid_row.js:162). */
 	_sortable?: false;
 }
 
@@ -418,21 +418,21 @@ export interface GridChildDoc extends ChildDoc {
 
 /**
  * Smallest column width, in px, the grid will lay out
- * (frappe/public/js/frappe/form/grid.js:10). Named export of the
+ * (frappe/public/js/frappe/form/grid.js:8). Named export of the
  * `frappe/public/js/frappe/form/grid` module — not a `Grid` static.
  */
 export declare const GRID_MIN_COLUMN_WIDTH: 60;
 
 /**
  * Largest column width, in px, the grid will lay out
- * (frappe/public/js/frappe/form/grid.js:11). Named export of the
+ * (frappe/public/js/frappe/form/grid.js:9). Named export of the
  * `frappe/public/js/frappe/form/grid` module.
  */
 export declare const GRID_MAX_COLUMN_WIDTH: 600;
 
 /**
  * Default column width in px by fieldtype, for a column with no per-user width
- * and no legacy `columns` span (frappe/public/js/frappe/form/grid.js:12-21).
+ * and no legacy `columns` span (frappe/public/js/frappe/form/grid.js:10-19).
  *
  * Only eight fieldtypes have an entry — Text, Small Text, Long Text, Check,
  * Int, Float, Currency and Percent — and every other fieldtype misses
@@ -446,7 +446,7 @@ export declare const DEFAULT_COLUMN_WIDTHS: Readonly<Record<string, number>>;
 /**
  * The v16.33 Bootstrap-span -> pixel table, kept so a docfield's `columns: N`
  * (N in 1-12) and old `GridView` user settings still resolve to a width
- * (frappe/public/js/frappe/form/grid.js:23-36). Keys are exactly 1 to 12
+ * (frappe/public/js/frappe/form/grid.js:21-34). Keys are exactly 1 to 12
  * (60, 100, 140, 200, 250, 300, 350, 400, 450, 500, 550, 600); any other key
  * misses, which `Grid#get_column_width` and `Grid#setup_user_defined_columns`
  * rely on (frappe/public/js/frappe/form/grid.js:1538, 1562). Named export of
@@ -458,22 +458,22 @@ export declare const LEGACY_COLSIZE_TO_PX: Readonly<Record<number, number>>;
  * Constructor options for {@link Grid}.
  *
  * The constructor is `constructor(opts) { $.extend(this, opts); … }`
- * (grid.js:53-54), so EVERY key of `opts` lands on the instance verbatim. The
+ * (grid.js:51-52), so EVERY key of `opts` lands on the instance verbatim. The
  * index signature records that; keys beyond the four named ones are untyped.
  *
  * The canonical call site is `frappe.ui.form.ControlTable#make`
  * (controls/table.js:8-13).
  */
 export interface GridOptions {
-	/** The Table docfield. `df.options` names the child DocType and becomes `Grid#doctype` (grid.js:56). */
+	/** The Table docfield. `df.options` names the child DocType and becomes `Grid#doctype` (grid.js:54). */
 	df: GridDocField;
-	/** Where `make()` appends the grid markup (grid.js:173-174). jQuery in every in-tree call site. */
+	/** Where `make()` appends the grid markup (grid.js:171-172). jQuery in every in-tree call site. */
 	parent: JQuery | HTMLElement;
 	/** Absent for grids outside a form — dialogs, web forms, `MultiSelectDialog`. Most of `Grid` branches on it. */
 	frm?: Form;
-	/** The owning `frappe.ui.form.ControlTable`; supplies `perm` (grid.js:84) and `get_status()` (grid.js:675). */
+	/** The owning `frappe.ui.form.ControlTable`; supplies `perm` (grid.js:82) and `get_status()` (grid.js:673). */
 	control?: ControlTable;
-	/** `$.extend(this, opts)` (grid.js:54) copies any other key straight onto the instance. */
+	/** `$.extend(this, opts)` (grid.js:52) copies any other key straight onto the instance. */
 	[key: string]: unknown;
 }
 
@@ -484,16 +484,16 @@ export interface GridOptions {
  * that constructs it (controls/table.js:8), so replacing the grid means patching
  * that one method and constructing your subclass instead.
  *
- * @see grid.js:52
+ * @see grid.js:50
  */
 export declare class Grid {
 	constructor(opts: GridOptions);
 
 	// ---------------------------------------------------------------- from opts
 
-	/** The Table docfield. REASSIGNED on every `refresh()` by `setup_fields()` (grid.js:852-864) — do not cache it. */
+	/** The Table docfield. REASSIGNED on every `refresh()` by `setup_fields()` (grid.js:851-863) — do not cache it. */
 	df: GridDocField;
-	/** grid.js:173-174, and the target of most `$(this.parent).find(...)` lookups. */
+	/** grid.js:171-172, and the target of most `$(this.parent).find(...)` lookups. */
 	parent: JQuery | HTMLElement;
 	/** Absent outside a form. */
 	frm?: Form;
@@ -502,15 +502,15 @@ export declare class Grid {
 
 	// -------------------------------------------------------- set in constructor
 
-	/** grid.js:55 — see {@link GridFieldInfo}. */
+	/** grid.js:53 — see {@link GridFieldInfo}. */
 	fieldinfo: Record<string, GridFieldInfo>;
-	/** `this.df.options` (grid.js:56) — the child DocType. `undefined` when the docfield names none. */
+	/** `this.df.options` (grid.js:54) — the child DocType. `undefined` when the docfield names none. */
 	doctype: string | undefined;
 	/**
 	 * Left offset (px) per pinned column, keyed by fieldname. Starts as `{}`
-	 * (frappe/public/js/frappe/form/grid.js:58) and is REBUILT from scratch — never
+	 * (frappe/public/js/frappe/form/grid.js:56) and is REBUILT from scratch — never
 	 * patched — by `setup_visible_columns` (frappe/public/js/frappe/form/grid.js:1520-1527)
-	 * and `save_column_width` (frappe/public/js/frappe/form/grid.js:620-630). The
+	 * and `save_column_width` (frappe/public/js/frappe/form/grid.js:618-628). The
 	 * first pinned column sits at 71 (the row-check and row-index gutters); each
 	 * further one is offset by the widths of the pinned columns before it. Read
 	 * through {@link Grid.get_sticky_offset}, which supplies the 71 for a column
@@ -519,116 +519,116 @@ export declare class Grid {
 	 * Replaces `sticky_row_sum` and `sticky_rows`, which v16.50 removed.
 	 */
 	sticky_offsets: Record<string, number>;
-	/** `frappe.get_meta(this.doctype)` (grid.js:61); absent when `doctype` is. */
+	/** `frappe.get_meta(this.doctype)` (grid.js:59); absent when `doctype` is. */
 	meta?: DocTypeMeta;
-	/** fieldname → docfield, rebuilt on every `setup_fields()` (frappe/public/js/frappe/form/grid.js:63, 877-879). */
+	/** fieldname → docfield, rebuilt on every `setup_fields()` (frappe/public/js/frappe/form/grid.js:61, 877-879). */
 	fields_map: Record<string, GridDocField>;
 	/**
 	 * Grid-LOCAL `hidden` overrides set by `set_column_disp_in_list_view`
-	 * (frappe/public/js/frappe/form/grid.js:67, 1061). Deliberately not written
+	 * (frappe/public/js/frappe/form/grid.js:65, 1061). Deliberately not written
 	 * back onto the shared `frappe.meta` docfield, so two grids of the same child
 	 * doctype on one form stay independent
-	 * (frappe/public/js/frappe/form/grid.js:64-66, 895-907).
+	 * (frappe/public/js/frappe/form/grid.js:62-64, 895-907).
 	 */
 	column_disp_overrides: Record<string, 0 | 1>;
-	/** The custom render template from `frm.meta.__form_grid_templates[df.fieldname]` (frappe/public/js/frappe/form/grid.js:68, 75); rendered at frappe/public/js/frappe/form/grid_row.js:225. */
+	/** The custom render template from `frm.meta.__form_grid_templates[df.fieldname]` (frappe/public/js/frappe/form/grid.js:66, 75); rendered at frappe/public/js/frappe/form/grid_row.js:229. */
 	template: string | null;
 	/**
-	 * `set_multiple_add` has run (frappe/public/js/frappe/form/grid.js:69, 1587,
+	 * `set_multiple_add` has run (frappe/public/js/frappe/form/grid.js:67, 1587,
 	 * 1604) — it guards that method against double-binding. Since v16.50 it also
 	 * gates the "Add multiple" button: `setup_check` and `setup_toolbar` keep
 	 * `.grid-add-multiple-rows` hidden unless this is set
-	 * (frappe/public/js/frappe/form/grid.js:305, 830-832).
+	 * (frappe/public/js/frappe/form/grid.js:303, 830-832).
 	 */
 	multiple_set: boolean;
-	/** Active column filters, keyed by fieldname plus the literal key `"row-index"` (frappe/public/js/frappe/form/grid_row.js:285). frappe/public/js/frappe/form/grid.js:77. */
+	/** Active column filters, keyed by fieldname plus the literal key `"row-index"` (frappe/public/js/frappe/form/grid_row.js:289). frappe/public/js/frappe/form/grid.js:75. */
 	filter: Record<string, GridFilter>;
-	/** grid.js:78 — the duck-type marker other desk code checks for. */
+	/** grid.js:76 — the duck-type marker other desk code checks for. */
 	readonly is_grid: true;
-	/** `refresh` debounced by 100ms (grid.js:79-80). Every `toggle_*`/`set_column_disp` path ends here. */
+	/** `refresh` debounced by 100ms (grid.js:77-78). Every `toggle_*`/`set_column_disp` path ends here. */
 	debounced_refresh: Debounced;
-	/** Class field, grid.js:478-481. NOTE it is NOT bound — it is `frappe.utils.debounce(this.refresh_remove_rows_button, 100)`, and `debounce` forwards `this` from the call site (utils.js:937), so it only works when invoked as `grid.debounced_refresh_remove_rows_button()`. Called that way at grid_row.js:89. */
+	/** Class field, grid.js:476-479. NOTE it is NOT bound — it is `frappe.utils.debounce(this.refresh_remove_rows_button, 100)`, and `debounce` forwards `this` from the call site (utils.js:939), so it only works when invoked as `grid.debounced_refresh_remove_rows_button()`. Called that way at grid_row.js:89. */
 	debounced_refresh_remove_rows_button: Debounced;
-	/** Class field, grid.js:491-494. Same `this`-forwarding caveat as above. */
+	/** Class field, grid.js:489-492. Same `this`-forwarding caveat as above. */
 	debounced_duplicate_rows_button: Debounced;
 
 	// -------------------------------------------------------------- set in make()
 
 	/**
-	 * The `.grid-field` root — `$(template).appendTo(this.parent)` (grid.js:173).
+	 * The `.grid-field` root — `$(template).appendTo(this.parent)` (grid.js:171).
 	 *
 	 * A {@link JQueryRegion}, not a plain `JQuery`: it is built from a literal
 	 * template string, so `wrapper[0]` / `wrapper.get(0)` never need a `!`.
 	 * Also REQUIRED, not optional (gaps.md §5.3): `refresh()` guards with
-	 * `!this.wrapper && this.make()` (grid.js:663), so by the time any caller
+	 * `!this.wrapper && this.make()` (grid.js:661), so by the time any caller
 	 * holds a rendered grid it is set. `.find(...)` off it is still a plain
 	 * possibly-empty `JQuery`.
 	 */
 	wrapper: JQueryRegion;
-	/** `.form-grid` — the element a replacement renderer takes over (grid.js:180). */
+	/** `.form-grid` — the element a replacement renderer takes over (grid.js:178). */
 	form_grid: JQuery;
-	/** label → button, for `add_custom_button` (frappe/public/js/frappe/form/grid.js:199, 1721-1727). */
+	/** label → button, for `add_custom_button` (frappe/public/js/frappe/form/grid.js:197, 1721-1727). */
 	custom_buttons: Record<string, JQuery>;
 	/**
-	 * `.grid-buttons` (frappe/public/js/frappe/form/grid.js:200). Since v16.50 every
+	 * `.grid-buttons` (frappe/public/js/frappe/form/grid.js:198). Since v16.50 every
 	 * button in it is an `.es-button` built by `frappe.ui.button.html`
-	 * (frappe/public/js/frappe/form/grid.js:116-152) whose label lives in a
+	 * (frappe/public/js/frappe/form/grid.js:114-150) whose label lives in a
 	 * `.es-button__label` span — see {@link Grid.set_button_label}.
 	 */
 	grid_buttons: JQuery;
-	/** `.grid-custom-buttons` — the `position: "top"` slot (frappe/public/js/frappe/form/grid.js:201). */
+	/** `.grid-custom-buttons` — the `position: "top"` slot (frappe/public/js/frappe/form/grid.js:199). */
 	grid_custom_buttons: JQuery;
-	/** `.grid-remove-rows`, an `.es-button` (frappe/public/js/frappe/form/grid.js:202). */
+	/** `.grid-remove-rows`, an `.es-button` (frappe/public/js/frappe/form/grid.js:200). */
 	remove_rows_button: JQuery;
-	/** `.grid-edit-rows`, an `.es-button` (frappe/public/js/frappe/form/grid.js:203). */
+	/** `.grid-edit-rows`, an `.es-button` (frappe/public/js/frappe/form/grid.js:201). */
 	edit_rows_button: JQuery;
-	/** `.grid-duplicate-rows`, an `.es-button` (frappe/public/js/frappe/form/grid.js:204). */
+	/** `.grid-duplicate-rows`, an `.es-button` (frappe/public/js/frappe/form/grid.js:202). */
 	duplicate_rows_button: JQuery;
-	/** `.grid-remove-all-rows`, an `.es-button` (frappe/public/js/frappe/form/grid.js:205). */
+	/** `.grid-remove-all-rows`, an `.es-button` (frappe/public/js/frappe/form/grid.js:203). */
 	remove_all_rows_button: JQuery;
-	/** grid.js:257. */
+	/** grid.js:255. */
 	grid_pagination: GridPagination;
 
 	// ------------------------------------------------- set in refresh()/make_head()
 
-	/** `Object.keys(this.filter).length !== 0` (grid.js:660). */
+	/** `Object.keys(this.filter).length !== 0` (grid.js:658). */
 	filter_applied: boolean;
 	/**
-	 * The rows currently being rendered (frappe/public/js/frappe/form/grid.js:661).
+	 * The rows currently being rendered (frappe/public/js/frappe/form/grid.js:659).
 	 *
 	 * DISCREPANCY: `get_filtered_data()` returns `undefined` when the underlying
-	 * array is missing (frappe/public/js/frappe/form/grid.js:970), so `this.data`
+	 * array is missing (frappe/public/js/frappe/form/grid.js:969), so `this.data`
 	 * CAN be `undefined` for one refresh on a filtered, dataless grid — after
 	 * which `GridPagination#update_page_numbers`
 	 * (frappe/public/js/frappe/form/grid_pagination.js:102) and
-	 * frappe/public/js/frappe/form/grid.js:697, 805 would throw. That is a latent
+	 * frappe/public/js/frappe/form/grid.js:695, 805 would throw. That is a latent
 	 * upstream bug; the field is declared as an array because every other path
 	 * guarantees one and typing it nullable would force guards on code that
 	 * upstream itself does not guard.
 	 */
 	data: GridChildDoc[];
-	/** grid.js:669-679. `"None"` short-circuits the rest of `refresh()` (grid.js:681). */
+	/** grid.js:667-677. `"None"` short-circuits the rest of `refresh()` (grid.js:679). */
 	display_status: "Write" | "Read" | "None";
-	/** The previous `display_status` (grid.js:709). */
+	/** The previous `display_status` (grid.js:707). */
 	last_display_status: "Write" | "Read" | "None";
-	/** grid.js:710. */
+	/** grid.js:708. */
 	last_docname: string | undefined;
-	/** All child docfields, after the mask and column-disp overrides (frappe/public/js/frappe/form/grid.js:868-875). */
+	/** All child docfields, after the mask and column-disp overrides (frappe/public/js/frappe/form/grid.js:867-874). */
 	docfields: GridDocField[];
 	/**
 	 * Rows for the CURRENT page, indexed by ABSOLUTE row index.
 	 *
 	 * SPARSE by design: `delete this.grid_rows[i]` clears every slot outside the
-	 * page (frappe/public/js/frappe/form/grid.js:799-803), which is why upstream
-	 * itself writes `if (!row) continue` (frappe/public/js/frappe/form/grid.js:1746)
-	 * and `this.grid_rows[i]?.` (frappe/public/js/frappe/form/grid.js:1772).
+	 * page (frappe/public/js/frappe/form/grid.js:797-801), which is why upstream
+	 * itself writes `if (!row) continue` (frappe/public/js/frappe/form/grid.js:1665)
+	 * and `this.grid_rows[i]?.` (frappe/public/js/frappe/form/grid.js:1691).
 	 */
 	grid_rows: Array<GridRow | undefined>;
-	/** docname → row, rebuilt from scratch on every refresh (frappe/public/js/frappe/form/grid.js:692, 772). */
+	/** docname → row, rebuilt from scratch on every refresh (frappe/public/js/frappe/form/grid.js:690, 772). */
 	grid_rows_by_docname: Record<string, GridRow>;
-	/** The header GridRow — `configure_columns: true, header_row: true` (grid.js:522-530). */
+	/** The header GridRow — `configure_columns: true, header_row: true` (grid.js:520-528). */
 	header_row: GridRow;
-	/** The filter GridRow — `show_search: true` (grid.js:532-539). */
+	/** The filter GridRow — `show_search: true` (grid.js:530-537). */
 	header_search: GridRow;
 	/**
 	 * `[docfield, width]` pairs; the width is in PIXELS, from
@@ -637,7 +637,7 @@ export declare class Grid {
 	 * was a Bootstrap 1-12 span, redistributed to fill 11 spans; v16.50 removed
 	 * the span and the redistribution (see the header). `save_column_width`
 	 * updates a pair's width in place on a header drag
-	 * (frappe/public/js/frappe/form/grid.js:609).
+	 * (frappe/public/js/frappe/form/grid.js:607).
 	 *
 	 * `null` AFTER a full refresh, not just before the first one:
 	 * `FrappeForm#switch_doc` writes `grid.visible_columns = null` on every grid
@@ -651,14 +651,14 @@ export declare class Grid {
 	 * first, which rebuilds when it is `null` or empty
 	 * (frappe/public/js/frappe/form/grid.js:1479). `reset_grid` and
 	 * `set_column_disp_in_list_view` reset it to `[]` through
-	 * `_teardown_column_layout` (frappe/public/js/frappe/form/grid.js:504-508).
+	 * `_teardown_column_layout` (frappe/public/js/frappe/form/grid.js:502-506).
 	 */
 	visible_columns: Array<[GridDocField, number]> | null;
 	/** Column order/width from the per-user GridView setting; empty when none (frappe/public/js/frappe/form/grid.js:1481, 1548-1569). */
 	user_defined_columns: GridDocField[];
-	/** grid.js:706. */
+	/** grid.js:704. */
 	sortable_setup_done: boolean;
-	/** grid.js:914 — only created when `is_sortable()` and not already set up. */
+	/** grid.js:913 — only created when `is_sortable()` and not already set up. */
 	grid_sortable: GridSortable;
 
 	// ------------------------------------------------------ set by callers, not here
@@ -669,13 +669,13 @@ export declare class Grid {
 	 * Never assigned inside grid.js.
 	 */
 	editable_fields?: GridDocField[];
-	/** Suppresses header rebuilds while a search keystroke re-renders (grid.js:516; set at grid_row.js:301-303). */
+	/** Suppresses header rebuilds while a search keystroke re-renders (grid.js:514; set at grid_row.js:305-307). */
 	prevent_build?: boolean;
-	/** Anchor for shift-click range selection (grid.js:287-291). */
+	/** Anchor for shift-click range selection (grid.js:285-289). */
 	last_checked_docname?: string;
-	/** docnames to exclude from `get_modal_data()` (grid.js:1031). Set by `MultiSelectDialog`-style callers. */
+	/** docnames to exclude from `get_modal_data()` (grid.js:1030). Set by `MultiSelectDialog`-style callers. */
 	deleted_docs?: string[];
-	/** Grid-level (rather than docfield-level) "Add row" suppression (frappe/public/js/frappe/form/grid.js:297, 446, 818, 1184; frappe/public/js/frappe/form/grid_row.js:1397). */
+	/** Grid-level (rather than docfield-level) "Add row" suppression (frappe/public/js/frappe/form/grid.js:295, 446, 818, 1184; frappe/public/js/frappe/form/grid_row.js:1398). */
 	cannot_add_rows?: boolean;
 	/** Set by `only_sortable()` (grid.js:1582) — rows may be reordered but not edited. */
 	static_rows?: boolean;
@@ -687,7 +687,7 @@ export declare class Grid {
 	// ---------------------------------------------------------------- accessors
 
 	/**
-	 * `this.control?.perm || this.frm?.perm || this.df.perm` (grid.js:83-85).
+	 * `this.control?.perm || this.frm?.perm || this.df.perm` (grid.js:81-83).
 	 *
 	 * One entry per permlevel, each a map of right → 0|1 plus `permlevel`
 	 * (frappe/public/js/frappe/model/perm.js:82 builds
@@ -701,7 +701,7 @@ export declare class Grid {
 	 * this one spelled the element type inline as
 	 * `Record<string, 0 | 1 | number>`; `ui/form.d.ts` used
 	 * `readonly perm: Permission[]`. The MERGE of what each got right is kept:
-	 * - the ACCESSOR form from HERE, because grid.js:83-88 really is a getter
+	 * - the ACCESSOR form from HERE, because grid.js:81-86 really is a getter
 	 *   WITH a setter (the setter console.errors and discards), so `readonly`
 	 *   was wrong;
 	 * - the ELEMENT TYPE from THERE, because `model.d.ts`'s {@link Permission} is
@@ -714,30 +714,30 @@ export declare class Grid {
 	 *
 	 * `DocPerm[]` is in the union because the third fallback branch reads
 	 * `this.df.perm`, which `model.d.ts:427` types `DocPerm[]` with that exact
-	 * `grid.js:84` citation. `undefined` is in the union because all three
+	 * `grid.js:82` citation. `undefined` is in the union because all three
 	 * branches are optional — a grid with no `control`, no `frm` and no
 	 * `df.perm` (the dialog and Web Form case) genuinely has none.
 	 */
 	get perm(): Permission[] | DocPerm[] | undefined;
-	/** Assigning only logs an error; the value is discarded (grid.js:87-89). */
+	/** Assigning only logs an error; the value is discarded (grid.js:85-87). */
 	set perm(value: Permission[] | DocPerm[] | undefined);
 
 	// ------------------------------------------------------------------ methods
 
-	/** `true` when the child doctype has `editable_grid`, or when there is no meta at all (frappe/public/js/frappe/form/grid.js:91-93). */
+	/** `true` when the child doctype has `editable_grid`, or when there is no meta at all (frappe/public/js/frappe/form/grid.js:89-91). */
 	allow_on_grid_editing(): boolean;
-	/** Builds the whole `.grid-field` scaffold and caches every button handle (frappe/public/js/frappe/form/grid.js:95-212). Idempotent only via `refresh()`'s `!this.wrapper && this.make()` guard (frappe/public/js/frappe/form/grid.js:663). */
+	/** Builds the whole `.grid-field` scaffold and caches every button handle (frappe/public/js/frappe/form/grid.js:93-210). Idempotent only via `refresh()`'s `!this.wrapper && this.make()` guard (frappe/public/js/frappe/form/grid.js:661). */
 	make(): void;
 	set_grid_description(): void;
-	/** Fills in missing `idx`/`name` on `this.data` (grid.js:222-231). */
+	/** Fills in missing `idx`/`name` on `this.data` (grid.js:220-229). */
 	update_idx_and_name(): void;
-	/** An 8-char base-36 id for rows that have no `name` yet (grid.js:233-235). */
+	/** An 8-char base-36 id for rows that have no `name` yet (grid.js:231-233). */
 	get_random_name(): string;
 	set_doc_url(): void;
 	setup_grid_pagination(): void;
 	/**
 	 * Binds the row-checkbox click handler on `wrapper`
-	 * (frappe/public/js/frappe/form/grid.js:263-331): select-all from the header
+	 * (frappe/public/js/frappe/form/grid.js:261-329): select-all from the header
 	 * box, shift-click range selection, then the Add row / Add multiple visibility
 	 * and the Delete / Edit / Duplicate labels (through
 	 * {@link Grid.set_button_label}) from the selection count.
@@ -745,27 +745,27 @@ export declare class Grid {
 	setup_check(): void;
 	/**
 	 * (Un)check every row between two docnames inclusive. No-ops when either
-	 * docname is not on the current page (frappe/public/js/frappe/form/grid.js:344).
-	 * @see frappe/public/js/frappe/form/grid.js:339
+	 * docname is not on the current page (frappe/public/js/frappe/form/grid.js:342).
+	 * @see frappe/public/js/frappe/form/grid.js:337
 	 */
 	check_range(docname1: string, docname2: string, checked?: boolean): void;
 	duplicate_rows(): void;
 	delete_rows(): void;
 	delete_all_rows(): void;
 	scroll_to_top(): void;
-	/** `this.grid_rows_by_docname[name].select()` — throws if `name` is not on the current page (grid.js:424). */
+	/** `this.grid_rows_by_docname[name].select()` — throws if `name` is not on the current page (grid.js:422). */
 	select_row(name: string): void;
 	remove_all(): void;
 	/**
 	 * Whether any row checkbox in the BODY is checked — the header's select-all box
-	 * does not count (frappe/public/js/frappe/form/grid.js:433-435). Private helper
+	 * does not count (frappe/public/js/frappe/form/grid.js:431-433). Private helper
 	 * behind the three `refresh_*_button` methods.
 	 */
 	_any_rows_checked(): boolean;
-	/** Shows/hides Delete, Duplicate and "Delete all N rows" from the checkbox state (frappe/public/js/frappe/form/grid.js:437-461). */
+	/** Shows/hides Delete, Duplicate and "Delete all N rows" from the checkbox state (frappe/public/js/frappe/form/grid.js:435-459). */
 	refresh_remove_rows_button(): void;
 	/**
-	 * Writes `label` into `$btn`'s `.es-button__label` span (frappe/public/js/frappe/form/grid.js:463-467).
+	 * Writes `label` into `$btn`'s `.es-button__label` span (frappe/public/js/frappe/form/grid.js:461-465).
 	 *
 	 * The grid's buttons are `.es-button`s since v16.50, whose label sits in a
 	 * span beside a spinner and a loading label. `$btn.text(label)` — what
@@ -778,36 +778,36 @@ export declare class Grid {
 	set_button_label($btn: JQuery, label: string): void;
 	refresh_edit_rows_button(): void;
 	refresh_duplicate_rows_button(): void;
-	/** Docnames of checked rows (frappe/public/js/frappe/form/grid.js:496-498). */
+	/** Docnames of checked rows (frappe/public/js/frappe/form/grid.js:494-496). */
 	get_selected(): string[];
-	/** The checked rows themselves (frappe/public/js/frappe/form/grid.js:500-502). */
+	/** The checked rows themselves (frappe/public/js/frappe/form/grid.js:498-500). */
 	get_selected_children(): GridChildDoc[];
 	/**
 	 * Throws away the cached column layout: `visible_columns = []`,
 	 * `grid_rows = []`, and every rendered `.grid-body .grid-row` removed from the
-	 * DOM (frappe/public/js/frappe/form/grid.js:504-508). Does NOT refresh — the
+	 * DOM (frappe/public/js/frappe/form/grid.js:502-506). Does NOT refresh — the
 	 * caller does. Factored out of `reset_grid` and `set_column_disp_in_list_view`
 	 * in v16.50 so both rebuild with consistent widths; an override of
 	 * `reset_grid` that calls `super` gets this for free, one that does not has to
 	 * clear its own row DOM.
 	 */
 	_teardown_column_layout(): void;
-	/** `_teardown_column_layout()`, then `refresh()` (frappe/public/js/frappe/form/grid.js:510-513). */
+	/** `_teardown_column_layout()`, then `refresh()` (frappe/public/js/frappe/form/grid.js:508-511). */
 	reset_grid(): void;
 	/**
-	 * Rebuilds `header_row` and `header_search` (frappe/public/js/frappe/form/grid.js:515-550).
+	 * Rebuilds `header_row` and `header_search` (frappe/public/js/frappe/form/grid.js:513-548).
 	 * Early-returns on `prevent_build`. Ends by calling {@link Grid.setup_column_resize}
-	 * (frappe/public/js/frappe/form/grid.js:549), so an override that rebuilds the
+	 * (frappe/public/js/frappe/form/grid.js:547), so an override that rebuilds the
 	 * header itself and does not call `super` gets no drag-resize.
 	 */
 	make_head(): void;
 	/**
-	 * Binds the header drag-resize (frappe/public/js/frappe/form/grid.js:552-599).
+	 * Binds the header drag-resize (frappe/public/js/frappe/form/grid.js:550-597).
 	 *
 	 * No-ops on mobile (`frappe.is_mobile()`) or before `make()`. Delegates a
 	 * `mousedown` on `.grid-heading-row .grid-col-resize-handle` — the handle
 	 * `GridRow#make_column` appends to each header cell
-	 * (frappe/public/js/frappe/form/grid_row.js:1060-1064) — from `wrapper`,
+	 * (frappe/public/js/frappe/form/grid_row.js:1064-1068) — from `wrapper`,
 	 * under a per-grid event namespace (`_resize_ns`, assigned on first call).
 	 * While dragging it restyles every `.grid-static-col[data-fieldname=…]` cell in
 	 * the grid; on `mouseup` it calls {@link Grid.save_column_width}.
@@ -816,7 +816,7 @@ export declare class Grid {
 	 */
 	setup_column_resize(): void;
 	/**
-	 * Persists one column's new width (frappe/public/js/frappe/form/grid.js:601-637).
+	 * Persists one column's new width (frappe/public/js/frappe/form/grid.js:599-635).
 	 *
 	 * Returns without doing anything when the grid has no `frm`. Otherwise it
 	 * writes `width` onto the docfield and onto that column's slot in
@@ -833,21 +833,21 @@ export declare class Grid {
 	save_column_width(fieldname: string, width: number): void;
 	/**
 	 * Re-applies each active column filter's value to its search input after the
-	 * header is rebuilt (frappe/public/js/frappe/form/grid.js:639-655). A filter
+	 * header is rebuilt (frappe/public/js/frappe/form/grid.js:637-653). A filter
 	 * whose column no longer has a search cell is DROPPED instead, `data` is
-	 * re-read, and the loop stops (frappe/public/js/frappe/form/grid.js:641-645).
+	 * re-read, and the loop stops (frappe/public/js/frappe/form/grid.js:639-643).
 	 */
 	update_search_columns(): void;
-	/** The full render cycle (frappe/public/js/frappe/form/grid.js:657-720). Ends by triggering `"change"` on `wrapper`. */
+	/** The full render cycle (frappe/public/js/frappe/form/grid.js:655-718). Ends by triggering `"change"` on `wrapper`. */
 	refresh(): void;
 	/**
 	 * Reconciles GridRow instances against `this.data` by DOC OBJECT IDENTITY and
-	 * reorders the DOM from the first mismatch (frappe/public/js/frappe/form/grid.js:722-808).
+	 * reorders the DOM from the first mismatch (frappe/public/js/frappe/form/grid.js:720-806).
 	 *
-	 * `$rows` is optional: `refresh()` passes it (frappe/public/js/frappe/form/grid.js:695) but
+	 * `$rows` is optional: `refresh()` passes it (frappe/public/js/frappe/form/grid.js:693) but
 	 * `GridPagination#go_to_page` calls it with NO argument
 	 * (frappe/public/js/frappe/form/grid_pagination.js:167), in which case the base
-	 * implementation re-finds `.rows` itself (frappe/public/js/frappe/form/grid.js:723-725).
+	 * implementation re-finds `.rows` itself (frappe/public/js/frappe/form/grid.js:721-723).
 	 * An override that forwards `$rows` on to `new GridRow({ parent: $rows })` must
 	 * handle the `undefined` case.
 	 */
@@ -855,41 +855,41 @@ export declare class Grid {
 	/**
 	 * Shows/hides the footer and the Add row / Add multiple / Duplicate buttons
 	 * from editability, `cannot_add_rows` and the checkbox selection
-	 * (frappe/public/js/frappe/form/grid.js:810-846). "Add multiple" is revealed
-	 * only when {@link Grid.multiple_set} is (frappe/public/js/frappe/form/grid.js:830-832).
+	 * (frappe/public/js/frappe/form/grid.js:808-845). "Add multiple" is revealed
+	 * only when {@link Grid.multiple_set} is (frappe/public/js/frappe/form/grid.js:828-830).
 	 * Writes `d-none` rather than `hidden` for the editability case on purpose
-	 * (frappe/public/js/frappe/form/grid.js:841-845), because `hidden` is toggled
+	 * (frappe/public/js/frappe/form/grid.js:839-843), because `hidden` is toggled
 	 * by the selection logic on the same buttons.
 	 */
 	setup_toolbar(): void;
-	/** Re-resolves `df` and `docfields` from `frappe.meta`, then applies the column-disp and masked-field overrides (frappe/public/js/frappe/form/grid.js:848-880). */
+	/** Re-resolves `df` and `docfields` from `frappe.meta`, then applies the column-disp and masked-field overrides (frappe/public/js/frappe/form/grid.js:847-879). */
 	setup_fields(): void;
-	/** Renders `meta.masked_fields` as read-only Data on a COPY of each docfield (frappe/public/js/frappe/form/grid.js:882-893). */
+	/** Renders `meta.masked_fields` as read-only Data on a COPY of each docfield (frappe/public/js/frappe/form/grid.js:881-892). */
 	_apply_mask_overrides(): void;
-	/** Applies `column_disp_overrides` onto a COPY of each docfield (frappe/public/js/frappe/form/grid.js:895-907). */
+	/** Applies `column_disp_overrides` onto a COPY of each docfield (frappe/public/js/frappe/form/grid.js:894-906). */
 	_apply_column_disp_overrides(): void;
 	refresh_row(docname: string): void;
 	/**
 	 * Binds sortablejs to `$rows`; `$rows.get(0)` must exist
-	 * (frappe/public/js/frappe/form/grid.js:913-953). The `filter` that keeps a
+	 * (frappe/public/js/frappe/form/grid.js:912-952). The `filter` that keeps a
 	 * drag from starting on a link or list item is, since v16.50, a function that
 	 * exempts anything inside a Text Editor's `.ql-editor`
-	 * (frappe/public/js/frappe/form/grid.js:919-924); through v16.33 it was the
+	 * (frappe/public/js/frappe/form/grid.js:918-923); through v16.33 it was the
 	 * bare selector `"li, a"`.
 	 */
 	make_sortable($rows: JQuery): void;
 	make_sortable($rows: JQuery): void;
-	/** Unfiltered: `frm.doc[df.fieldname]`, else `df.data`, else `get_modal_data()` (grid.js:960-962). */
+	/** Unfiltered: `frm.doc[df.fieldname]`, else `df.data`, else `get_modal_data()` (grid.js:959-961). */
 	get_data(): GridChildDoc[];
-	/** Filtered: delegates to `get_filtered_data()`, which returns `undefined` when there is no source array (grid.js:970). */
+	/** Filtered: delegates to `get_filtered_data()`, which returns `undefined` when there is no source array (grid.js:969). */
 	get_data(filter_field: boolean | undefined): GridChildDoc[] | undefined;
-	/** `undefined` when neither `frm.doc[df.fieldname]` nor `df.data` exists (grid.js:967-980). */
+	/** `undefined` when neither `frm.doc[df.fieldname]` nor `df.data` exists (grid.js:966-979). */
 	get_filtered_data(): GridChildDoc[] | undefined;
 	/**
-	 * The per-fieldtype filter predicate (frappe/public/js/frappe/form/grid.js:982-1026).
+	 * The per-fieldtype filter predicate (frappe/public/js/frappe/form/grid.js:981-1025).
 	 *
 	 * Returns the row itself on a match, `undefined` on a miss, and — for `Check`
-	 * only — the boolean `Boolean(fieldvalue) === value && data` (grid.js:989).
+	 * only — the boolean `Boolean(fieldvalue) === value && data` (grid.js:988).
 	 * Used as an `Array#filter` callback, so only truthiness is ever consumed.
 	 */
 	get_data_based_on_fieldtype(
@@ -897,13 +897,13 @@ export declare class Grid {
 		data: GridChildDoc,
 		value: string | boolean
 	): GridChildDoc | boolean | undefined;
-	/** `df.get_data()` minus `deleted_docs`; `[]` when `df.get_data` is absent (grid.js:1028-1036). */
+	/** `df.get_data()` minus `deleted_docs`; `[]` when `df.get_data` is absent (grid.js:1027-1035). */
 	get_modal_data(): GridChildDoc[];
-	/** Mutates the SHARED `frappe.meta` docfield (grid.js:1045) — see `set_column_disp_in_list_view` for the grid-local variant. */
+	/** Mutates the SHARED `frappe.meta` docfield (grid.js:1044) — see `set_column_disp_in_list_view` for the grid-local variant. */
 	set_column_disp(fieldname: string | string[], show: boolean): void;
 	/**
 	 * Grid-local column hiding; never touches the shared docfield
-	 * (frappe/public/js/frappe/form/grid.js:1052-1066). Records the override, tears
+	 * (frappe/public/js/frappe/form/grid.js:1051-1065). Records the override, tears
 	 * the column layout down with {@link Grid._teardown_column_layout} so the new
 	 * column set is rebuilt with consistent widths, then schedules a debounced
 	 * refresh.
@@ -914,24 +914,24 @@ export declare class Grid {
 	toggle_enable(fieldname: string, enable: boolean | 0 | 1): void;
 	toggle_display(fieldname: string, show: boolean | 0 | 1): void;
 	toggle_checkboxes(enable: boolean): void;
-	/** `frappe.meta.get_docfield(...)` — `undefined` for a fieldname the child doctype does not have (grid.js:1135-1141). */
+	/** `frappe.meta.get_docfield(...)` — `undefined` for a fieldname the child doctype does not have (grid.js:1134-1140). */
 	get_docfield(fieldname: string): GridDocField | undefined;
-	/** A number indexes `grid_rows` (negative counts from the end); a string indexes `grid_rows_by_docname` (grid.js:1143-1153). */
+	/** A number indexes `grid_rows` (negative counts from the end); a string indexes `grid_rows_by_docname` (grid.js:1142-1152). */
 	get_row(key: number | string): GridRow | undefined;
-	/** Alias for {@link Grid.get_row} (grid.js:1155-1157). */
+	/** Alias for {@link Grid.get_row} (grid.js:1154-1156). */
 	get_grid_row(key: number | string): GridRow | undefined;
-	/** Lazily creates and returns the `fieldinfo` bag — never `undefined` (grid.js:1159-1163). */
+	/** Lazily creates and returns the `fieldinfo` bag — never `undefined` (grid.js:1158-1162). */
 	get_field(fieldname: string): GridFieldInfo;
 	set_value(fieldname: string, value: unknown, doc?: GridChildDoc | undefined): void;
 	setup_add_row(): void;
 	/**
-	 * Appends (or inserts at `idx`) a child row (grid.js:1183-1240).
+	 * Appends (or inserts at `idx`) a child row (grid.js:1182-1239).
 	 *
 	 * Returns the new doc ONLY on the `frm` path — the non-form branch pushes a
 	 * plain object onto `df.data` and falls out with `d` still `undefined`
-	 * (frappe/public/js/frappe/form/grid.js:1206-1218, 1193, 1238). Also returns
+	 * (frappe/public/js/frappe/form/grid.js:1205-1217, 1193, 1238). Also returns
 	 * `undefined` when the grid is not editable or rows cannot be added
-	 * (frappe/public/js/frappe/form/grid.js:1185).
+	 * (frappe/public/js/frappe/form/grid.js:1184).
 	 */
 	add_new_row(
 		idx?: number | null,
@@ -941,7 +941,7 @@ export declare class Grid {
 		go_to_last_page?: boolean,
 		go_to_first_page?: boolean
 	): GridChildDoc | undefined;
-	/** Re-derives `idx` from DOM order after a drag (grid.js:1242-1258). */
+	/** Re-derives `idx` from DOM order after a drag (grid.js:1241-1257). */
 	renumber_based_on_dom(): void;
 	/** Copies every field of `copy_doc` onto `d` except the 9 identity/audit fields (frappe/public/js/frappe/form/grid.js:1260-1276). */
 	duplicate_row(d: GridChildDoc, copy_doc: GridChildDoc): GridChildDoc;
@@ -981,7 +981,7 @@ export declare class Grid {
 	 * Clamps `width` to {@link GRID_MIN_COLUMN_WIDTH}..{@link GRID_MAX_COLUMN_WIDTH}
 	 * after `cint()` (frappe/public/js/frappe/form/grid.js:1530-1532). Takes
 	 * whatever the caller has — the Configure Columns dialog passes the input's
-	 * string value (frappe/public/js/frappe/form/grid_row.js:644) — and always
+	 * string value (frappe/public/js/frappe/form/grid_row.js:648) — and always
 	 * returns a number, `60` for something `cint` reads as 0.
 	 */
 	clamp_column_width(width: number | string): number;
@@ -1029,12 +1029,11 @@ export declare class Grid {
 	 */
 	set_multiple_add(link: string, qty: string): void;
 	setup_allow_bulk_edit(): void;
-	setup_download(): void;
 	/**
 	 * Creates the button on first call, un-hides it afterwards; keyed by `label`
-	 * (frappe/public/js/frappe/form/grid.js:1718-1732). The button is an
+	 * (frappe/public/js/frappe/form/grid.js:1637-1651). The button is an
 	 * `.es-button` with the extra class `btn-custom`, built by `frappe.ui.button`
-	 * (frappe/public/js/frappe/form/grid.js:1723-1726) and prepended to
+	 * (frappe/public/js/frappe/form/grid.js:1642-1645) and prepended to
 	 * `grid_custom_buttons` (`position: "top"`) or `grid_buttons`.
 	 */
 	add_custom_button(
@@ -1043,9 +1042,9 @@ export declare class Grid {
 		position?: "top" | "bottom"
 	): JQuery;
 	clear_custom_buttons(): void;
-	/** THROWS a string (not an Error) if any rendered row lacks the fieldname (grid.js:1752). */
+	/** THROWS a string (not an Error) if any rendered row lacks the fieldname (grid.js:1671). */
 	update_docfield_property(fieldname: string, property: string, value: unknown): void;
-	/** Index into `grid_rows` of the row containing `target`, or `null` (grid.js:1769-1777). */
+	/** Index into `grid_rows` of the row containing `target`, or `null` (grid.js:1688-1696). */
 	get_current_row(target: Node): number | null;
 }
 
@@ -1060,8 +1059,8 @@ export declare class Grid {
  * `this.make()` before it returns (grid_row.js:19) — so a subclass's `make()`
  * runs before any of the subclass's own field initialisers do.
  *
- * The three in-tree call shapes are grid.js:522-530 (header), grid.js:532-539
- * (filter row) and grid.js:762-769 (a data row).
+ * The three in-tree call shapes are grid.js:520-528 (header), grid.js:530-537
+ * (filter row) and grid.js:760-767 (a data row).
  */
 export interface GridRowOptions {
 	/** Where `make()` appends the row (grid_row.js:53). Required — the base `make()` dereferences it unconditionally. */
@@ -1075,11 +1074,11 @@ export interface GridRowOptions {
 	/** Absent on the header and filter rows. */
 	doc?: GridChildDoc;
 	frm?: Form;
-	/** Header row only — adds the Configure Columns gear (grid_row.js:370). */
+	/** Header row only — adds the Configure Columns gear (grid_row.js:374). */
 	configure_columns?: boolean;
-	/** Header row only — makes `row_check` non-tabbable (grid_row.js:244-246). */
+	/** Header row only — makes `row_check` non-tabbable (grid_row.js:248-250). */
 	header_row?: boolean;
-	/** Filter row only — builds search inputs instead of data cells (grid_row.js:233, 266). */
+	/** Filter row only — builds search inputs instead of data cells (grid_row.js:237, 266). */
 	show_search?: boolean;
 	/** `$.extend(this, opts)` (grid_row.js:13) copies any other key onto the instance. */
 	[key: string]: unknown;
@@ -1102,7 +1101,7 @@ export declare class GridRow {
 	/** Doc-specific docfields once `set_docfields()` has run (grid_row.js:58-63). */
 	docfields: GridDocField[];
 	grid: Grid;
-	/** Absent on the header and filter rows; re-read from `locals` on every `refresh()` (grid_row.js:190). */
+	/** Absent on the header and filter rows; re-read from `locals` on every `refresh()` (grid_row.js:191). */
 	doc?: GridChildDoc;
 	frm?: Form;
 	/** Header row flag. NOTE: on {@link Grid}, `header_row` is a GridRow; here it is a boolean. */
@@ -1110,7 +1109,7 @@ export declare class GridRow {
 	configure_columns?: boolean;
 	/**
 	 * Filter-row flag. `show_search_row()` OVERWRITES it with the result of its own
-	 * threshold test (grid_row.js:876-878), so after that call it can also be
+	 * threshold test (grid_row.js:880-882), so after that call it can also be
 	 * `undefined`.
 	 */
 	show_search?: boolean;
@@ -1126,7 +1125,7 @@ export declare class GridRow {
 	/**
 	 * frappe/public/js/frappe/form/grid_row.js:16, 1070 — same cells in column
 	 * order. The LAST one carries `.grid-data-last` after `setup_columns`
-	 * (frappe/public/js/frappe/form/grid_row.js:756-757).
+	 * (frappe/public/js/frappe/form/grid_row.js:760-761).
 	 */
 	columns_list: GridColumn[];
 	/** The checkbox markup; rewritten with `tabindex="-1"` for the header row (frappe/public/js/frappe/form/grid_row.js:17, 245). */
@@ -1153,52 +1152,52 @@ export declare class GridRow {
 
 	// ------------------------------------------------ set in render_row/render_template
 
-	/** `.row-check` gutter cell (grid_row.js:248, 267). */
+	/** `.row-check` gutter cell (grid_row.js:252, 267). */
 	row_check: JQuery;
-	/** `.row-index` gutter cell — the row number, or the index search input (frappe/public/js/frappe/form/grid_row.js:254, 271). */
+	/** `.row-index` gutter cell — the row number, or the index search input (frappe/public/js/frappe/form/grid_row.js:258, 271). */
 	row_index: JQuery;
-	/** Template-rendered body; only for grids with `grid.template` (grid_row.js:222). */
+	/** Template-rendered body; only for grids with `grid.template` (grid_row.js:226). */
 	row_display?: JQuery;
 	/**
 	 * The open-form button.
 	 *
 	 * REASSIGNED mid-method: created as the outer `div.col`
-	 * (frappe/public/js/frappe/form/grid_row.js:332), then overwritten with the
-	 * inner `.btn-open-row` (frappe/public/js/frappe/form/grid_row.js:340) unless
+	 * (frappe/public/js/frappe/form/grid_row.js:336), then overwritten with the
+	 * inner `.btn-open-row` (frappe/public/js/frappe/form/grid_row.js:344) unless
 	 * `configure_columns` is set. The outer cell is then reachable only via
-	 * `.parent()` — which is what frappe/public/js/frappe/form/grid_row.js:1440
+	 * `.parent()` — which is what frappe/public/js/frappe/form/grid_row.js:1441
 	 * and the global `escape` handler
-	 * (frappe/public/js/frappe/form/grid_row.js:361-363) rely on.
+	 * (frappe/public/js/frappe/form/grid_row.js:365-367) rely on.
 	 */
 	open_form_button?: JQuery;
-	/** The Configure Columns gear cell; header row only (frappe/public/js/frappe/form/grid_row.js:371, 381). */
+	/** The Configure Columns gear cell; header row only (frappe/public/js/frappe/form/grid_row.js:375, 381). */
 	configure_columns_button?: JQuery;
 
 	// ------------------------------------------------------ set in setup_columns()
 
-	/** grid_row.js:708. */
+	/** grid_row.js:712. */
 	focus_set: boolean;
-	/** fieldname → search cell. Plain `JQuery`, NOT {@link GridColumn} (frappe/public/js/frappe/form/grid_row.js:709, 925). */
+	/** fieldname → search cell. Plain `JQuery`, NOT {@link GridColumn} (frappe/public/js/frappe/form/grid_row.js:713, 925). */
 	search_columns: Record<string, JQuery>;
 
 	// --------------------------------------------- set by the Configure Columns dialog
 
-	/** grid_row.js:388. */
+	/** grid_row.js:392. */
 	grid_settings_dialog?: Dialog;
-	/** frappe/public/js/frappe/form/grid_row.js:424, 491, 619, 682 — the dialog's working copy of the column list. */
+	/** frappe/public/js/frappe/form/grid_row.js:428, 491, 619, 682 — the dialog's working copy of the column list. */
 	selected_columns_for_grid?: GridColumnSetting[];
-	/** The dialog's HTML-field wrapper ELEMENT (not a jQuery object) — frappe/public/js/frappe/form/grid_row.js:435. */
+	/** The dialog's HTML-field wrapper ELEMENT (not a jQuery object) — frappe/public/js/frappe/form/grid_row.js:439. */
 	fields_html_wrapper?: HTMLElement;
 
 	// ------------------------------------------------------------- set in show_form()
 
-	/** frappe/public/js/frappe/form/grid_row.js:1387. Persists after `hide_form()` — only its wrapper is hidden (frappe/public/js/frappe/form/grid_row.js:1435). */
+	/** frappe/public/js/frappe/form/grid_row.js:1388. Persists after `hide_form()` — only its wrapper is hidden (frappe/public/js/frappe/form/grid_row.js:1436). */
 	grid_form?: GridRowForm;
 
 	/**
 	 * NEVER ASSIGNED. `evaluate_depends_on_value` passes `this.doctype` and
 	 * `this.docname` to `script_manager.trigger` for `fn:` expressions
-	 * (grid_row.js:853-857), but nothing in grid.js or grid_row.js ever sets either.
+	 * (grid_row.js:857-861), but nothing in grid.js or grid_row.js ever sets either.
 	 * Declared so the read type-checks; both are `undefined` at runtime unless an
 	 * app puts them in `opts`.
 	 */
@@ -1219,28 +1218,28 @@ export declare class GridRow {
 	/** Writes `doc.__checked` as 0/1 (grid_row.js:82-84). Called with no argument by `Grid#select_row`. */
 	select(checked?: boolean | 0 | 1 | undefined): void;
 	refresh_check(): void;
-	/** Removes the row from the model and refreshes the grid; no-ops when the grid is read-only (frappe/public/js/frappe/form/grid_row.js:91-145). */
+	/** Removes the row from the model and refreshes the grid; no-ops when the grid is read-only (frappe/public/js/frappe/form/grid_row.js:91-142). */
 	remove(): void;
 	/** @param below insert AFTER this row rather than before it; @param duplicate copy this row's values. */
 	insert(show?: boolean | undefined, below?: boolean | undefined, duplicate?: boolean | undefined): void;
-	/** Prompts for a target row number and reorders (grid_row.js:153-187). */
+	/** Prompts for a target row number and reorders (grid_row.js:150-184). */
 	move(): void;
-	/** Re-reads `doc` from `locals` and re-renders (grid_row.js:188-203). */
+	/** Re-reads `doc` from `locals` and re-renders (grid_row.js:195-207). */
 	refresh(): void;
 	render_template(): void;
 	/**
-	 * Builds the gutters and cells (grid_row.js:232-319).
+	 * Builds the gutters and cells (grid_row.js:236-323).
 	 *
 	 * Returns `true`, or `undefined` when a filter row decides not to render
-	 * (grid_row.js:233). DISCREPANCY: the `refresh` parameter is declared
-	 * (grid_row.js:232) and passed by `refresh()` (grid_row.js:196) but never read
+	 * (grid_row.js:237). DISCREPANCY: the `refresh` parameter is declared
+	 * (grid_row.js:236) and passed by `refresh()` (grid_row.js:200) but never read
 	 * in the body.
 	 */
 	render_row(refresh?: boolean | undefined): true | undefined;
 	make_editable(): void;
-	/** `row.width() < 300` (grid_row.js:325-327). */
+	/** `row.width() < 300` (grid_row.js:329-331). */
 	is_too_small(): boolean;
-	/** Creates the trailing open-form cell; no-ops without `doc`, or when `df.in_place_edit` (frappe/public/js/frappe/form/grid_row.js:329-366). */
+	/** Creates the trailing open-form cell; no-ops without `doc`, or when `df.in_place_edit` (frappe/public/js/frappe/form/grid_row.js:333-370). */
 	add_open_form_button(): void;
 	add_column_configure_button(): void;
 	configure_dialog_for_columns_selector(): void;
@@ -1258,17 +1257,17 @@ export declare class GridRow {
 	update_user_settings_for_grid(): void;
 	reset_user_settings_for_grid(): void;
 	/**
-	 * Builds every cell for this row (frappe/public/js/frappe/form/grid_row.js:707-777).
+	 * Builds every cell for this row (frappe/public/js/frappe/form/grid_row.js:711-781).
 	 *
 	 * Calls `grid.setup_visible_columns()` first, then makes (or refreshes) one
 	 * cell per `visible_columns` entry, handing `make_column` /
 	 * `make_search_column` the entry's PIXEL width
-	 * (frappe/public/js/frappe/form/grid_row.js:717-740). It ends by moving
+	 * (frappe/public/js/frappe/form/grid_row.js:721-744). It ends by moving
 	 * `.grid-data-last` to the last cell, so that column can grow into spare
-	 * width (frappe/public/js/frappe/form/grid_row.js:755-757; on the filter row,
-	 * the last search cell, frappe/public/js/frappe/form/grid_row.js:760), and by
+	 * width (frappe/public/js/frappe/form/grid_row.js:759-761; on the filter row,
+	 * the last search cell, frappe/public/js/frappe/form/grid_row.js:764), and by
 	 * realising the control of any Button column
-	 * (frappe/public/js/frappe/form/grid_row.js:770-776).
+	 * (frappe/public/js/frappe/form/grid_row.js:774-780).
 	 *
 	 * Through v16.33 this ended by latching `.column-limit-reached` on
 	 * `.form-grid-container` whenever the column spans totalled more than 10 —
@@ -1278,114 +1277,114 @@ export declare class GridRow {
 	setup_columns(): void;
 	/**
 	 * Button columns show their control even in an idle row
-	 * (frappe/public/js/frappe/form/grid_row.js:783-791).
+	 * (frappe/public/js/frappe/form/grid_row.js:787-795).
 	 *
 	 * Returns `undefined` rather than `false` when `this.doc` is absent, because
 	 * `this.doc` is the second-to-last operand of the `&&` chain
-	 * (frappe/public/js/frappe/form/grid_row.js:788).
+	 * (frappe/public/js/frappe/form/grid_row.js:792).
 	 */
 	should_show_button_in_idle_grid_cell(column: GridColumn): boolean | undefined;
-	/** Prefers the row's own docfield, copying `sticky`/`in_list_view` across (grid_row.js:793-803). */
+	/** Prefers the row's own docfield, copying `sticky`/`in_list_view` across (grid_row.js:797-807). */
 	get_column_docfield(fields: GridDocField[], fieldname: string): GridDocField | undefined;
-	/** Evaluates `depends_on`/`mandatory_depends_on`/`read_only_depends_on` onto `df`; returns whether anything changed (grid_row.js:805-818). */
+	/** Evaluates `depends_on`/`mandatory_depends_on`/`read_only_depends_on` onto `df`; returns whether anything changed (grid_row.js:809-822). */
 	set_dependant_property(df: GridDocField): boolean;
 	refresh_dependency(): void;
 	/**
-	 * Evaluates one depends-on expression (grid_row.js:834-868).
+	 * Evaluates one depends-on expression (grid_row.js:838-872).
 	 *
 	 * Accepts a boolean, a function, an `eval:` string, a `fn:` string, or a bare
 	 * fieldname. The result is whatever the expression produced — coerced to
 	 * boolean only for the bare-fieldname branch — hence `unknown`. Returns
-	 * `undefined` immediately when the row has no `doc` (grid_row.js:838).
+	 * `undefined` immediately when the row has no `doc` (grid_row.js:842).
 	 */
 	evaluate_depends_on_value(
 		expression: string | boolean | ((doc: GridChildDoc) => unknown)
 	): unknown;
 	/**
 	 * Decides whether the filter row is shown, and REMOVES `this.wrapper` when it
-	 * is not (grid_row.js:879) — which is why `search_columns` is empty on a small
-	 * grid. Also OVERWRITES `this.show_search` (grid_row.js:876).
+	 * is not (grid_row.js:883) — which is why `search_columns` is empty on a small
+	 * grid. Also OVERWRITES `this.show_search` (grid_row.js:880).
 	 */
 	show_search_row(): boolean | undefined;
 	/**
 	 * Maps a fieldtype to the alignment/overflow class its cell and search input
 	 * share: `grid-overflow-no-ellipsis` for Text and Small Text, `text-right` for
 	 * Int, Currency, Float and Percent, `text-center` for Check, otherwise `""`
-	 * (frappe/public/js/frappe/form/grid_row.js:883-888). New in v16.50, when
+	 * (frappe/public/js/frappe/form/grid_row.js:887-892). New in v16.50, when
 	 * `make_column` and `make_search_column` stopped each keeping their own copy.
 	 */
 	_get_fieldtype_class(fieldtype: string): string;
 	/**
 	 * A plain `div.col.grid-static-col.search` holding one input — no
-	 * `df`/`static_area` expandos (frappe/public/js/frappe/form/grid_row.js:890-957).
+	 * `df`/`static_area` expandos (frappe/public/js/frappe/form/grid_row.js:894-961).
 	 *
 	 * `width` is PIXELS (through v16.33 the second parameter was a Bootstrap
 	 * `colsize` span). It is written inline as `flex: 1 0 Npx; width: Npx`,
 	 * followed by `left: <grid.get_sticky_offset(fieldname)>px` for a pinned
-	 * column (frappe/public/js/frappe/form/grid_row.js:903-907). The cell carries
+	 * column (frappe/public/js/frappe/form/grid_row.js:907-911). The cell carries
 	 * `data-fieldname` (new in v16.50, so the resize handler and the sticky patch
 	 * can find it) and is stored in `search_columns[df.fieldname]`
-	 * (frappe/public/js/frappe/form/grid_row.js:912, 925).
+	 * (frappe/public/js/frappe/form/grid_row.js:916, 925).
 	 */
 	make_search_column(df: GridDocField, width: number): JQuery;
 	/**
 	 * The real data cell, with all the expandos
-	 * (frappe/public/js/frappe/form/grid_row.js:959-1083).
+	 * (frappe/public/js/frappe/form/grid_row.js:963-1087).
 	 *
 	 * `width` is PIXELS (through v16.33 the second parameter was a Bootstrap
 	 * `colsize` span); it is written inline as `flex: 1 0 Npx; width: Npx`, plus
 	 * `left: <grid.get_sticky_offset(fieldname)>px` for a pinned column
-	 * (frappe/public/js/frappe/form/grid_row.js:963-967). `txt` is the cell's
+	 * (frappe/public/js/frappe/form/grid_row.js:967-971). `txt` is the cell's
 	 * initial static HTML. On the HEADER row, a data column also gets a
 	 * `.grid-col-resize-handle` child — the target of
 	 * {@link Grid.setup_column_resize} — except on mobile
-	 * (frappe/public/js/frappe/form/grid_row.js:1060-1064).
+	 * (frappe/public/js/frappe/form/grid_row.js:1064-1068).
 	 */
 	make_column(df: GridDocField, width: number, txt: string, ci: number): GridColumn;
 	activate(): this;
 	/**
 	 * Swaps static areas for live controls, drawing the currency symbol into each
-	 * Currency cell's input (frappe/public/js/frappe/form/grid_row.js:1090-1142).
+	 * Currency cell's input (frappe/public/js/frappe/form/grid_row.js:1094-1146).
 	 *
-	 * Returns the literal `false` from the "made editable" branch (frappe/public/js/frappe/form/grid_row.js:1113)
+	 * Returns the literal `false` from the "made editable" branch (frappe/public/js/frappe/form/grid_row.js:1117)
 	 * so a jQuery click handler can cancel the event; the other branch returns
 	 * nothing.
 	 */
 	toggle_editable_row(show?: boolean | undefined): false | undefined;
 	/**
 	 * Instantiates the cell's control; no-ops if one already exists
-	 * (frappe/public/js/frappe/form/grid_row.js:1144-1213). Requires `this.doc`.
+	 * (frappe/public/js/frappe/form/grid_row.js:1148-1217). Requires `this.doc`.
 	 * A Currency control gets an `input` handler that redraws its symbol
 	 * ({@link GridRow.update_currency_symbol_in_grid_input}) when the input gains
 	 * or loses its digits, once a symbol has been drawn
-	 * (frappe/public/js/frappe/form/grid_row.js:1195-1206). It no longer draws the
+	 * (frappe/public/js/frappe/form/grid_row.js:1199-1210). It no longer draws the
 	 * symbol itself: `toggle_editable_row` and `refresh_field` do.
 	 */
 	make_control(column: GridColumn): void;
 	set_arrow_keys(field: BaseControl): void;
 	duplicate_row_using_keys(): void;
-	/** Reads `metaKey`/`ctrlKey`/`which` (frappe/public/js/frappe/form/grid_row.js:1312-1313). */
+	/** Reads `metaKey`/`ctrlKey`/`which` (frappe/public/js/frappe/form/grid_row.js:1316-1317). */
 	add_new_row_using_keys(e: KeyboardEvent): void;
-	/** `$(".grid-row-open").data("grid_row")` via `frappe.ui.form.get_open_grid_form` (frappe/public/js/frappe/form/grid.js:38-40). */
+	/** `$(".grid-row-open").data("grid_row")` via `frappe.ui.form.get_open_grid_form` (frappe/public/js/frappe/form/grid.js:36-38). */
 	get_open_form(): GridRow | undefined;
 	/**
-	 * Open or close this row's detail form (grid_row.js:1344-1380).
+	 * Open or close this row's detail form (grid_row.js:1348-1381).
 	 *
-	 * Returns `this` when there is no `doc` (grid_row.js:1346) or after
-	 * showing/hiding (grid_row.js:1379), and `undefined` on the "already open"
-	 * short-circuit (grid_row.js:1366). `show` defaults to "open unless some other
-	 * row is open" (grid_row.js:1357).
+	 * Returns `this` when there is no `doc` (grid_row.js:1350) or after
+	 * showing/hiding (grid_row.js:1380), and `undefined` on the "already open"
+	 * short-circuit (grid_row.js:1367). `show` defaults to "open unless some other
+	 * row is open" (grid_row.js:1358).
 	 *
 	 * EXACTLY TWO PARAMETERS, deliberately (gaps.md §4.4). The verify phase
 	 * suggested adding an optional third, `opts?: { modal?: boolean }`, because
 	 * carbon_frappe's `CarbonGridRow` overrides this with a 3-arg signature
 	 * (`tables/grid/grid_row.ts:301`) and calls it 3-arg from
-	 * `tables/grid/row_menu.ts:101`. It is NOT added here: `grid_row.js:1344` is
+	 * `tables/grid/row_menu.ts:101`. It is NOT added here: `grid_row.js:1348` is
 	 * `toggle_view(show, callback)` and the body never reads an `arguments[2]`,
 	 * so declaring the parameter would claim frappe honours an option it
 	 * silently discards — the kind of compiling lie this package exists to
 	 * prevent. Note also that frappe RE-ENTERS this method 2-arg when closing a
-	 * different row (`grid_row.js:1369` `open_row.toggle_view(false)`), so a
+	 * different row (`grid_row.js:1370` `open_row.toggle_view(false)`), so a
 	 * subclass must not depend on a third argument arriving.
 	 *
 	 * The override needs no declaration change: TypeScript lets an override ADD
@@ -1398,30 +1397,30 @@ export declare class GridRow {
 	toggle_view(show?: boolean | undefined, callback?: (() => void) | null | undefined): this | undefined;
 	/**
 	 * Builds {@link GridRowForm} on first use, freezes the desk, scrolls the row
-	 * into view (frappe/public/js/frappe/form/grid_row.js:1381-1421).
+	 * into view (frappe/public/js/frappe/form/grid_row.js:1382-1422).
 	 *
 	 * The freeze is `frappe.dom.freeze("", "grid-form")`
-	 * (frappe/public/js/frappe/form/grid_row.js:1406) — through v16.33 the class
+	 * (frappe/public/js/frappe/form/grid_row.js:1407) — through v16.33 the class
 	 * argument was `"dark grid-form"`. The grid-form buttons it toggles are
 	 * `.grid-insert-row-below, .grid-insert-row, .grid-duplicate-row` and
-	 * `.grid-delete-row` (frappe/public/js/frappe/form/grid_row.js:1398-1404); the
+	 * `.grid-delete-row` (frappe/public/js/frappe/form/grid_row.js:1399-1405); the
 	 * footer `.grid-append-row` button was removed from the form in v16.50.
 	 */
 	show_form(): void;
-	/** UNCONDITIONALLY calls `frappe.dom.unfreeze()` (frappe/public/js/frappe/form/grid_row.js:1427) — balance it if you suppressed the matching freeze. */
+	/** UNCONDITIONALLY calls `frappe.dom.unfreeze()` (frappe/public/js/frappe/form/grid_row.js:1428) — balance it if you suppressed the matching freeze. */
 	hide_form(): void;
 	has_prev(): boolean;
 	open_prev(): void;
 	has_next(): boolean;
 	open_next(): void;
-	/** `undefined` when the index is out of range (frappe/public/js/frappe/form/grid_row.js:1459). */
+	/** `undefined` when the index is out of range (frappe/public/js/frappe/form/grid_row.js:1460). */
 	open_row_at_index(row_index: number): true | undefined;
 	change_page_if_reqd(row_index: number): void;
-	/** HTML-escapes the six plain-text fieldtypes before `frappe.format` (frappe/public/js/frappe/form/grid_row.js:1483-1496); passes anything else through. */
+	/** HTML-escapes the six plain-text fieldtypes before `frappe.format` (frappe/public/js/frappe/form/grid_row.js:1484-1497); passes anything else through. */
 	_escape_for_format(value: unknown, df: GridDocField | undefined): unknown;
 	/**
 	 * The HTML a static (read-only) cell shows
-	 * (frappe/public/js/frappe/form/grid_row.js:1498-1506). Text Editor, HTML
+	 * (frappe/public/js/frappe/form/grid_row.js:1499-1507). Text Editor, HTML
 	 * Editor and Markdown Editor values are reduced to stripped text — a static
 	 * cell clips to one line, so the rich markup would be wasted work — and every
 	 * other value goes through `_escape_for_format` and `frappe.format`. New in
@@ -1434,14 +1433,14 @@ export declare class GridRow {
 	_format_static_value(value: unknown, df: GridDocField | undefined, doc: FrappeDoc | undefined): string | number;
 	/**
 	 * Reformats one cell and refreshes its control
-	 * (frappe/public/js/frappe/form/grid_row.js:1508-1550). `txt` is recomputed
+	 * (frappe/public/js/frappe/form/grid_row.js:1509-1551). `txt` is recomputed
 	 * through `_format_static_value` when there is a doc.
 	 */
 	refresh_field(fieldname: string, txt?: string | undefined): void;
 	/**
 	 * Draws the currency symbol inside a Currency cell's input, as a prefix or a
 	 * suffix by the currency's `symbol_on_right`
-	 * (frappe/public/js/frappe/form/grid_row.js:1552-1605). New in v16.50. Returns
+	 * (frappe/public/js/frappe/form/grid_row.js:1553-1606). New in v16.50. Returns
 	 * early when the control has no `$input`, when the grid is not editable, and
 	 * for a compound symbol (one containing " or "; before v16.52, also one longer
 	 * than 3 characters). When the input holds a digit and is visible it also sets
@@ -1450,9 +1449,9 @@ export declare class GridRow {
 	 * handler `make_control` binds whenever the input gains or loses its digits.
 	 */
 	update_currency_symbol_in_grid_input(field: BaseControl, df: GridDocField): void;
-	/** THROWS a string when the fieldname is in neither the on-grid controls nor the grid form (frappe/public/js/frappe/form/grid_row.js:1613). */
+	/** THROWS a string when the fieldname is in neither the on-grid controls nor the grid form (frappe/public/js/frappe/form/grid_row.js:1614). */
 	get_field(fieldname: string): BaseControl;
-	/** Requires `grid.frm` — dereferences `this.grid.frm.get_perm` unguarded (frappe/public/js/frappe/form/grid_row.js:1622). */
+	/** Requires `grid.frm` — dereferences `this.grid.frm.get_perm` unguarded (frappe/public/js/frappe/form/grid_row.js:1623). */
 	get_visible_columns(blacklist?: string[]): GridDocField[];
 	set_field_property(fieldname: string, property: string, value: unknown): void;
 	toggle_reqd(fieldname: string, reqd: boolean | 0 | 1): void;
@@ -1479,7 +1478,7 @@ export interface GridRowFormOptions {
  * `opts.row.wrapper` (grid_row_form.js:4). Anything that wants the form somewhere
  * else must construct it first and relocate `wrapper` before calling
  * `GridRow#show_form()`, because `show_form()` only builds one if `grid_form` is
- * still unset (grid_row.js:1386).
+ * still unset (grid_row.js:1387).
  *
  * @see grid_row_form.js:1
  */
@@ -1539,7 +1538,7 @@ export interface GridPaginationOptions {
 
 /**
  * The grid's pager — `frappe/public/js/frappe/form/grid_pagination.js`,
- * default export. Constructed by `Grid#setup_grid_pagination` (grid.js:257).
+ * default export. Constructed by `Grid#setup_grid_pagination` (grid.js:255).
  *
  * Not deep-imported by any consumer, but it is the type of
  * `Grid#grid_pagination`, whose `page_index`, `page_length` and
@@ -1562,8 +1561,8 @@ export declare class GridPagination {
 	 * DISCREPANCY: the `focusout` handler assigns the input's raw STRING value
 	 * (grid_pagination.js:80) before the numeric comparisons on the next two lines,
 	 * so at runtime this is briefly a string. Declared `number` because that is the
-	 * contract every reader assumes (frappe/public/js/frappe/form/grid.js:281, 728;
-	 * frappe/public/js/frappe/form/grid_row.js:1466).
+	 * contract every reader assumes (frappe/public/js/frappe/form/grid.js:279, 728;
+	 * frappe/public/js/frappe/form/grid_row.js:1467).
 	 */
 	page_index: number;
 	/** `ceil(grid.data.length / page_length)` (grid_pagination.js:10, 102). */

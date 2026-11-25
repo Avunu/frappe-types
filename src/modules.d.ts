@@ -21,7 +21,7 @@
  *
  * The specifiers below are the exact strings carbon_frappe writes, and they
  * resolve at BUILD time through esbuild's `nodePaths`
- * (frappe/esbuild/esbuild.js:92-97, 327), which makes every app's repo root a
+ * (frappe/esbuild/esbuild.js:93-98, 327), which makes every app's repo root a
  * NODE_PATH root:
  *
  *   frappe/public/js/frappe/form/grid
@@ -40,7 +40,7 @@
  * exactly the exports the real module has. `grid_row`, `grid_row_form`,
  * `grid_pagination`, `web_form` and `web_form_list` have a default export and
  * nothing else. `grid` has the default `Grid` PLUS, since v16.50, four named
- * const exports (frappe/public/js/frappe/form/grid.js:10-36). No module has a
+ * const exports (frappe/public/js/frappe/form/grid.js:8-34). No module has a
  * named export for its own class, so none is declared: an
  * `import { Grid } from ...` would type-check against a phantom export and
  * then fail in esbuild. The side-effect bundles have no exports at all, so
@@ -49,10 +49,10 @@
  */
 
 declare module "frappe/public/js/frappe/form/grid" {
-	// frappe/public/js/frappe/form/grid.js:52 — `export default class Grid {`.
+	// frappe/public/js/frappe/form/grid.js:50 — `export default class Grid {`.
 	//
 	// Since v16.50 the module ALSO has four NAMED exports, all const pixel-width
-	// tables (frappe/public/js/frappe/form/grid.js:10-36); they are re-exported
+	// tables (frappe/public/js/frappe/form/grid.js:8-34); they are re-exported
 	// below. `Grid` itself is the DEFAULT export only: `import { Grid } from ...`
 	// is a "No matching export" error at build time, so it is not declared here.
 	import { Grid } from "frappe-types/deep-modules";
@@ -101,7 +101,7 @@ declare module "frappe/public/js/frappe/web_form/web_form" {
 
 declare module "frappe/public/js/frappe/web_form/web_form.js" {
 	// The same module spelled with its extension, which esbuild resolves through
-	// `nodePaths` just the same (frappe/esbuild/esbuild.js:92-97) and which is
+	// `nodePaths` just the same (frappe/esbuild/esbuild.js:93-98) and which is
 	// how frappe/public/js/web_form.bundle.js:1-7 spells its own imports.
 	import { WebForm } from "frappe-types/deep-modules";
 	export default WebForm;
@@ -129,7 +129,7 @@ declare module "frappe/public/js/frappe/web_form/web_form_list.js" {
 // that builds its own website bundle imports the same ones, and none of them
 // exports anything, so each is declared with an empty body. Written with the
 // `.js` extension, the way web_form.bundle.js writes them; esbuild resolves the
-// specifier through `nodePaths` (frappe/esbuild/esbuild.js:92-97), as for the
+// specifier through `nodePaths` (frappe/esbuild/esbuild.js:93-98), as for the
 // class modules above.
 //
 // They are declared one by one, never as a `frappe/public/js/*.js` wildcard: a
@@ -149,7 +149,7 @@ declare module "frappe/public/js/lib/moment.js" {}
 declare module "frappe/public/js/frappe/ui/keyboard.js" {}
 /** frappe/public/js/frappe/utils/datetime.js:4 — `frappe.datetime`. */
 declare module "frappe/public/js/frappe/utils/datetime.js" {}
-/** frappe/public/js/frappe/web_form/webform_script.js:4-102 — renders the page's web form or list on `frappe.ready`. */
+/** frappe/public/js/frappe/web_form/webform_script.js:4-107 — renders the page's web form or list on `frappe.ready`. */
 declare module "frappe/public/js/frappe/web_form/webform_script.js" {}
 /**
  * frappe/public/js/bootstrap-4-web.bundle.js:1-68 — the website's Bootstrap 4

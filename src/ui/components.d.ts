@@ -162,67 +162,72 @@ export interface FrappeBadgeFunction {
 // frappe.ui.button
 // ---------------------------------------------------------------------------
 
-/** `frappe.ui.button`'s option bag — the `ButtonOpts` typedef, `frappe/public/js/frappe/ui/components/button.js:6-23`. */
+/** `frappe.ui.button`'s option bag — the `ButtonOpts` typedef, `frappe/public/js/frappe/ui/components/button.js:6-24`. */
 export interface FrappeButtonOptions {
-	/** HTML-escaped, wrapped in `<span class="es-button__label">` (`frappe/public/js/frappe/ui/components/button.js:97`). */
+	/** HTML-escaped, wrapped in `<span class="es-button__label">` (`frappe/public/js/frappe/ui/components/button.js:102`). */
 	label?: string;
 	/**
-	 * Text shown while the button is busy (`frappe/public/js/frappe/ui/components/button.js:98-107`). When the **key is
+	 * Text shown while the button is busy (`frappe/public/js/frappe/ui/components/button.js:103-112`). When the **key is
 	 * present** — even with the value `undefined` — it is used as given and
 	 * `""` opts out; when absent, `Save` / `Delete` / `Submit` (matched on the
 	 * *translated* label) default to `Saving...` / `Deleting...` / `Submitting...`
-	 * (`frappe/public/js/frappe/ui/components/button.js:29-38`).
+	 * (`frappe/public/js/frappe/ui/components/button.js:30-39`).
 	 */
 	loading_label?: string | undefined;
-	/** Default `"subtle"` (`frappe/public/js/frappe/ui/components/button.js:25,56`). */
+	/** Default `"subtle"` (`frappe/public/js/frappe/ui/components/button.js:26,60`). */
 	variant?: "solid" | "subtle" | "outline" | "ghost";
-	/** Default `"sm"` (`frappe/public/js/frappe/ui/components/button.js:26,57`). */
+	/** Default `"sm"` (`frappe/public/js/frappe/ui/components/button.js:27,61`). */
 	size?: "xs" | "sm" | "md" | "lg";
-	/** Default `"gray"` (`frappe/public/js/frappe/ui/components/button.js:27,58`). */
+	/** Default `"gray"` (`frappe/public/js/frappe/ui/components/button.js:28,62`). */
 	theme?: "gray" | "red";
 	/**
-	 * A `frappe.utils.icon` name shown before the label (`frappe/public/js/frappe/ui/components/button.js:51,94-95`).
-	 * An icon with no label makes a square icon-only button (`frappe/public/js/frappe/ui/components/button.js:52,59`) that
-	 * needs a `title` or `tooltip`, or frappe logs a console warning (`frappe/public/js/frappe/ui/components/button.js:73-79`).
+	 * A `frappe.utils.icon` name shown before the label (`frappe/public/js/frappe/ui/components/button.js:52,99-100`).
+	 * An icon with no label makes a square icon-only button (`frappe/public/js/frappe/ui/components/button.js:53,63`) that
+	 * needs a `title` or `tooltip`, or frappe logs a console warning (`frappe/public/js/frappe/ui/components/button.js:77-83`).
 	 */
 	icon?: string;
-	/** Same as {@link FrappeButtonOptions.icon}, and wins over it when both are given (`frappe/public/js/frappe/ui/components/button.js:51`: `icon_left || icon`). */
+	/** Same as {@link FrappeButtonOptions.icon}, and wins over it when both are given (`frappe/public/js/frappe/ui/components/button.js:52`: `icon_left || icon`). */
 	icon_left?: string;
-	/** A `frappe.utils.icon` name shown after the label (`frappe/public/js/frappe/ui/components/button.js:96`). */
+	/** A `frappe.utils.icon` name shown after the label (`frappe/public/js/frappe/ui/components/button.js:101`). */
 	icon_right?: string;
-	/** Native browser tooltip; doubles as `aria-label` on icon-only buttons (`frappe/public/js/frappe/ui/components/button.js:66-70`). Prefer `tooltip`. */
+	/** Native browser tooltip; doubles as `aria-label` on icon-only buttons (`frappe/public/js/frappe/ui/components/button.js:70-74`). Prefer `tooltip`. */
 	title?: string;
 	/**
 	 * The Espresso tooltip: a string, or a full {@link FrappeTooltipOptions}.
 	 * Element form only, and only wired when `frappe.ui.tooltip` exists in the
-	 * bundle (`frappe/public/js/frappe/ui/components/button.js:123-128`, "a bundle without the tooltip component should
-	 * still get working buttons"). Suppresses the native `title` (`frappe/public/js/frappe/ui/components/button.js:66`) and
-	 * doubles as `aria-label` on icon-only buttons (`frappe/public/js/frappe/ui/components/button.js:62-63,69-70`).
+	 * bundle (`frappe/public/js/frappe/ui/components/button.js:128-133`, "a bundle without the tooltip component should
+	 * still get working buttons"). Suppresses the native `title` (`frappe/public/js/frappe/ui/components/button.js:70`) and
+	 * doubles as `aria-label` on icon-only buttons (`frappe/public/js/frappe/ui/components/button.js:66-67,73-74`).
 	 */
 	tooltip?: string | FrappeTooltipOptions;
-	/** Renders the `disabled` attribute (`frappe/public/js/frappe/ui/components/button.js:61`). */
+	/** Renders the `disabled` attribute (`frappe/public/js/frappe/ui/components/button.js:65`). */
 	disabled?: boolean;
 	/**
-	 * Renders `aria-busy="true"` on creation (`frappe/public/js/frappe/ui/components/button.js:60`) — the same attribute
-	 * the `onclick` busy state toggles (`frappe/public/js/frappe/ui/components/button.js:136,138`).
+	 * Renders `aria-busy="true"` on creation (`frappe/public/js/frappe/ui/components/button.js:64`) — the same attribute
+	 * the `onclick` busy state toggles (`frappe/public/js/frappe/ui/components/button.js:141,143`).
 	 */
 	loading?: boolean;
-	/** Default `"button"` (`frappe/public/js/frappe/ui/components/button.js:54`). */
+	/** Default `"button"`; not rendered when `href` yields a link (`frappe/public/js/frappe/ui/components/button.js:55-58`). */
 	type?: "button" | "submit" | "reset";
-	/** Extra CSS classes (escaped, `frappe/public/js/frappe/ui/components/button.js:81`). */
+	/**
+	 * Renders an `<a href>` instead of a `<button>` (16.60; `frappe/public/js/frappe/ui/components/button.js:16, 55-58, 89-90`).
+	 * Code-running schemes are refused (`safe_href`); `disabled` keeps a `<button>`.
+	 */
+	href?: string;
+	/** Extra CSS classes (escaped, `frappe/public/js/frappe/ui/components/button.js:85`). */
 	css_class?: string;
 	/**
 	 * Extra attributes, e.g. `{ "data-toggle": "dropdown" }`. Same rules as
-	 * {@link FrappeBadgeOptions.attrs} (`frappe/public/js/frappe/ui/components/button.js:71`).
+	 * {@link FrappeBadgeOptions.attrs} (`frappe/public/js/frappe/ui/components/button.js:75`).
 	 */
 	attrs?: Record<string, string | true>;
 	/**
 	 * Click handler. **Element form only** — `frappe.ui.button.html` has no element
-	 * to bind it to and ignores it (`frappe/public/js/frappe/ui/components/button.js:129-152`). `this` is the button
+	 * to bind it to and ignores it (`frappe/public/js/frappe/ui/components/button.js:134-157`). `this` is the button
 	 * element. A thenable return value puts the button into its busy state
 	 * (`aria-busy`, spinner, clicks blocked) until it settles — a click while busy
-	 * is ignored even from the keyboard (`frappe/public/js/frappe/ui/components/button.js:131-133`); a rejection is only
-	 * re-logged in developer mode (`frappe/public/js/frappe/ui/components/button.js:135-149`).
+	 * is ignored even from the keyboard (`frappe/public/js/frappe/ui/components/button.js:136-138`); a rejection is only
+	 * re-logged in developer mode (`frappe/public/js/frappe/ui/components/button.js:140-154`).
 	 */
 	onclick?: (this: HTMLElement, event: JQuery.ClickEvent) => unknown;
 }
@@ -230,7 +235,7 @@ export interface FrappeButtonOptions {
 /**
  * The subset of {@link FrappeButtonOptions} `frappe.ui.button.dress` reads —
  * `label` / `loading_label` / `icon` / `icon_left` / `icon_right` plus the three
- * look options (`frappe/public/js/frappe/ui/components/button.js:176,195-201`). Nothing else (`onclick`,
+ * look options (`frappe/public/js/frappe/ui/components/button.js:181,200-206`). Nothing else (`onclick`,
  * `disabled`, `loading`, …) is applied to an existing element.
  */
 export type FrappeButtonDressOptions = Pick<
@@ -239,7 +244,7 @@ export type FrappeButtonDressOptions = Pick<
 >;
 
 /**
- * `frappe.ui.button` — `frappe/public/js/frappe/ui/components/button.js:119-209`.
+ * `frappe.ui.button` — `frappe/public/js/frappe/ui/components/button.js:124-214`.
  *
  * ```ts
  * frappe.ui.button({ label: __("Save"), variant: "solid", onclick: () => frm.save() });
@@ -249,19 +254,19 @@ export type FrappeButtonDressOptions = Pick<
  */
 export interface FrappeButtonFunction {
 	/**
-	 * frappe/public/js/frappe/ui/components/button.js:119-154 — a wired `<button class="es-button">` as a jQuery element,
+	 * frappe/public/js/frappe/ui/components/button.js:124-159 — a wired `<button class="es-button">` as a jQuery element,
 	 * with `opts.onclick` and `opts.tooltip` bound.
 	 */
 	(opts?: FrappeButtonOptions): JQuery<HTMLElement>;
 	/**
-	 * frappe/public/js/frappe/ui/components/button.js:46-86,156 — the same button as a markup string. Nothing is
+	 * frappe/public/js/frappe/ui/components/button.js:47-91,161 — the same button as a markup string. Nothing is
 	 * bound, so `onclick` is ignored and `tooltip` only contributes the accessible name.
 	 */
 	html(opts?: FrappeButtonOptions): string;
 	/**
-	 * frappe/public/js/frappe/ui/components/button.js:180-209 — applies the `es-button` look to an **existing**
+	 * frappe/public/js/frappe/ui/components/button.js:185-214 — applies the `es-button` look to an **existing**
 	 * `<button>` in place — the page header's and dialogs' buttons
-	 * (`frappe/public/js/frappe/ui/page.js:333`, `frappe/public/js/frappe/ui/dialog.js:208,254`),
+	 * (`frappe/public/js/frappe/ui/page.js:329`, `frappe/public/js/frappe/ui/dialog.js:213,259`),
 	 * which other code holds references to and so can never be replaced. Adds the
 	 * class and `type="button"` if missing; sets `data-variant` / `data-size` /
 	 * `data-theme`, **removing** the attribute when the value is the CSS default
@@ -440,26 +445,26 @@ export type FrappeTabButtonsFunction = (opts: FrappeTabButtonsOptions) => JQuery
 
 /**
  * `restrictions` of {@link FrappeFileUploaderOptions} — the defaults
- * `frappe/public/js/frappe/file_uploader/FileUploader.vue:282-289` gives the
+ * `frappe/public/js/frappe/file_uploader/FileUploader.vue:281-288` gives the
  * prop. When `allowed_file_types` is missing, the constructor fills it from
  * the system's allowed extensions
  * (`frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:48-56`).
  */
 export interface FrappeFileUploaderRestrictions {
-	/** Bytes, e.g. `2048` for 2 KB — `frappe/public/js/frappe/file_uploader/FileUploader.vue:284`. */
+	/** Bytes, e.g. `2048` for 2 KB — `frappe/public/js/frappe/file_uploader/FileUploader.vue:283`. */
 	max_file_size?: number | null;
-	/** Extra files are dropped with a warning — `frappe/public/js/frappe/file_uploader/FileUploader.vue:449-456`. */
+	/** Extra files are dropped with a warning — `frappe/public/js/frappe/file_uploader/FileUploader.vue:447-454`. */
 	max_number_of_files?: number | null;
-	/** MIME patterns or extensions: `"image/*"`, `".pdf"` — `frappe/public/js/frappe/file_uploader/FileUploader.vue:286`. */
+	/** MIME patterns or extensions: `"image/*"`, `".pdf"` — `frappe/public/js/frappe/file_uploader/FileUploader.vue:285`. */
 	allowed_file_types?: string[];
-	/** Opens the cropper for a single image; `NaN` for a free crop — `frappe/public/js/frappe/file_uploader/FileUploader.vue:287`, :460-467. */
+	/** Opens the cropper for a single image; `NaN` for a free crop — `frappe/public/js/frappe/file_uploader/FileUploader.vue:286`, :460-467. */
 	crop_image_aspect_ratio?: number | null;
 }
 
 /**
  * The second argument of an uploading `on_success`: the response body parsed
  * as JSON, or its raw text when it does not parse
- * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:624-632`). From
+ * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:623-631`). From
  * frappe's `upload_file` (or the `method` given) it is the
  * {@link FrappeResponse} envelope, the {@link FrappeFileDoc} in `message`.
  */
@@ -467,10 +472,10 @@ export type FrappeFileUploaderResponse = FrappeResponse | string;
 
 /**
  * A file entry handed to `on_success` with `as_dataurl`, once its `dataurl`
- * is set (`frappe/public/js/frappe/file_uploader/FileUploader.vue:576-584`).
+ * is set (`frappe/public/js/frappe/file_uploader/FileUploader.vue:575-583`).
  */
 export interface FrappeFileUploaderDataUrlFile extends FrappeFileUploaderFile {
-	/** `frappe.dom.file_to_base64(file.file_obj)` — `frappe/public/js/frappe/file_uploader/FileUploader.vue:578-579`. */
+	/** `frappe.dom.file_to_base64(file.file_obj)` — `frappe/public/js/frappe/file_uploader/FileUploader.vue:577-578`. */
 	dataurl: string;
 }
 
@@ -484,62 +489,62 @@ export interface FrappeFileUploaderDataUrlFile extends FrappeFileUploaderFile {
 export interface FrappeFileUploaderOptions {
 	/** Render inline into this element instead of a dialog — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:42-46`. */
 	wrapper?: HTMLElement | JQuery;
-	/** A whitelisted method the upload is posted to as `method` — `frappe/public/js/frappe/file_uploader/FileUploader.vue:725`. */
+	/** A whitelisted method the upload is posted to as `method` — `frappe/public/js/frappe/file_uploader/FileUploader.vue:719`. */
 	method?: string | null;
 	/**
 	 * Called once per file. Whatever is uploaded — the files picked, or with
 	 * `as_dataurl` still the Library and Link tabs' file and the Google Drive
-	 * pick (`frappe/public/js/frappe/file_uploader/FileUploader.vue:533-537`,
+	 * pick (`frappe/public/js/frappe/file_uploader/FileUploader.vue:532-536`,
 	 * :555, :572, :799) — gets the new File document (`null` when the
 	 * response's `message` is not a File) and the
 	 * {@link FrappeFileUploaderResponse}
-	 * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:624-637`). With
+	 * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:623-637`). With
 	 * `as_dataurl`, a file picked is not uploaded: it gets the file entry
-	 * alone, its `dataurl` set (`frappe/public/js/frappe/file_uploader/FileUploader.vue:576-584`).
+	 * alone, its `dataurl` set (`frappe/public/js/frappe/file_uploader/FileUploader.vue:575-583`).
 	 */
 	on_success?(file: FrappeFileDoc | FrappeFileUploaderDataUrlFile | null, response?: FrappeFileUploaderResponse): unknown;
-	/** Attach the upload to this document — `frappe/public/js/frappe/file_uploader/FileUploader.vue:722-724`. */
+	/** Attach the upload to this document — `frappe/public/js/frappe/file_uploader/FileUploader.vue:716-718`. */
 	doctype?: string | null;
 	docname?: string | null;
 	fieldname?: string | null;
-	/** Files to add at once — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:141-143`. */
+	/** Files to add at once — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:130-132`. */
 	files?: ArrayLike<File>;
-	/** The File folder; `"Home"` by default — `frappe/public/js/frappe/file_uploader/FileUploader.vue:270-272`. */
+	/** The File folder; `"Home"` by default — `frappe/public/js/frappe/file_uploader/FileUploader.vue:269-271`. */
 	folder?: string;
 	restrictions?: FrappeFileUploaderRestrictions;
-	/** A hint under the drop area — `frappe/public/js/frappe/file_uploader/FileUploader.vue:293-295`. */
+	/** A hint under the drop area — `frappe/public/js/frappe/file_uploader/FileUploader.vue:292-294`. */
 	upload_notes?: string | null;
-	/** `true` by default — `frappe/public/js/frappe/file_uploader/FileUploader.vue:255-257`. */
+	/** `true` by default — `frappe/public/js/frappe/file_uploader/FileUploader.vue:254-256`. */
 	allow_multiple?: boolean;
-	/** Return the files as data URLs instead of uploading — `frappe/public/js/frappe/file_uploader/FileUploader.vue:536-537`. */
+	/** Return the files as data URLs instead of uploading — `frappe/public/js/frappe/file_uploader/FileUploader.vue:535-536`. */
 	as_dataurl?: boolean;
-	/** Hide "Library" — `frappe/public/js/frappe/file_uploader/FileUploader.vue:252-254`. */
+	/** Hide "Library" — `frappe/public/js/frappe/file_uploader/FileUploader.vue:251-253`. */
 	disable_file_browser?: boolean;
-	/** The dialog's title; "Upload" by default — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:152`. */
+	/** The dialog's title; "Upload" by default — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:141`. */
 	dialog_title?: string;
-	/** Resize to 200×200 on the server — `frappe/public/js/frappe/file_uploader/FileUploader.vue:727-730`. */
+	/** Resize to 200×200 on the server — `frappe/public/js/frappe/file_uploader/FileUploader.vue:721-724`. */
 	attach_doc_image?: boolean;
 	/** Tells the form's attachments sidebar an upload is starting — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:31`. */
 	frm?: Form;
-	/** New files start public — `frappe/public/js/frappe/file_uploader/FileUploader.vue:444`. ControlAttach passes `1` or the doctype's setting (`frappe/public/js/frappe/form/controls/attach.js:87-89`). */
+	/** New files start public — `frappe/public/js/frappe/file_uploader/FileUploader.vue:442`. ControlAttach passes `1` or the doctype's setting (`frappe/public/js/frappe/form/controls/attach.js:87-89`). */
 	make_attachments_public?: boolean | 0 | 1 | null;
-	/** `true` by default — `frappe/public/js/frappe/file_uploader/FileUploader.vue:296-298`. */
+	/** `true` by default — `frappe/public/js/frappe/file_uploader/FileUploader.vue:295-297`. */
 	allow_web_link?: boolean;
-	/** `true` by default — `frappe/public/js/frappe/file_uploader/FileUploader.vue:299-301`. */
+	/** `true` by default — `frappe/public/js/frappe/file_uploader/FileUploader.vue:298-300`. */
 	allow_take_photo?: boolean;
 	/** `true` by default, and only honoured when the user may upload public files — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:33-40`. */
 	allow_toggle_private?: boolean;
-	/** `true` by default — `frappe/public/js/frappe/file_uploader/FileUploader.vue:305-307`. */
+	/** `true` by default — `frappe/public/js/frappe/file_uploader/FileUploader.vue:304-306`. */
 	allow_toggle_optimize?: boolean;
-	/** `true` by default — `frappe/public/js/frappe/file_uploader/FileUploader.vue:308-310`. */
+	/** `true` by default — `frappe/public/js/frappe/file_uploader/FileUploader.vue:307-309`. */
 	allow_google_drive?: boolean;
 }
 
 /**
  * {@link FrappeFileUploaderOptions} that upload (`as_dataurl` left out or
- * `false`, its default at `frappe/public/js/frappe/file_uploader/FileUploader.vue:258-260`):
+ * `false`, its default at `frappe/public/js/frappe/file_uploader/FileUploader.vue:257-259`):
  * `on_success` gets the File document and the response
- * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:624-637`).
+ * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:623-637`).
  */
 export interface FrappeFileUploaderUploadOptions extends Omit<FrappeFileUploaderOptions, "as_dataurl" | "on_success"> {
 	as_dataurl?: false;
@@ -550,10 +555,10 @@ export interface FrappeFileUploaderUploadOptions extends Omit<FrappeFileUploader
  * {@link FrappeFileUploaderOptions} that never upload: `as_dataurl: true`
  * with the Library, Link and Google Drive sources turned off. Each of those
  * uploads its file whatever `as_dataurl` says
- * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:533-537`, :547-575,
+ * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:532-536`, :547-575,
  * :797-802), and each shows unless turned off (:69, :98, :153; defaults at
  * :252-254, :296-298, :308-310). So `on_success` gets only file entries, each
- * with its `dataurl` set (`frappe/public/js/frappe/file_uploader/FileUploader.vue:576-584`).
+ * with its `dataurl` set (`frappe/public/js/frappe/file_uploader/FileUploader.vue:575-583`).
  * An extra source added to `FrappeFileUploader.UploadOptions` gets the
  * uploader and can still upload through it
  * (`frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:78-88`).
@@ -571,30 +576,30 @@ export interface FrappeFileUploaderDataUrlOptions
 
 /**
  * One entry of the uploader's file list, as `add_files` builds it
- * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:425-445`) and the
+ * (`frappe/public/js/frappe/file_uploader/FileUploader.vue:423-443`) and the
  * upload updates it (:586-746).
  */
 export interface FrappeFileUploaderFile {
 	file_obj: File;
-	/** The file after cropping; the original until then — `frappe/public/js/frappe/file_uploader/FileUploader.vue:433`. */
+	/** The file after cropping; the original until then — `frappe/public/js/frappe/file_uploader/FileUploader.vue:431`. */
 	cropper_file: File;
 	crop_box_data: unknown;
-	/** Optimise on upload: images over 200 KB that are not SVG — `frappe/public/js/frappe/file_uploader/FileUploader.vue:435`. */
+	/** Optimise on upload: images over 200 KB that are not SVG — `frappe/public/js/frappe/file_uploader/FileUploader.vue:433`. */
 	optimize: boolean;
 	name: string;
 	/** The File document once uploaded — `frappe/public/js/frappe/file_uploader/FileUploader.vue:635`. */
 	doc: FrappeFileDoc | null;
-	/** Bytes sent so far — `frappe/public/js/frappe/file_uploader/FileUploader.vue:603`. */
+	/** Bytes sent so far — `frappe/public/js/frappe/file_uploader/FileUploader.vue:602`. */
 	progress: number;
-	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:604. */
+	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:603. */
 	total: number;
 	failed: boolean;
 	request_succeeded: boolean;
-	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:651, :658, :664. */
+	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:652, :661, :667. */
 	error_message: string | null;
 	uploading: boolean;
 	private: boolean;
-	/** Set with `as_dataurl` — `frappe/public/js/frappe/file_uploader/FileUploader.vue:579`. */
+	/** Set with `as_dataurl` — `frappe/public/js/frappe/file_uploader/FileUploader.vue:578`. */
 	dataurl?: string;
 }
 
@@ -609,7 +614,7 @@ export interface FrappeFileBrowserNode {
 	filename: string;
 	/** The File's `file_url` — `frappe/public/js/frappe/file_uploader/FileBrowser.vue:147`. */
 	file_url: string | null;
-	/** The File's `name`, which the upload sends as `library_file_name` — `frappe/public/js/frappe/file_uploader/FileBrowser.vue:148`, `frappe/public/js/frappe/file_uploader/FileUploader.vue:555-556`. */
+	/** The File's `name`, which the upload sends as `library_file_name` — `frappe/public/js/frappe/file_uploader/FileBrowser.vue:148`, `frappe/public/js/frappe/file_uploader/FileUploader.vue:554-555`. */
 	value: string;
 	/** `true` for a file, `false` for a folder; only a file is ever selected — `frappe/public/js/frappe/file_uploader/FileBrowser.vue:149`, :85-89. */
 	is_leaf: boolean;
@@ -624,7 +629,7 @@ export interface FrappeFileBrowserNode {
 export interface FrappeFileUploaderRefs {
 	/** The hidden file input, under `v-if="!is_dragging"` — `frappe/public/js/frappe/file_uploader/FileUploader.vue:12`, :59-66. */
 	file_input?: HTMLInputElement | null;
-	/** The Library tab, while it is showing — `frappe/public/js/frappe/file_uploader/FileUploader.vue:230-234`. */
+	/** The Library tab, while it is showing — `frappe/public/js/frappe/file_uploader/FileUploader.vue:229-233`. */
 	file_browser?: {
 		/**
 		 * The file clicked last; `{}` until one is
@@ -632,18 +637,18 @@ export interface FrappeFileUploaderRefs {
 		 */
 		selected_node: FrappeFileBrowserNode | Record<string, never>;
 	} | null;
-	/** The Link tab, while it is showing — `frappe/public/js/frappe/file_uploader/FileUploader.vue:235`. */
+	/** The Link tab, while it is showing — `frappe/public/js/frappe/file_uploader/FileUploader.vue:234`. */
 	web_link?: {
-		/** The URL typed so far — `frappe/public/js/frappe/file_uploader/WebLink.vue:26`, exposed at :39. */
+		/** The URL typed so far — `frappe/public/js/frappe/file_uploader/WebLink.vue:28`, exposed at :39. */
 		url: string;
-		/** Shows `error` under the input and focuses it — `frappe/public/js/frappe/file_uploader/WebLink.vue:34-37`. */
+		/** Shows `error` under the input and focuses it — `frappe/public/js/frappe/file_uploader/WebLink.vue:36-39`. */
 		invalid_input(error: string): void;
 	} | null;
 }
 
 /**
  * The uploader component instance, `FrappeFileUploader#uploader` — what
- * `FileUploader.vue` exposes (`frappe/public/js/frappe/file_uploader/FileUploader.vue:832-840`).
+ * `FileUploader.vue` exposes (`frappe/public/js/frappe/file_uploader/FileUploader.vue:838-847`).
  */
 export interface FrappeFileUploaderComponent {
 	/**
@@ -651,21 +656,21 @@ export interface FrappeFileUploaderComponent {
 	 * public proxy (`frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:91`),
 	 * which serves Vue's `$`-members such as `$refs` next to what `defineExpose`
 	 * lists, and frappe reads two of these refs itself, to upload what the
-	 * Library or Link tab holds (`frappe/public/js/frappe/file_uploader/FileUploader.vue:548`, :560).
+	 * Library or Link tab holds (`frappe/public/js/frappe/file_uploader/FileUploader.vue:547`, :560).
 	 */
 	readonly $refs: FrappeFileUploaderRefs;
 	files: FrappeFileUploaderFile[];
-	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:425-468 — applies the restrictions, then appends. */
+	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:423-466 — applies the restrictions, then appends. */
 	add_files(file_array: ArrayLike<File> | Iterable<File>): void;
-	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:586. */
+	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:585. */
 	upload_file(file: FrappeFileUploaderFile | Record<string, unknown>, i?: number): Promise<void>;
-	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:531-546 — rejects when there is nothing to upload. */
+	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:529-545 — rejects when there is nothing to upload. */
 	upload_files(dialog?: Dialog): Promise<unknown>;
-	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:387-402. */
+	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:385-400. */
 	toggle_all_private(): void;
-	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:334, set by the class (`frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:94`, :156). */
+	/** frappe/public/js/frappe/file_uploader/FileUploader.vue:332, set by the class (`frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:94`, :156). */
 	wrapper_ready: boolean;
-	/** Set to hide the dialog — `frappe/public/js/frappe/file_uploader/FileUploader.vue:328`, watched at `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:119-126`. */
+	/** Set to hide the dialog — `frappe/public/js/frappe/file_uploader/FileUploader.vue:326`, watched at `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:110-117`. */
 	close_dialog: boolean;
 }
 
@@ -689,7 +694,7 @@ export interface FrappeFileUploaderUploadOption {
 }
 
 /**
- * `frappe.ui.FileUploader` — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:5-180`.
+ * `frappe.ui.FileUploader` — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:5-169`.
  *
  * It lives in `file_uploader.bundle.js`, which the desk requires
  * asynchronously at start-up (`frappe/public/js/frappe/upload.js:4-10`), so
@@ -699,7 +704,7 @@ export declare class FrappeFileUploader {
 	/** Extra upload sources, shared by every uploader — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:6`. */
 	static UploadOptions: FrappeFileUploaderUploadOption[];
 	/**
-	 * frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:7-144. Opens
+	 * frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:7-133. Opens
 	 * the dialog at once unless `wrapper` is given.
 	 */
 	constructor(opts?: FrappeFileUploaderUploadOptions);
@@ -707,14 +712,14 @@ export declare class FrappeFileUploader {
 	constructor(opts?: FrappeFileUploaderOptions);
 	/** frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:40. */
 	can_toggle_private: boolean;
-	/** The upload dialog; absent when rendered into a `wrapper` — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:168`. */
+	/** The upload dialog; absent when rendered into a `wrapper` — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:157`. */
 	dialog?: Dialog;
 	/** Where the component is mounted — `frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:45`, :170. */
 	wrapper: HTMLElement;
 	/** frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:91. */
 	uploader: FrappeFileUploaderComponent;
-	/** frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:146-148. */
+	/** frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:135-137. */
 	upload_files(): Promise<unknown>;
-	/** frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:150-176 — builds and shows the dialog. */
+	/** frappe/public/js/frappe/file_uploader/file_uploader.bundle.js:139-165 — builds and shows the dialog. */
 	make_dialog(title?: string): void;
 }
